@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" fill="#0D0D0C" />
+  <rect x="44" y="44" width="424" height="424" fill="none" stroke="#1E4631" stroke-width="3" />
+  <line x1="256" y1="24" x2="256" y2="56" stroke="#4E946C" stroke-width="2" />
+  <line x1="256" y1="456" x2="256" y2="488" stroke="#4E946C" stroke-width="2" />
+  <line x1="24" y1="256" x2="56" y2="256" stroke="#4E946C" stroke-width="2" />
+  <line x1="456" y1="256" x2="488" y2="256" stroke="#4E946C" stroke-width="2" />
+  <text
+    x="256"
+    y="286"
+    text-anchor="middle"
+    font-family="DejaVu Serif, Georgia, serif"
+    font-size="168"
+    font-weight="600"
+    letter-spacing="-6"
+    fill="#F5F4EF"
+  >АД</text>
+  <line x1="176" y1="342" x2="336" y2="342" stroke="#4E946C" stroke-width="2" />
+</svg>

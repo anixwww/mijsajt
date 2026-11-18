@@ -1,0 +1,6 @@
+{
+  "name": "Андрій Даньків — Письменник",
+  "description": "Персональний сайт українського письменника Андрія Даньківа: вірші, проза, блог та крамниця електронних книг і відкритих рукописів у Google Документах.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
