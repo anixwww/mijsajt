@@ -24,7 +24,7 @@ export function PinPad({
   disabled = false,
   loading = false,
   errorTrigger = 0,
-  maxLength = 4,
+  maxLength = 6,
   keyboardActive = true,
   leftActionLabel,
   onLeftAction,

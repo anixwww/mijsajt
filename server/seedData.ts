@@ -349,7 +349,11 @@ export const DEFAULT_MONOBANK_MODAL_TEXT =
   'Якщо вірші чи проза відгукнулися вам, можна підтримати мене довільним донатом через Монобанк. Мені буде приємно.';
 export const DEFAULT_MONOBANK_EMPTY_TEXT = '';
 
-export const DEFAULT_CONTACT_EMAIL = 'andrijdankiv5@gmail.com';
+export const DEFAULT_CONTACT_EMAIL =
+  process.env.ADMIN_CONTACT_EMAIL ||
+  process.env.ADMIN_EMAIL ||
+  process.env.ADMIN_EMAILS?.split(',')[0]?.trim() ||
+  'contact@example.com';
 
 export const DEFAULT_HOME_ACTION_ABOUT = 'Про мене';
 export const DEFAULT_HOME_ACTION_CONTACT = 'Зв’язок';

@@ -2089,7 +2089,7 @@ export const GuestAuthModal = memo(function GuestAuthModal({
                 )}
               </div>
               <p className="text-xs text-ink-muted dark:text-parchment pt-1">
-                {loadingAction === 'pin' ? 'Перевіряємо ПІН-код...' : 'Введіть 4 цифри для швидкого входу'}
+                {loadingAction === 'pin' ? 'Перевіряємо ПІН-код...' : 'Введіть 6 цифр для швидкого входу'}
               </p>
             </div>
 

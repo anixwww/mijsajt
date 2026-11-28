@@ -32,13 +32,18 @@ import {
 import { applyCloudTelegramBotToken } from '../src/api/telegramBot.ts';
 import { ensureWeeklyWinnersUpToDate } from './weeklyHighlights.ts';
 
-export const ADMIN_EMAILS = new Set<string>([
-  'andrijdankiv5@gmail.com',
-  'andriidankiv.writer@gmail.com',
-]);
+export function getAdminEmails(): Set<string> {
+  const envEmails = process.env.ADMIN_EMAILS || process.env.ADMIN_EMAIL || '';
+  if (envEmails.trim()) {
+    return new Set(envEmails.split(',').map((e) => e.trim().toLowerCase()).filter(Boolean));
+  }
+  return new Set<string>(['admin@example.com']);
+}
 
 export function isAdminEmailAddress(email?: string | null): boolean {
-  return Boolean(email && ADMIN_EMAILS.has(email.trim().toLowerCase()));
+  if (!email) return false;
+  const emails = getAdminEmails();
+  return emails.has(email.trim().toLowerCase());
 }
 
 const GOOGLE_CERTS_URL =
@@ -220,7 +225,10 @@ export function extractBearerToken(req: Request): string | null {
 }
 
 export function isVerifiedAdminClaims(claims: VerifiedFirebaseClaims | null): boolean {
-  return Boolean(claims && claims.emailVerified && isAdminEmailAddress(claims.email));
+  if (!claims) return false;
+  const customClaimsAdmin = (claims as unknown as { admin?: boolean; role?: string }).admin === true || 
+    (claims as unknown as { admin?: boolean; role?: string }).role === 'admin';
+  return Boolean((claims.emailVerified && isAdminEmailAddress(claims.email)) || customClaimsAdmin);
 }
 
 export async function authenticateAdminRequest(
@@ -353,8 +361,8 @@ export function clearGuestSessionCookie(req: Request, res: Response): void {
   res.append('Set-Cookie', parts.join('; '));
 }
 
-export function isValidFourDigitPin(raw: unknown): raw is string {
-  return typeof raw === 'string' && /^\d{4}$/.test(raw);
+export function isValidSecurePasscode(raw: unknown): raw is string {
+  return typeof raw === 'string' && /^[0-9]{6,32}$/.test(raw.trim());
 }
 
 export function hashGuestPin(pin: string): { pinHash: string; pinSalt: string } {
@@ -1340,15 +1348,15 @@ export function registerAuthRoutes(
     }
 
     const { pin, currentPin } = req.body as { pin?: unknown; currentPin?: unknown };
-    if (!isValidFourDigitPin(pin)) {
-      res.status(400).json({ error: 'ПІН-код має складатися рівно з 4 цифр.' });
+    if (!isValidSecurePasscode(pin)) {
+      res.status(400).json({ error: 'ПІН-код має складатися щонайменше з 6 цифр.' });
       return;
     }
 
     const account = authResult.account;
     const alreadyHasPin = Boolean(account.pinHash && account.pinSalt);
     if (alreadyHasPin && !authResult.firebaseClaims) {
-      if (!isValidFourDigitPin(currentPin) || !verifyGuestPinHash(currentPin, account.pinHash!, account.pinSalt!)) {
+      if (!isValidSecurePasscode(currentPin) || !verifyGuestPinHash(currentPin as string, account.pinHash!, account.pinSalt!)) {
         res.status(401).json({ error: 'Неправильний поточний ПІН-код.' });
         return;
       }
@@ -1360,6 +1368,7 @@ export function registerAuthRoutes(
     account.pinSalt = pinSalt;
     account.pinFailedAttempts = 0;
     delete account.pinLockedUntil;
+    delete account.pinFailedAttemptsByIp;
     account.pinUpdatedAt = nowIso;
     account.updatedAt = nowIso;
     saveDatabase(db, { bumpCatalogRevision: false, flushDelayMs: 0, slices: ['community'] });
@@ -1373,7 +1382,7 @@ export function registerAuthRoutes(
     });
   });
 
-  // Disable 4-digit PIN for current account
+  // Disable PIN for current account
   app.delete('/api/guest/pin', async (req: Request, res: Response) => {
     if (!verifySameOrigin(req)) {
       res.status(403).json({ error: 'Запит із стороннього джерела заблоковано.' });
@@ -1391,6 +1400,7 @@ export function registerAuthRoutes(
     delete account.pinSalt;
     delete account.pinFailedAttempts;
     delete account.pinLockedUntil;
+    delete account.pinFailedAttemptsByIp;
     delete account.pinUpdatedAt;
     account.updatedAt = new Date().toISOString();
     saveDatabase(db, { bumpCatalogRevision: false, flushDelayMs: 0, slices: ['community'] });
@@ -1404,7 +1414,7 @@ export function registerAuthRoutes(
     });
   });
 
-  // Quick 4-digit PIN sign-in
+  // Quick PIN sign-in with per-IP + account lockout tracking
   app.post('/api/guest/pin-login', pinLoginLimiter, async (req: Request, res: Response) => {
     if (!verifySameOrigin(req)) {
       res.status(403).json({ error: 'Запит із стороннього джерела заблоковано.' });
@@ -1415,8 +1425,8 @@ export function registerAuthRoutes(
     const cleanUid = typeof uid === 'string' ? uid.trim() : '';
     const cleanEmail = normalizeEmailAddress(email);
 
-    if ((!cleanUid && !cleanEmail) || !isValidFourDigitPin(pin)) {
-      res.status(400).json({ error: 'Введіть 4-значний ПІН-код.' });
+    if ((!cleanUid && !cleanEmail) || !isValidSecurePasscode(pin)) {
+      res.status(400).json({ error: 'Введіть ПІН-код (найменше 6 цифр).' });
       return;
     }
 
@@ -1436,35 +1446,43 @@ export function registerAuthRoutes(
       return;
     }
 
+    const ipHash = getClientIpHash(req);
     const nowMs = Date.now();
-    if (account.pinLockedUntil) {
-      const lockedUntilMs = Date.parse(account.pinLockedUntil);
+
+    if (!account.pinFailedAttemptsByIp) {
+      account.pinFailedAttemptsByIp = {};
+    }
+    const ipRecord = account.pinFailedAttemptsByIp[ipHash] || { count: 0 };
+
+    if (ipRecord.lockedUntil) {
+      const lockedUntilMs = Date.parse(ipRecord.lockedUntil);
       if (Number.isFinite(lockedUntilMs) && lockedUntilMs > nowMs) {
         const retryAfterSec = Math.max(1, Math.ceil((lockedUntilMs - nowMs) / 1000));
         const mins = Math.ceil(retryAfterSec / 60);
         res.setHeader('Retry-After', String(retryAfterSec));
         res.status(429).json({
-          error: `ПІН-вхід тимчасово заблоковано на ${mins} хв через невдалі спроби. Використайте вхід через Google.`,
+          error: `ПІН-вхід з вашої IP-адреси тимчасово заблоковано на ${mins} хв через невдалі спроби. Використайте вхід через Google.`,
           retryAfterSec,
-          lockedUntil: account.pinLockedUntil,
+          lockedUntil: ipRecord.lockedUntil,
         });
         return;
       }
-      account.pinFailedAttempts = 0;
-      delete account.pinLockedUntil;
+      ipRecord.count = 0;
+      delete ipRecord.lockedUntil;
     }
 
-    const isPinValid = verifyGuestPinHash(pin, account.pinHash, account.pinSalt);
+    const isPinValid = verifyGuestPinHash(pin as string, account.pinHash, account.pinSalt);
     if (!isPinValid) {
-      const nextFailed = (Number(account.pinFailedAttempts) || 0) + 1;
-      account.pinFailedAttempts = nextFailed;
-      if (nextFailed >= PIN_MAX_FAILED_ATTEMPTS) {
+      ipRecord.count = (ipRecord.count || 0) + 1;
+      account.pinFailedAttemptsByIp[ipHash] = ipRecord;
+
+      if (ipRecord.count >= PIN_MAX_FAILED_ATTEMPTS) {
         const lockIso = new Date(nowMs + PIN_LOCKOUT_MS).toISOString();
-        account.pinLockedUntil = lockIso;
+        ipRecord.lockedUntil = lockIso;
         saveDatabase(db, { bumpCatalogRevision: false, flushDelayMs: 0, slices: ['community'] });
         res.setHeader('Retry-After', String(Math.ceil(PIN_LOCKOUT_MS / 1000)));
         res.status(429).json({
-          error: 'Забагато невірних спроб. ПІН-вхід заблоковано на 15 хвилин — увійдіть через Google.',
+          error: 'Забагато невірних спроб з цієї IP-адреси. ПІН-вхід заблоковано на 15 хвилин — увійдіть через Google.',
           retryAfterSec: Math.ceil(PIN_LOCKOUT_MS / 1000),
           lockedUntil: lockIso,
           attemptsRemaining: 0,
@@ -1472,7 +1490,7 @@ export function registerAuthRoutes(
         return;
       }
       saveDatabase(db, { bumpCatalogRevision: false, flushDelayMs: 1500, slices: ['community'] });
-      const attemptsRemaining = Math.max(0, PIN_MAX_FAILED_ATTEMPTS - nextFailed);
+      const attemptsRemaining = Math.max(0, PIN_MAX_FAILED_ATTEMPTS - ipRecord.count);
       res.status(401).json({
         error: `Невірний ПІН-код. Залишилось спроб: ${attemptsRemaining}.`,
         attemptsRemaining,
@@ -1480,6 +1498,7 @@ export function registerAuthRoutes(
       return;
     }
 
+    delete account.pinFailedAttemptsByIp[ipHash];
     account.pinFailedAttempts = 0;
     delete account.pinLockedUntil;
     account.lastSeenAt = new Date().toISOString();

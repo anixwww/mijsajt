@@ -10,7 +10,7 @@ import type { GlobalChatMessage, UserTopBadges } from '../types.ts';
 const CHAT_COLLECTION = 'chatMessages';
 const CHAT_CACHE_STORAGE_KEY = 'dankiv_global_chat_cache_v1';
 const VALID_ID_RE = /^[a-zA-Z0-9_-]{1,128}$/;
-const ADMIN_EMAILS = new Set(['andrijdankiv5@gmail.com', 'andriidankiv.writer@gmail.com']);
+const ADMIN_EMAILS = new Set(['admin@example.com']);
 
 export interface ChatAuthorMeta {
   badges?: UserTopBadges;
