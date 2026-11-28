@@ -35,12 +35,12 @@ export function EditorialImage({
   if (!src || hasError) {
     return (
       <div
-        className={`relative flex flex-col items-center justify-center bg-[#EFECE6] dark:bg-[#262626] p-6 text-center ${aspectClassName} ${className}`}
+        className={`relative flex flex-col items-center justify-center bg-paper-warm dark:bg-night-card p-6 text-center ${aspectClassName} ${className}`}
         role="img"
         aria-label={alt}
       >
-        <BookOpen className="w-6 h-6 text-[#5C5C58] dark:text-[#A8A49B] mb-3" strokeWidth={1.5} />
-        <span className="font-serif text-lg font-medium text-[#141413] dark:text-[#F4F1EA] leading-snug max-w-[18ch]">
+        <BookOpen className="w-6 h-6 text-ink-muted dark:text-sandstone-light mb-3" strokeWidth={1.5} />
+        <span className="font-serif text-lg font-medium text-ink dark:text-cream leading-snug max-w-[18ch]">
           {titleFallback || alt}
         </span>
       </div>
@@ -50,7 +50,7 @@ export function EditorialImage({
   return (
     <div
       className={`relative overflow-hidden ${
-        transparentBg ? 'bg-transparent' : 'bg-[#EFECE6] dark:bg-[#262626]'
+        transparentBg ? 'bg-transparent' : 'bg-paper-warm dark:bg-night-card'
       } ${aspectClassName} ${className}`}
     >
       <img

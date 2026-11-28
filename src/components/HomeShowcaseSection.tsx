@@ -169,7 +169,7 @@ const VITRINE_GLASS_SHELL =
   'group/card relative overflow-hidden rounded-2xl shadow-[0_18px_42px_-22px_rgba(24,48,33,0.28)] hover:shadow-[0_22px_48px_-20px_rgba(24,48,33,0.36)] dark:shadow-[0_20px_46px_-20px_rgba(0,0,0,0.82)] dark:hover:shadow-[0_24px_52px_-18px_rgba(0,0,0,0.9)] transition-all duration-300';
 
 const VITRINE_GLASS_BASE =
-  `${VITRINE_GLASS_SHELL} bg-white dark:bg-[#2B2B2B] hover:bg-[#FAF9F5] dark:hover:bg-[#323232]`;
+  `${VITRINE_GLASS_SHELL} bg-white dark:bg-night-lift hover:bg-paper dark:hover:bg-night-elevated`;
 
 const VITRINE_GLASS_CARD = `${VITRINE_GLASS_BASE} p-4 sm:p-5`;
 
@@ -244,13 +244,13 @@ function FeedbackAvatar({ photoUrl, name }: { photoUrl?: string; name: string })
         decoding="async"
         referrerPolicy="no-referrer"
         onError={() => setFailed(true)}
-        className="w-8 h-8 rounded-full object-cover shrink-0 bg-[#EAE7DF] dark:bg-[#2F2F2F]"
+        className="w-8 h-8 rounded-full object-cover shrink-0 bg-paper-sand dark:bg-night-hover"
       />
     );
   }
 
   return (
-    <div className="w-8 h-8 rounded-full bg-[#EFECE6] dark:bg-[#323232] flex items-center justify-center shrink-0 text-[#5C5C58] dark:text-[#C4BFB4]">
+    <div className="w-8 h-8 rounded-full bg-paper-warm dark:bg-night-elevated flex items-center justify-center shrink-0 text-ink-muted dark:text-parchment">
       <User className="w-3.5 h-3.5" strokeWidth={1.75} />
     </div>
   );
@@ -367,9 +367,9 @@ function WorkGlassVitrine({
       >
         <GlassOverlays />
         <div className="relative z-10 space-y-2.5">
-          <div className="h-3 w-28 rounded bg-[#1E3A29]/10 dark:bg-white/10" />
-          <div className="h-5 w-4/5 rounded bg-[#1E3A29]/12 dark:bg-white/14" />
-          <div className="h-10 w-full rounded bg-[#1E3A29]/8 dark:bg-white/[0.08]" />
+          <div className="h-3 w-28 rounded bg-pine-dark/10 dark:bg-white/10" />
+          <div className="h-5 w-4/5 rounded bg-pine-dark/12 dark:bg-white/14" />
+          <div className="h-10 w-full rounded bg-pine-dark/8 dark:bg-white/[0.08]" />
         </div>
       </div>
     );
@@ -451,7 +451,7 @@ function WorkGlassVitrine({
               <button
                 type="button"
                 onClick={activeSlide.onOpen}
-                className={`group flex-1 min-w-0 h-full p-4 sm:p-5 flex items-center justify-between gap-3 overflow-hidden cursor-pointer focus-visible:outline-2 focus-visible:outline-[#2C5937] dark:focus-visible:outline-[#E5E5E5] ${
+                className={`group flex-1 min-w-0 h-full p-4 sm:p-5 flex items-center justify-between gap-3 overflow-hidden cursor-pointer focus-visible:outline-2 focus-visible:outline-pine dark:focus-visible:outline-silver ${
                   !activeSlide.body && !renderedMeta ? 'text-center justify-center' : 'text-left'
                 }`}
               >
@@ -460,7 +460,7 @@ function WorkGlassVitrine({
                     <div
                       style={hasCustomText ? { color: customTextColor } : undefined}
                       className={`flex items-center gap-x-1.5 gap-y-0.5 text-[11px] tabular-nums ${
-                        hasCustomText ? '' : 'text-[#5C5C58] dark:text-[#C4BFB4]'
+                        hasCustomText ? '' : 'text-ink-muted dark:text-parchment'
                       } ${
                         activeSlide.smoothScrollBody ? 'flex-nowrap min-w-0 overflow-hidden' : 'flex-wrap'
                       }`}
@@ -473,10 +473,10 @@ function WorkGlassVitrine({
                     style={customTextColor ? { color: customTextColor } : undefined}
                     className={`font-serif tracking-[-0.015em] leading-snug line-clamp-1 transition-colors duration-200 ${
                       !activeSlide.body && !renderedMeta
-                        ? 'text-[15px] sm:text-base font-normal italic text-[#5C5C58] dark:text-[#C4BFB4] group-hover:text-[#111E16] dark:group-hover:text-[#F4F1EA]'
+                        ? 'text-[15px] sm:text-base font-normal italic text-ink-muted dark:text-parchment group-hover:text-pine-night dark:group-hover:text-cream'
                         : customTextColor
                           ? 'text-base sm:text-[17px] font-semibold group-hover:opacity-80'
-                          : 'text-base sm:text-[17px] font-semibold text-[#111E16] dark:text-[#F2F0EA] group-hover:text-[#2C5937] dark:group-hover:text-white'
+                          : 'text-base sm:text-[17px] font-semibold text-pine-night dark:text-[#F2F0EA] group-hover:text-pine dark:group-hover:text-white'
                     }`}
                   >
                     {activeSlide.title}
@@ -494,7 +494,7 @@ function WorkGlassVitrine({
                           ? 'h-[70px] sm:h-[74px]'
                           : 'h-[90px] sm:h-[94px]';
                         const poemTextClass = `text-[13.5px] leading-[1.6] font-serif italic whitespace-pre-wrap ${
-                          customTextColor ? '' : 'text-[#444440] dark:text-[#C5C1B8]'
+                          customTextColor ? '' : 'text-[#444440] dark:text-parchment'
                         }`;
 
                         if (!shouldAnimate) {
@@ -544,7 +544,7 @@ function WorkGlassVitrine({
                       <p
                         style={customTextColor ? { color: customTextColor, opacity: 0.9 } : undefined}
                         className={`text-[13px] leading-relaxed line-clamp-2 ${
-                          customTextColor ? '' : 'text-[#444440] dark:text-[#C5C1B8]'
+                          customTextColor ? '' : 'text-[#444440] dark:text-parchment'
                         } ${
                           activeSlide.preserveLines ? 'font-serif italic whitespace-pre-wrap' : ''
                         }`}
@@ -557,7 +557,7 @@ function WorkGlassVitrine({
                     <div
                       style={hasCustomText ? { color: customTextColor } : undefined}
                       className={`pt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] tabular-nums max-h-[38px] overflow-hidden ${
-                        hasCustomText ? '' : 'text-[#5C5C58] dark:text-[#C4BFB4]'
+                        hasCustomText ? '' : 'text-ink-muted dark:text-parchment'
                       }`}
                     >
                       {renderedMeta}
@@ -585,7 +585,7 @@ function WorkGlassVitrine({
                   onClick={activeSlide.onOpen}
                   aria-label={`Відкрити ${activeSlide.title}`}
                   className={`group/thumb relative w-28 sm:w-36 shrink-0 self-stretch overflow-hidden cursor-pointer ${
-                    hasCustomSurface ? 'bg-black/10' : 'bg-[#EFECE6] dark:bg-[#262626]'
+                    hasCustomSurface ? 'bg-black/10' : 'bg-paper-warm dark:bg-night-card'
                   }`}
                 >
                   <AnimatePresence initial={false} mode="sync">
@@ -623,7 +623,7 @@ function WorkGlassVitrine({
         <div
           aria-hidden="true"
           className={`pointer-events-none absolute inset-x-0 bottom-0 z-20 h-[2px] overflow-hidden ${
-            hasCustomSurface ? 'bg-black/10' : 'bg-[#1E3A29]/6 dark:bg-white/[0.06]'
+            hasCustomSurface ? 'bg-black/10' : 'bg-pine-dark/6 dark:bg-white/[0.06]'
           }`}
         >
           <m.div
@@ -636,7 +636,7 @@ function WorkGlassVitrine({
               ...(hasCustomText ? { backgroundColor: customTextColor, opacity: 0.38 } : {}),
             }}
             className={`h-full w-full ${
-              hasCustomText ? '' : 'bg-[#315E3C]/55 dark:bg-white/35'
+              hasCustomText ? '' : 'bg-pine/55 dark:bg-white/35'
             }`}
           />
         </div>
@@ -769,7 +769,7 @@ export const HomeShowcaseSection = memo(function HomeShowcaseSection({
                 <span aria-hidden="true">·</span>
                 <span
                   className={`inline-flex items-center gap-0.5 font-mono shrink-0 ${
-                    hasCustomText ? '' : 'text-[#111E16] dark:text-[#F4F1EA]'
+                    hasCustomText ? '' : 'text-pine-night dark:text-cream'
                   }`}
                 >
                   <Star className="w-3 h-3 fill-[#FACC15] text-[#EAB308]" strokeWidth={1.75} />
@@ -784,7 +784,7 @@ export const HomeShowcaseSection = memo(function HomeShowcaseSection({
                   title="Є аудіозапис"
                   aria-label="Є аудіозапис"
                   className={`inline-flex items-center shrink-0 ${
-                    hasCustomText ? '' : 'text-[#2C5937] dark:text-[#E5E5E5]'
+                    hasCustomText ? '' : 'text-pine dark:text-silver'
                   }`}
                 >
                   <Music2 className="w-3.5 h-3.5 shrink-0" strokeWidth={1.85} />
@@ -851,7 +851,7 @@ export const HomeShowcaseSection = memo(function HomeShowcaseSection({
                   ? ''
                   : accessInfo.isPaid
                     ? 'text-[#B45309] dark:text-[#FCD34D]'
-                    : 'text-[#1E563B] dark:text-[#6EE7B7]'
+                    : 'text-pine-deep dark:text-[#6EE7B7]'
               }`}
             >
               {accessInfo.label}
@@ -874,7 +874,7 @@ export const HomeShowcaseSection = memo(function HomeShowcaseSection({
                 <span aria-hidden="true">·</span>
                 <span
                   className={`inline-flex items-center gap-0.5 font-mono ${
-                    hasCustomText ? '' : 'text-[#111E16] dark:text-[#F4F1EA]'
+                    hasCustomText ? '' : 'text-pine-night dark:text-cream'
                   }`}
                 >
                   <Star className="w-3 h-3 fill-[#FACC15] text-[#EAB308]" strokeWidth={1.75} />
@@ -930,7 +930,7 @@ export const HomeShowcaseSection = memo(function HomeShowcaseSection({
                 <span aria-hidden="true">·</span>
                 <span
                   className={`inline-flex items-center gap-0.5 font-mono tabular-nums ${
-                    hasCustomText ? '' : 'text-[#111E16] dark:text-[#FDE68A]'
+                    hasCustomText ? '' : 'text-pine-night dark:text-[#FDE68A]'
                   }`}
                 >
                   <Star className="w-3 h-3 fill-[#FACC15] text-[#EAB308]" strokeWidth={1.75} />
@@ -1108,7 +1108,7 @@ export const HomeShowcaseSection = memo(function HomeShowcaseSection({
                   ? redTextClass
                   : hasCustomText
                     ? ''
-                    : 'text-[#111E16] dark:text-[#F4F1EA]'
+                    : 'text-pine-night dark:text-cream'
               }`}
             >
               {finalPriceUah} ₴
@@ -1134,7 +1134,7 @@ export const HomeShowcaseSection = memo(function HomeShowcaseSection({
               <span aria-hidden="true">·</span>
               <span
                 className={`inline-flex items-center gap-0.5 font-mono ${
-                  hasCustomText ? '' : 'text-[#111E16] dark:text-[#F4F1EA]'
+                  hasCustomText ? '' : 'text-pine-night dark:text-cream'
                 }`}
               >
                 <Star className="w-3 h-3 fill-[#FACC15] text-[#EAB308]" strokeWidth={1.75} />
@@ -1295,8 +1295,8 @@ export const HomeShowcaseSection = memo(function HomeShowcaseSection({
                 key={idx}
                 className={`${VITRINE_GLASS_CARD} space-y-2.5`}
               >
-                <div className="h-3.5 w-36 rounded bg-[#1E3A29]/10 dark:bg-white/10" />
-                <div className="h-10 w-full rounded bg-[#1E3A29]/8 dark:bg-white/[0.08]" />
+                <div className="h-3.5 w-36 rounded bg-pine-dark/10 dark:bg-white/10" />
+                <div className="h-10 w-full rounded bg-pine-dark/8 dark:bg-white/[0.08]" />
               </div>
             ))}
           </div>
@@ -1309,7 +1309,7 @@ export const HomeShowcaseSection = memo(function HomeShowcaseSection({
 
             {mergedFeedback.length > 0 && (
               <div className="relative z-10 flex items-center justify-between pb-1">
-                <h3 className="font-serif text-[16px] sm:text-[17px] font-semibold text-[#111E16] dark:text-[#F4F1EA]">
+                <h3 className="font-serif text-[16px] sm:text-[17px] font-semibold text-pine-night dark:text-cream">
                   Остання активність
                 </h3>
               </div>
@@ -1317,7 +1317,7 @@ export const HomeShowcaseSection = memo(function HomeShowcaseSection({
 
             {visibleFeedback.length === 0 ? (
               <div className="relative z-10 flex items-center justify-center min-h-[76px]">
-                <p className="font-serif text-[15px] sm:text-base font-normal italic text-[#5C5C58] dark:text-[#C4BFB4] text-center">
+                <p className="font-serif text-[15px] sm:text-base font-normal italic text-ink-muted dark:text-parchment text-center">
                   Тут поки що тиша
                 </p>
               </div>
@@ -1337,7 +1337,7 @@ export const HomeShowcaseSection = memo(function HomeShowcaseSection({
                       <article
                         key={`${item.targetType}:${item.targetId}:${item.id}`}
                         onClick={() => handleOpenFeedbackTarget(item)}
-                        className="rounded-xl p-3.5 bg-white/55 dark:bg-[#222222]/65 hover:bg-white/80 dark:hover:bg-[#2A2A2A]/85 flex flex-col justify-between gap-2.5 transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.99] cursor-pointer"
+                        className="rounded-xl p-3.5 bg-white/55 dark:bg-night-panel/65 hover:bg-white/80 dark:hover:bg-night-lift/85 flex flex-col justify-between gap-2.5 transition-all duration-200 hover:-translate-y-0.5 active:scale-[0.99] cursor-pointer"
                       >
                         <div className="space-y-2">
                           <div className="flex items-start justify-between gap-2.5">
@@ -1346,12 +1346,12 @@ export const HomeShowcaseSection = memo(function HomeShowcaseSection({
 
                               <div className="min-w-0">
                                 <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-                                  <p className="text-xs sm:text-[13px] font-semibold text-[#111E16] dark:text-[#F4F1EA] truncate max-w-full">
+                                  <p className="text-xs sm:text-[13px] font-semibold text-pine-night dark:text-cream truncate max-w-full">
                                     {item.authorName}
                                   </p>
                                   <UserRankBadges badges={item.authorBadges} size="xs" />
                                 </div>
-                                <p className="text-[11px] text-[#5C5C58] dark:text-[#C4BFB4] font-mono tabular-nums">
+                                <p className="text-[11px] text-ink-muted dark:text-parchment font-mono tabular-nums">
                                   {formatFeedbackDate(item.createdAt)}
                                 </p>
                               </div>
@@ -1360,7 +1360,7 @@ export const HomeShowcaseSection = memo(function HomeShowcaseSection({
                             {item.rating !== null && (
                               <span
                                 aria-label={`Оцінка ${item.rating} з 5`}
-                                className="inline-flex items-center gap-1 font-mono text-xs font-semibold tabular-nums text-[#111E16] dark:text-[#F4F1EA] shrink-0"
+                                className="inline-flex items-center gap-1 font-mono text-xs font-semibold tabular-nums text-pine-night dark:text-cream shrink-0"
                               >
                                 <Star className="w-3.5 h-3.5 fill-[#FACC15] text-[#EAB308]" strokeWidth={1.75} />
                                 <span>{item.rating.toFixed(1)}</span>
@@ -1369,11 +1369,11 @@ export const HomeShowcaseSection = memo(function HomeShowcaseSection({
                           </div>
 
                           {hasComment ? (
-                            <p className="text-[13.5px] leading-relaxed text-[#2F2F2C] dark:text-[#D5D1C8] line-clamp-3 whitespace-pre-line">
+                            <p className="text-[13.5px] leading-relaxed text-[#2F2F2C] dark:text-paper-stone line-clamp-3 whitespace-pre-line">
                               {item.comment}
                             </p>
                           ) : (
-                            <p className="text-xs italic text-[#5C5C58] dark:text-[#C4BFB4]">
+                            <p className="text-xs italic text-ink-muted dark:text-parchment">
                               Оцінка без коментаря
                             </p>
                           )}
@@ -1386,9 +1386,9 @@ export const HomeShowcaseSection = memo(function HomeShowcaseSection({
                               e.stopPropagation();
                               handleOpenFeedbackTarget(item);
                             }}
-                            className="group inline-flex items-center gap-1.5 text-xs font-medium text-[#2C5937] dark:text-[#E5E5E5] hover:opacity-80 transition-opacity min-w-0 cursor-pointer"
+                            className="group inline-flex items-center gap-1.5 text-xs font-medium text-pine dark:text-silver hover:opacity-80 transition-opacity min-w-0 cursor-pointer"
                           >
-                            <span className="text-[#5C5C58] dark:text-[#C4BFB4] shrink-0">
+                            <span className="text-ink-muted dark:text-parchment shrink-0">
                               {getFeedbackTargetKindLabel(item.targetType)} ·
                             </span>
                             <span className="truncate">«{item.targetTitle}»</span>

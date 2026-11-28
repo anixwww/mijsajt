@@ -11,7 +11,7 @@ import {
   ExternalLink,
   Film,
   LayoutGrid,
-  List,
+  List as ListIcon,
   Loader2,
   Music2,
   Pause,
@@ -25,8 +25,9 @@ import {
   ZoomIn,
 } from 'lucide-react';
 import { AnimatePresence, m } from 'motion/react';
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { createPortal } from 'react-dom';
+import { List, useDynamicRowHeight, type RowComponentProps } from 'react-window';
 import { useOnlineStatus } from '../hooks/useOnlineStatus.ts';
 import type { BlogPost } from '../types.ts';
 import { setActiveMoment, trackClick } from '../utils/analytics.ts';
@@ -140,7 +141,7 @@ function FilmPosterFrame({
 
   return (
     <div
-      className={`relative overflow-hidden bg-[#18161A] ${className}`}
+      className={`relative overflow-hidden bg-night ${className}`}
     >
       {src && !failed ? (
         <img
@@ -159,8 +160,8 @@ function FilmPosterFrame({
           aria-hidden="true"
           className="w-full h-full flex flex-col items-center justify-center p-5 text-center bg-[radial-gradient(circle_at_30%_25%,rgba(229,9,20,0.22),transparent_62%),linear-gradient(145deg,#171519_0%,#221D21_55%,#141215_100%)]"
         >
-          <Film className="w-7 h-7 text-[#E50914]/75 mb-2.5" strokeWidth={1.5} />
-          <p className="font-editorial-display text-base sm:text-lg italic text-[#EDEAE1]/90 line-clamp-2 max-w-[26ch]">
+          <Film className="w-7 h-7 text-cinema-red/75 mb-2.5" strokeWidth={1.5} />
+          <p className="font-editorial-display text-base sm:text-lg italic text-cream-soft/90 line-clamp-2 max-w-[26ch]">
             {fallbackTitle}
           </p>
           {fallbackSubtitle && (
@@ -385,13 +386,13 @@ function BlogSoundCloudTrackCard({
     durationMs > 0 ? Math.min(100, Math.max(0, (positionMs / durationMs) * 100)) : 0;
 
   return (
-    <div className="my-6 rounded-xl bg-[#161518] text-white p-4 sm:p-5 border border-white/10 space-y-3">
+    <div className="my-6 rounded-xl bg-night text-white p-4 sm:p-5 border border-white/10 space-y-3">
       <div className="flex items-center gap-3.5">
         <button
           type="button"
           onClick={handleTogglePlay}
           aria-label={isPlaying ? `Пауза: ${track.title}` : `Відтворити: ${track.title}`}
-          className="w-11 h-11 rounded-lg bg-[#E50914] hover:bg-[#C80812] text-white inline-flex items-center justify-center shrink-0 active:scale-[0.96] transition-all cursor-pointer"
+          className="w-11 h-11 rounded-lg bg-cinema-red hover:bg-cinema-red-hover text-white inline-flex items-center justify-center shrink-0 active:scale-[0.96] transition-all cursor-pointer"
         >
           {isLoading ? (
             <Loader2 className="w-5 h-5 animate-spin" />
@@ -412,12 +413,12 @@ function BlogSoundCloudTrackCard({
             decoding="async"
             referrerPolicy="no-referrer"
             onError={() => setArtworkFailed(true)}
-            className="w-11 h-11 rounded-lg object-cover shrink-0 bg-[#2E2E32]"
+            className="w-11 h-11 rounded-lg object-cover shrink-0 bg-night-hover"
           />
         ) : (
           <div
             aria-hidden="true"
-            className="w-11 h-11 rounded-lg shrink-0 flex items-center justify-center bg-[#2E2E32] text-white/60"
+            className="w-11 h-11 rounded-lg shrink-0 flex items-center justify-center bg-night-hover text-white/60"
           >
             <Music2 className="w-5 h-5" strokeWidth={1.65} />
           </div>
@@ -478,7 +479,7 @@ function BlogSoundCloudTrackCard({
             style={{
               background: `linear-gradient(to right, #E50914 ${progressPct}%, rgba(255,255,255,0.2) ${progressPct}%)`,
             }}
-            className="flex-1 h-1.5 rounded-full appearance-none cursor-pointer accent-[#E50914]"
+            className="flex-1 h-1.5 rounded-full appearance-none cursor-pointer accent-cinema-red"
           />
           <span className="font-mono text-[11px] text-white/60 tabular-nums w-10 text-right">
             {formatDurationMs(durationMs)}
@@ -550,10 +551,10 @@ function BlogYouTubeVideoCard({ video }: { video: BlogYoutubeMediaItem }) {
 
   return (
     <figure className="my-7 space-y-2">
-      <div className="rounded-2xl overflow-hidden bg-[#161518] text-white border border-white/10 shadow-md">
+      <div className="rounded-2xl overflow-hidden bg-night text-white border border-white/10 shadow-md">
         <div className="px-4 py-3 flex items-center justify-between gap-3 border-b border-white/10">
           <div className="flex items-center gap-2.5 min-w-0">
-            <span className="w-7 h-7 rounded-lg bg-[#E50914] text-white inline-flex items-center justify-center shrink-0">
+            <span className="w-7 h-7 rounded-lg bg-cinema-red text-white inline-flex items-center justify-center shrink-0">
               <Video className="w-3.5 h-3.5" strokeWidth={1.9} />
             </span>
             <div className="min-w-0">
@@ -613,7 +614,7 @@ function BlogYouTubeVideoCard({ video }: { video: BlogYoutubeMediaItem }) {
                 aria-hidden="true"
                 className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-black/30 group-hover:bg-black/35 transition-colors"
               />
-              <span className="relative z-10 w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-[#E50914] group-hover:bg-[#C80812] text-white inline-flex items-center justify-center shadow-xl group-hover:scale-105 transition-transform">
+              <span className="relative z-10 w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-cinema-red group-hover:bg-cinema-red-hover text-white inline-flex items-center justify-center shadow-xl group-hover:scale-105 transition-transform">
                 <Play className="w-6 h-6 sm:w-7 sm:h-7 fill-current ml-0.5" />
               </span>
             </button>
@@ -628,13 +629,292 @@ function BlogYouTubeVideoCard({ video }: { video: BlogYoutubeMediaItem }) {
       </div>
 
       {video.caption && (
-        <figcaption className="text-xs text-[#5C5C58] dark:text-[#A8A49B] text-center leading-relaxed">
+        <figcaption className="text-xs text-ink-muted dark:text-sandstone-light text-center leading-relaxed">
           {video.caption}
         </figcaption>
       )}
     </figure>
   );
 }
+
+const BlogArchiveListRow = memo(function BlogArchiveListRow({
+  entry,
+  isSaved,
+  onOpenPost,
+  onToggleSave,
+}: {
+  entry: EnrichedBlogEntry;
+  isSaved: boolean;
+  onOpenPost: (post: BlogPost) => void;
+  onToggleSave: (postId: string) => void;
+}) {
+  const { post, filmMeta } = entry;
+  return (
+    <div className="p-4 sm:px-5 sm:py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-paper dark:hover:bg-night-surface transition-colors border-b border-paper-warm dark:border-night-elevated last:border-b-0">
+      <button
+        type="button"
+        onClick={() => onOpenPost(post)}
+        className="min-w-0 flex-1 text-left cursor-pointer space-y-1"
+      >
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-ink-muted dark:text-sandstone-light tabular-nums">
+          <span className="font-medium text-cinema-red-hover dark:text-[#FDA4AF]">
+            {post.category || 'Кіноблог'}
+          </span>
+          {filmMeta?.releaseYear && (
+            <>
+              <span aria-hidden="true">·</span>
+              <span className="font-mono">{filmMeta.releaseYear}</span>
+            </>
+          )}
+          {filmMeta?.director && (
+            <>
+              <span aria-hidden="true">·</span>
+              <span>реж. {filmMeta.director}</span>
+            </>
+          )}
+          <span aria-hidden="true">·</span>
+          <span>{post.readingMinutes} хв</span>
+          {filmMeta?.hasSpoilers && (
+            <>
+              <span aria-hidden="true">·</span>
+              <span className="text-amber-700 dark:text-amber-300">Спойлери</span>
+            </>
+          )}
+        </div>
+        <p className="text-base font-semibold text-ink dark:text-cream hover:text-cinema-red dark:hover:text-[#FDA4AF] transition-colors truncate">
+          {post.title}
+        </p>
+      </button>
+
+      <div className="flex items-center gap-3 shrink-0 text-xs tabular-nums">
+        {typeof filmMeta?.rating === 'number' && (
+          <span className="inline-flex items-center gap-1 font-mono font-semibold text-[#B45309] dark:text-[#FDE68A]">
+            <Star className="w-3.5 h-3.5 fill-[#FACC15] text-[#FACC15]" />
+            <span>{filmMeta.rating.toFixed(1)}</span>
+          </span>
+        )}
+        <span className="inline-flex items-center gap-1 font-mono text-ink-muted dark:text-sandstone-light">
+          <Eye className="w-3.5 h-3.5" />
+          <span>{post.viewsCount}</span>
+        </span>
+        <button
+          type="button"
+          onClick={() => onToggleSave(post.id)}
+          aria-label={isSaved ? 'Прибрати із закладок' : 'Зберегти у закладки'}
+          aria-pressed={isSaved}
+          className={`w-8 h-8 rounded-lg inline-flex items-center justify-center transition-colors cursor-pointer ${
+            isSaved
+              ? 'text-cinema-red dark:text-[#FDA4AF] bg-cinema-red/10'
+              : 'text-ink-muted dark:text-sandstone-light hover:bg-paper-warm dark:hover:bg-night-soft'
+          }`}
+        >
+          <Bookmark className={`w-4 h-4 ${isSaved ? 'fill-current' : ''}`} />
+        </button>
+        <button
+          type="button"
+          onClick={() => onOpenPost(post)}
+          aria-label={`Читати «${post.title}»`}
+          className="w-8 h-8 rounded-lg inline-flex items-center justify-center text-ink dark:text-cream hover:bg-paper-warm dark:hover:bg-night-soft cursor-pointer"
+        >
+          <ArrowRight className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+});
+
+interface VirtualBlogRowData {
+  entries: EnrichedBlogEntry[];
+  savedSet: Set<string>;
+  onOpenPost: (post: BlogPost) => void;
+  onToggleSave: (postId: string) => void;
+}
+
+function VirtualBlogArchiveRow({
+  ariaAttributes,
+  index,
+  style,
+  entries,
+  savedSet,
+  onOpenPost,
+  onToggleSave,
+}: RowComponentProps<VirtualBlogRowData>): ReactElement | null {
+  const entry = entries[index];
+  if (!entry) return null;
+  return (
+    <div {...ariaAttributes} style={style}>
+      <BlogArchiveListRow
+        entry={entry}
+        isSaved={savedSet.has(entry.post.id)}
+        onOpenPost={onOpenPost}
+        onToggleSave={onToggleSave}
+      />
+    </div>
+  );
+}
+
+const BlogGridCard = memo(function BlogGridCard({
+  entry,
+  index,
+  isSaved,
+  touchProps,
+  isTouchActive,
+  onOpenPost,
+  onToggleSave,
+}: {
+  entry: EnrichedBlogEntry;
+  index: number;
+  isSaved: boolean;
+  touchProps: Record<string, unknown>;
+  isTouchActive: boolean;
+  onOpenPost: (post: BlogPost) => void;
+  onToggleSave: (postId: string) => void;
+}) {
+  const { post, filmMeta, posterUrl, soundtracksCount, videosCount, stillsCount } = entry;
+  return (
+    <m.article
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{
+        duration: 0.18,
+        delay: Math.min(index * 0.03, 0.12),
+        ease: [0.16, 1, 0.3, 1],
+      }}
+      className="perf-card group h-full rounded-2xl overflow-hidden bg-white dark:bg-night-card flex flex-col border border-black/6 dark:border-white/8 shadow-xs hover:shadow-md transition-shadow"
+    >
+      <button
+        type="button"
+        {...touchProps}
+        data-touch-active={isTouchActive ? 'true' : undefined}
+        onClick={() => onOpenPost(post)}
+        className="touch-card w-full text-left cursor-pointer focus:outline-none"
+      >
+        <FilmPosterFrame
+          src={posterUrl}
+          alt={filmMeta?.filmTitle || post.title}
+          fallbackTitle={filmMeta?.filmTitle || post.title}
+          fallbackSubtitle={filmMeta?.director}
+          rating={filmMeta?.rating}
+          className="w-full aspect-[16/9]"
+        />
+      </button>
+
+      <div className="p-5 sm:p-6 flex-1 flex flex-col justify-between gap-4">
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => onOpenPost(post)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              onOpenPost(post);
+            }
+          }}
+          className="space-y-2.5 cursor-pointer text-left"
+        >
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-muted dark:text-sandstone-light tabular-nums">
+            <span className="font-semibold text-cinema-red-hover dark:text-[#FDA4AF]">
+              {post.category || 'Кіноблог'}
+            </span>
+            {filmMeta?.releaseYear && (
+              <>
+                <span aria-hidden="true">·</span>
+                <span className="font-mono">{filmMeta.releaseYear}</span>
+              </>
+            )}
+            <span aria-hidden="true">·</span>
+            <span>{post.readingMinutes} хв читання</span>
+            {filmMeta?.hasSpoilers && (
+              <>
+                <span aria-hidden="true">·</span>
+                <span className="text-amber-700 dark:text-amber-300">Спойлери</span>
+              </>
+            )}
+          </div>
+
+          <h3 className="text-lg sm:text-xl font-semibold tracking-[-0.015em] text-ink dark:text-cream group-hover:text-cinema-red dark:group-hover:text-[#FDA4AF] transition-colors duration-150 leading-snug">
+            {post.title}
+          </h3>
+
+          {(filmMeta?.filmTitle || filmMeta?.director) && (
+            <p className="text-xs text-[#4D4D48] dark:text-paper-stone font-medium truncate">
+              {[
+                filmMeta?.filmTitle,
+                filmMeta?.director ? `реж. ${filmMeta.director}` : null,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </p>
+          )}
+
+          <p className="text-xs sm:text-sm text-ink-muted dark:text-sandstone-light line-clamp-3 leading-relaxed">
+            {post.excerpt}
+          </p>
+        </div>
+
+        <div className="pt-3.5 border-t border-paper-warm dark:border-night-elevated flex items-center justify-between gap-2 text-xs">
+          <div className="flex items-center gap-2.5 text-ink-muted dark:text-sandstone-light tabular-nums min-w-0">
+            <span className="inline-flex items-center gap-1.5 truncate">
+              <Calendar className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">{post.publishedAt}</span>
+            </span>
+            {soundtracksCount > 0 && (
+              <span
+                title="У рецензії є саундтрек"
+                className="inline-flex items-center gap-1 text-[#9F1239] dark:text-[#FDA4AF] shrink-0"
+              >
+                <Music2 className="w-3.5 h-3.5" />
+              </span>
+            )}
+            {videosCount > 0 && (
+              <span
+                title="У рецензії є відео з YouTube"
+                className="inline-flex items-center gap-1 text-cinema-red dark:text-[#FDA4AF] shrink-0"
+              >
+                <Video className="w-3.5 h-3.5" />
+              </span>
+            )}
+            {stillsCount > 0 && (
+              <span className="font-mono text-[11px] shrink-0">
+                {stillsCount} кадр.
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="inline-flex items-center gap-1 font-mono tabular-nums text-ink-muted dark:text-sandstone-light">
+              <Eye className="w-3.5 h-3.5" strokeWidth={1.75} />
+              <span>{post.viewsCount}</span>
+            </span>
+
+            <button
+              type="button"
+              onClick={() => onToggleSave(post.id)}
+              aria-label={isSaved ? 'Прибрати із закладок' : 'Зберегти у закладки'}
+              aria-pressed={isSaved}
+              className={`w-8 h-8 rounded-lg inline-flex items-center justify-center transition-colors cursor-pointer ${
+                isSaved
+                  ? 'text-cinema-red dark:text-[#FDA4AF] bg-cinema-red/10'
+                  : 'text-ink-muted dark:text-sandstone-light hover:bg-paper-warm dark:hover:bg-night-elevated'
+              }`}
+            >
+              <Bookmark className={`w-3.5 h-3.5 ${isSaved ? 'fill-current' : ''}`} />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onOpenPost(post)}
+              className="inline-flex items-center gap-1 text-ink dark:text-cream hover:text-cinema-red dark:hover:text-[#FDA4AF] font-semibold cursor-pointer transition-colors whitespace-nowrap"
+            >
+              <span>Читати</span>
+              <ArrowRight className="w-3.5 h-3.5" strokeWidth={1.85} />
+            </button>
+          </div>
+        </div>
+      </div>
+    </m.article>
+  );
+});
 
 export const BlogSection = memo(function BlogSection({
   posts,
@@ -888,7 +1168,7 @@ export const BlogSection = memo(function BlogSection({
     }
   }, [activePost]);
 
-  const handleOpenPost = (post: BlogPost) => {
+  const handleOpenPost = useCallback((post: BlogPost) => {
     trackClick(`blog:${post.id}`, `БДК: «${post.title}»`, 'content');
     handledDeepLinkRef.current = post.id;
     setActivePostId(post.id);
@@ -903,7 +1183,8 @@ export const BlogSection = memo(function BlogSection({
     if (modalScrollRef.current) {
       modalScrollRef.current.scrollTop = 0;
     }
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onActivePostChange, hydrateBlogPost]);
 
   const handleClosePost = useCallback(() => {
     setActivePostId(null);
@@ -964,7 +1245,25 @@ export const BlogSection = memo(function BlogSection({
     filteredEntries.length > 1;
 
   const leadEntry = showFeaturedLead ? filteredEntries[0] : null;
-  const gridEntries = showFeaturedLead ? filteredEntries.slice(1) : filteredEntries;
+  const gridEntries = useMemo(
+    () => (showFeaturedLead ? filteredEntries.slice(1) : filteredEntries),
+    [showFeaturedLead, filteredEntries]
+  );
+
+  const shouldVirtualizeList = layoutMode === 'list' && gridEntries.length > 15;
+  const archiveRowHeight = useDynamicRowHeight({
+    defaultRowHeight: 74,
+    key: `${layoutMode}-${gridEntries.length}`,
+  });
+  const archiveRowProps = useMemo<VirtualBlogRowData>(
+    () => ({
+      entries: gridEntries,
+      savedSet,
+      onOpenPost: handleOpenPost,
+      onToggleSave: toggleSavePost,
+    }),
+    [gridEntries, savedSet, handleOpenPost, toggleSavePost]
+  );
 
   const zoomedPhoto =
     zoomedPhotoIndex !== null && activePhotos[zoomedPhotoIndex]
@@ -985,7 +1284,7 @@ export const BlogSection = memo(function BlogSection({
       <h2 className="sr-only">Будда дивиться кіно — кіноблог Андрія Даньківа</h2>
 
       {/* Editorial Cinema Journal Masthead */}
-      <header className="relative overflow-hidden rounded-2xl bg-[#131114] text-[#EDEAE1] shadow-xl border border-white/10">
+      <header className="relative overflow-hidden rounded-2xl bg-ink text-cream-soft shadow-xl border border-white/10">
         {!mastheadFailed && (
           <img
             src={MASTHEAD_IMAGE_URL}
@@ -1006,13 +1305,13 @@ export const BlogSection = memo(function BlogSection({
 
         <div className="relative z-10 px-5 py-6 sm:px-7 sm:py-7 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5 min-w-0">
-            <Clapperboard className="w-6 h-6 text-[#E50914] shrink-0" strokeWidth={1.85} />
+            <Clapperboard className="w-6 h-6 text-cinema-red shrink-0" strokeWidth={1.85} />
             <h3 className="font-editorial-display text-2xl sm:text-3xl font-semibold tracking-[-0.015em] text-white leading-tight">
               Будда дивиться кіно
             </h3>
           </div>
 
-          <div className="flex items-center gap-3 text-xs text-[#D6D1C7] tabular-nums shrink-0 font-mono">
+          <div className="flex items-center gap-3 text-xs text-paper-stone tabular-nums shrink-0 font-mono">
             <span>
               {cinemaStats.total} {cinemaStats.total === 1 ? 'рецензія' : 'рецензій'}
             </span>
@@ -1036,7 +1335,7 @@ export const BlogSection = memo(function BlogSection({
             {/* Search Input */}
             <div className="relative flex-1 min-w-0">
               <Search
-                className="w-4 h-4 text-[#787872] dark:text-[#9E978D] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
+                className="w-4 h-4 text-ink-subtle dark:text-[#9E978D] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
                 strokeWidth={1.85}
               />
               <input
@@ -1045,14 +1344,14 @@ export const BlogSection = memo(function BlogSection({
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Пошук за фільмом, режисером або назвою..."
                 aria-label="Пошук у кіноблозі"
-                className="w-full h-10 pl-10 pr-9 rounded-xl text-sm bg-white dark:bg-[#262626] text-[#141413] dark:text-[#F4F1EA] placeholder:text-[#787872] dark:placeholder:text-[#8E887E] border border-black/8 dark:border-white/8 focus:outline-none focus:border-[#E50914]/60 transition-colors"
+                className="w-full h-10 pl-10 pr-9 rounded-xl text-sm bg-white dark:bg-night-card text-ink dark:text-cream placeholder:text-ink-subtle dark:placeholder:text-stone-warm border border-black/8 dark:border-white/8 focus:outline-none focus:border-cinema-red/60 transition-colors"
               />
               {searchQuery && (
                 <button
                   type="button"
                   onClick={() => setSearchQuery('')}
                   aria-label="Очистити пошук"
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-md inline-flex items-center justify-center text-[#787872] hover:text-[#141413] dark:hover:text-white cursor-pointer"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 w-6 h-6 rounded-md inline-flex items-center justify-center text-ink-subtle hover:text-ink dark:hover:text-white cursor-pointer"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -1065,7 +1364,7 @@ export const BlogSection = memo(function BlogSection({
                 value={sortMode}
                 onChange={(e) => setSortMode(e.target.value as BlogSortMode)}
                 aria-label="Сортування рецензій"
-                className="h-10 px-3 rounded-xl text-xs font-medium bg-white dark:bg-[#262626] text-[#141413] dark:text-[#F4F1EA] border border-black/8 dark:border-white/8 focus:outline-none focus:border-[#E50914]/60 cursor-pointer"
+                className="h-10 px-3 rounded-xl text-xs font-medium bg-white dark:bg-night-card text-ink dark:text-cream border border-black/8 dark:border-white/8 focus:outline-none focus:border-cinema-red/60 cursor-pointer"
               >
                 <option value="newest">Найновіші</option>
                 <option value="rating">За оцінкою автора</option>
@@ -1082,8 +1381,8 @@ export const BlogSection = memo(function BlogSection({
                 title="Збережені рецензії"
                 className={`h-10 px-3 rounded-xl text-xs font-medium inline-flex items-center gap-1.5 cursor-pointer transition-colors whitespace-nowrap shrink-0 border ${
                   showBookmarksOnly
-                    ? 'bg-[#E50914] text-white border-[#E50914]'
-                    : 'bg-white dark:bg-[#262626] text-[#4D4D48] dark:text-[#D8D3C8] border-black/8 dark:border-white/8 hover:text-[#141413] dark:hover:text-white'
+                    ? 'bg-cinema-red text-white border-cinema-red'
+                    : 'bg-white dark:bg-night-card text-[#4D4D48] dark:text-paper-stone border-black/8 dark:border-white/8 hover:text-ink dark:hover:text-white'
                 }`}
               >
                 <Bookmark
@@ -1101,7 +1400,7 @@ export const BlogSection = memo(function BlogSection({
               <div
                 role="group"
                 aria-label="Формат списку"
-                className="inline-flex items-center p-1 rounded-xl bg-[#EAE7DF] dark:bg-[#262626] border border-black/5 dark:border-white/8"
+                className="inline-flex items-center p-1 rounded-xl bg-paper-sand dark:bg-night-card border border-black/5 dark:border-white/8"
               >
                 <button
                   type="button"
@@ -1110,8 +1409,8 @@ export const BlogSection = memo(function BlogSection({
                   aria-pressed={layoutMode === 'grid'}
                   className={`w-8 h-8 rounded-lg inline-flex items-center justify-center transition-colors cursor-pointer ${
                     layoutMode === 'grid'
-                      ? 'bg-white dark:bg-[#383838] text-[#141413] dark:text-white shadow-xs'
-                      : 'text-[#5C5C58] dark:text-[#9E978D] hover:text-[#141413] dark:hover:text-white'
+                      ? 'bg-white dark:bg-night-soft text-ink dark:text-white shadow-xs'
+                      : 'text-ink-muted dark:text-[#9E978D] hover:text-ink dark:hover:text-white'
                   }`}
                 >
                   <LayoutGrid className="w-4 h-4" />
@@ -1123,11 +1422,11 @@ export const BlogSection = memo(function BlogSection({
                   aria-pressed={layoutMode === 'list'}
                   className={`w-8 h-8 rounded-lg inline-flex items-center justify-center transition-colors cursor-pointer ${
                     layoutMode === 'list'
-                      ? 'bg-white dark:bg-[#383838] text-[#141413] dark:text-white shadow-xs'
-                      : 'text-[#5C5C58] dark:text-[#9E978D] hover:text-[#141413] dark:hover:text-white'
+                      ? 'bg-white dark:bg-night-soft text-ink dark:text-white shadow-xs'
+                      : 'text-ink-muted dark:text-[#9E978D] hover:text-ink dark:hover:text-white'
                   }`}
                 >
-                  <List className="w-4 h-4" />
+                  <ListIcon className="w-4 h-4" />
                 </button>
               </div>
             </div>
@@ -1143,8 +1442,8 @@ export const BlogSection = memo(function BlogSection({
                 onClick={() => setSelectedCategory(null)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-colors whitespace-nowrap shrink-0 ${
                   selectedCategory === null
-                    ? 'bg-[#141413] text-white dark:bg-[#F4F1EA] dark:text-[#181818] font-semibold'
-                    : 'bg-[#EAE7DF] dark:bg-[#262626] text-[#5C5C58] dark:text-[#A8A49B] hover:text-[#141413] dark:hover:text-white'
+                    ? 'bg-ink text-white dark:bg-cream dark:text-night font-semibold'
+                    : 'bg-paper-sand dark:bg-night-card text-ink-muted dark:text-sandstone-light hover:text-ink dark:hover:text-white'
                 }`}
               >
                 Усі жанри ({posts.length})
@@ -1160,8 +1459,8 @@ export const BlogSection = memo(function BlogSection({
                     onClick={() => setSelectedCategory(name)}
                     className={`px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-colors whitespace-nowrap shrink-0 ${
                       active
-                        ? 'bg-[#141413] text-white dark:bg-[#F4F1EA] dark:text-[#181818] font-semibold'
-                        : 'bg-[#EAE7DF] dark:bg-[#262626] text-[#5C5C58] dark:text-[#A8A49B] hover:text-[#141413] dark:hover:text-white'
+                        ? 'bg-ink text-white dark:bg-cream dark:text-night font-semibold'
+                        : 'bg-paper-sand dark:bg-night-card text-ink-muted dark:text-sandstone-light hover:text-ink dark:hover:text-white'
                     }`}
                   >
                     <span>{name}</span>
@@ -1180,9 +1479,9 @@ export const BlogSection = memo(function BlogSection({
       {posts.length === 0 ? (
         <EmptySectionState />
       ) : filteredEntries.length === 0 ? (
-        <div className="rounded-2xl bg-white dark:bg-[#262626] border border-black/5 dark:border-white/5 px-6 py-12 text-center space-y-3">
-          <Film className="w-8 h-8 text-[#787872] dark:text-[#8E887E] mx-auto" strokeWidth={1.5} />
-          <p className="text-sm font-semibold text-[#141413] dark:text-[#F4F1EA]">
+        <div className="rounded-2xl bg-white dark:bg-night-card border border-black/5 dark:border-white/5 px-6 py-12 text-center space-y-3">
+          <Film className="w-8 h-8 text-ink-subtle dark:text-stone-warm mx-auto" strokeWidth={1.5} />
+          <p className="text-sm font-semibold text-ink dark:text-cream">
             {showBookmarksOnly
               ? 'Немає збережених рецензій'
               : 'Нічого не знайдено'}
@@ -1209,7 +1508,7 @@ export const BlogSection = memo(function BlogSection({
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-              className="group rounded-2xl overflow-hidden bg-white dark:bg-[#262626] border border-black/6 dark:border-white/8 shadow-sm hover:shadow-md transition-shadow"
+              className="group rounded-2xl overflow-hidden bg-white dark:bg-night-card border border-black/6 dark:border-white/8 shadow-sm hover:shadow-md transition-shadow"
             >
               <div className="grid grid-cols-1 lg:grid-cols-12 items-stretch">
                 <div
@@ -1238,8 +1537,8 @@ export const BlogSection = memo(function BlogSection({
                 <div className="lg:col-span-7 p-5 sm:p-6 md:p-7 flex flex-col justify-between gap-4">
                   <div className="space-y-3">
                     {/* Unboxed Metadata Line */}
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[#5C5C58] dark:text-[#A8A49B] tabular-nums">
-                      <span className="font-semibold text-[#C80812] dark:text-[#FDA4AF]">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-muted dark:text-sandstone-light tabular-nums">
+                      <span className="font-semibold text-cinema-red-hover dark:text-[#FDA4AF]">
                         Свіжа рецензія
                       </span>
                       <span aria-hidden="true">·</span>
@@ -1272,12 +1571,12 @@ export const BlogSection = memo(function BlogSection({
                       }}
                       className="cursor-pointer space-y-2 text-left"
                     >
-                      <h3 className="font-editorial-display text-2xl sm:text-3xl font-semibold tracking-[-0.015em] text-[#141413] dark:text-[#F4F1EA] group-hover:text-[#E50914] dark:group-hover:text-[#FDA4AF] transition-colors leading-tight">
+                      <h3 className="font-editorial-display text-2xl sm:text-3xl font-semibold tracking-[-0.015em] text-ink dark:text-cream group-hover:text-cinema-red dark:group-hover:text-[#FDA4AF] transition-colors leading-tight">
                         {leadEntry.post.title}
                       </h3>
 
                       {(leadEntry.filmMeta?.filmTitle || leadEntry.filmMeta?.director) && (
-                        <p className="text-xs sm:text-sm font-medium text-[#4D4D48] dark:text-[#D8D3C8]">
+                        <p className="text-xs sm:text-sm font-medium text-[#4D4D48] dark:text-paper-stone">
                           {[
                             leadEntry.filmMeta?.filmTitle,
                             leadEntry.filmMeta?.director ? `реж. ${leadEntry.filmMeta.director}` : null,
@@ -1290,20 +1589,20 @@ export const BlogSection = memo(function BlogSection({
                         </p>
                       )}
 
-                      <p className="text-sm text-[#5C5C58] dark:text-[#A8A49B] line-clamp-3 leading-relaxed">
+                      <p className="text-sm text-ink-muted dark:text-sandstone-light line-clamp-3 leading-relaxed">
                         {leadEntry.post.excerpt}
                       </p>
                     </div>
 
                     {leadEntry.filmMeta?.verdict && (
-                      <p className="text-xs italic text-[#4D4D48] dark:text-[#D6D1C7] pt-1">
+                      <p className="text-xs italic text-[#4D4D48] dark:text-paper-stone pt-1">
                         «{leadEntry.filmMeta.verdict}»
                       </p>
                     )}
                   </div>
 
-                  <div className="pt-3.5 border-t border-[#EFECE6] dark:border-[#323232] flex flex-wrap items-center justify-between gap-3 text-xs">
-                    <div className="flex flex-wrap items-center gap-3 text-[#5C5C58] dark:text-[#A8A49B] tabular-nums">
+                  <div className="pt-3.5 border-t border-paper-warm dark:border-night-elevated flex flex-wrap items-center justify-between gap-3 text-xs">
+                    <div className="flex flex-wrap items-center gap-3 text-ink-muted dark:text-sandstone-light tabular-nums">
                       <span className="inline-flex items-center gap-1.5">
                         <Calendar className="w-3.5 h-3.5" />
                         <span>{leadEntry.post.publishedAt}</span>
@@ -1319,7 +1618,7 @@ export const BlogSection = memo(function BlogSection({
                         </span>
                       )}
                       {leadEntry.videosCount > 0 && (
-                        <span className="inline-flex items-center gap-1 text-[#E50914] dark:text-[#FDA4AF]">
+                        <span className="inline-flex items-center gap-1 text-cinema-red dark:text-[#FDA4AF]">
                           <Video className="w-3.5 h-3.5" />
                           <span>{leadEntry.videosCount} відео</span>
                         </span>
@@ -1338,8 +1637,8 @@ export const BlogSection = memo(function BlogSection({
                         aria-pressed={savedSet.has(leadEntry.post.id)}
                         className={`w-9 h-9 rounded-lg inline-flex items-center justify-center transition-colors cursor-pointer ${
                           savedSet.has(leadEntry.post.id)
-                            ? 'bg-[#E50914]/12 text-[#E50914] dark:text-[#FDA4AF]'
-                            : 'text-[#5C5C58] dark:text-[#A8A49B] hover:bg-[#EFECE6] dark:hover:bg-[#323232]'
+                            ? 'bg-cinema-red/12 text-cinema-red dark:text-[#FDA4AF]'
+                            : 'text-ink-muted dark:text-sandstone-light hover:bg-paper-warm dark:hover:bg-night-elevated'
                         }`}
                       >
                         <Bookmark
@@ -1350,7 +1649,7 @@ export const BlogSection = memo(function BlogSection({
                       <button
                         type="button"
                         onClick={() => handleOpenPost(leadEntry.post)}
-                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#141413] dark:bg-[#F4F1EA] text-white dark:text-[#181818] hover:bg-[#E50914] dark:hover:bg-[#E50914] dark:hover:text-white text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap"
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-ink dark:bg-cream text-white dark:text-night hover:bg-cinema-red dark:hover:bg-cinema-red dark:hover:text-white text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap"
                       >
                         <span>Читати рецензію</span>
                         <ArrowRight className="w-3.5 h-3.5" />
@@ -1364,237 +1663,44 @@ export const BlogSection = memo(function BlogSection({
 
           {/* Grid or Archive List View */}
           {layoutMode === 'list' ? (
-            <div className="rounded-2xl bg-white dark:bg-[#262626] border border-black/6 dark:border-white/8 divide-y divide-[#EFECE6] dark:divide-[#323232] overflow-hidden">
-              {gridEntries.map((entry) => {
-                const { post, filmMeta } = entry;
-                const isSaved = savedSet.has(post.id);
-                return (
-                  <div
-                    key={post.id}
-                    className="p-4 sm:px-5 sm:py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-[#FAF9F5] dark:hover:bg-[#2C2C2E] transition-colors"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => handleOpenPost(post)}
-                      className="min-w-0 flex-1 text-left cursor-pointer space-y-1"
-                    >
-                      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-[#5C5C58] dark:text-[#A8A49B] tabular-nums">
-                        <span className="font-medium text-[#C80812] dark:text-[#FDA4AF]">
-                          {post.category || 'Кіноблог'}
-                        </span>
-                        {filmMeta?.releaseYear && (
-                          <>
-                            <span aria-hidden="true">·</span>
-                            <span className="font-mono">{filmMeta.releaseYear}</span>
-                          </>
-                        )}
-                        {filmMeta?.director && (
-                          <>
-                            <span aria-hidden="true">·</span>
-                            <span>реж. {filmMeta.director}</span>
-                          </>
-                        )}
-                        <span aria-hidden="true">·</span>
-                        <span>{post.readingMinutes} хв</span>
-                        {filmMeta?.hasSpoilers && (
-                          <>
-                            <span aria-hidden="true">·</span>
-                            <span className="text-amber-700 dark:text-amber-300">Спойлери</span>
-                          </>
-                        )}
-                      </div>
-                      <p className="text-base font-semibold text-[#141413] dark:text-[#F4F1EA] hover:text-[#E50914] dark:hover:text-[#FDA4AF] transition-colors truncate">
-                        {post.title}
-                      </p>
-                    </button>
-
-                    <div className="flex items-center gap-3 shrink-0 text-xs tabular-nums">
-                      {typeof filmMeta?.rating === 'number' && (
-                        <span className="inline-flex items-center gap-1 font-mono font-semibold text-[#B45309] dark:text-[#FDE68A]">
-                          <Star className="w-3.5 h-3.5 fill-[#FACC15] text-[#FACC15]" />
-                          <span>{filmMeta.rating.toFixed(1)}</span>
-                        </span>
-                      )}
-                      <span className="inline-flex items-center gap-1 font-mono text-[#5C5C58] dark:text-[#A8A49B]">
-                        <Eye className="w-3.5 h-3.5" />
-                        <span>{post.viewsCount}</span>
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => toggleSavePost(post.id)}
-                        aria-label={isSaved ? 'Прибрати із закладок' : 'Зберегти у закладки'}
-                        aria-pressed={isSaved}
-                        className={`w-8 h-8 rounded-lg inline-flex items-center justify-center transition-colors cursor-pointer ${
-                          isSaved
-                            ? 'text-[#E50914] dark:text-[#FDA4AF] bg-[#E50914]/10'
-                            : 'text-[#5C5C58] dark:text-[#A8A49B] hover:bg-[#EFECE6] dark:hover:bg-[#363636]'
-                        }`}
-                      >
-                        <Bookmark className={`w-4 h-4 ${isSaved ? 'fill-current' : ''}`} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleOpenPost(post)}
-                        aria-label={`Читати «${post.title}»`}
-                        className="w-8 h-8 rounded-lg inline-flex items-center justify-center text-[#141413] dark:text-[#F4F1EA] hover:bg-[#EFECE6] dark:hover:bg-[#363636] cursor-pointer"
-                      >
-                        <ArrowRight className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="rounded-2xl bg-white dark:bg-night-card border border-black/6 dark:border-white/8 overflow-hidden">
+              {shouldVirtualizeList ? (
+                <div className="h-[min(65vh,560px)] w-full overflow-hidden">
+                  <List
+                    rowCount={gridEntries.length}
+                    rowHeight={archiveRowHeight}
+                    rowComponent={VirtualBlogArchiveRow}
+                    rowProps={archiveRowProps}
+                    overscanCount={5}
+                    className="h-full w-full overflow-x-hidden"
+                  />
+                </div>
+              ) : (
+                gridEntries.map((entry) => (
+                  <BlogArchiveListRow
+                    key={entry.post.id}
+                    entry={entry}
+                    isSaved={savedSet.has(entry.post.id)}
+                    onOpenPost={handleOpenPost}
+                    onToggleSave={toggleSavePost}
+                  />
+                ))
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
-              {gridEntries.map((entry, index) => {
-                const { post, filmMeta, posterUrl, soundtracksCount, videosCount, stillsCount } = entry;
-                const isSaved = savedSet.has(post.id);
-                return (
-                  <m.article
-                    key={post.id}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{
-                      duration: 0.18,
-                      delay: Math.min(index * 0.03, 0.12),
-                      ease: [0.16, 1, 0.3, 1],
-                    }}
-                    className="perf-card group h-full rounded-2xl overflow-hidden bg-white dark:bg-[#262626] flex flex-col border border-black/6 dark:border-white/8 shadow-xs hover:shadow-md transition-shadow"
-                  >
-                    <button
-                      type="button"
-                      {...getTouchProps(post.id)}
-                      data-touch-active={isTouchActive(post.id) ? 'true' : undefined}
-                      onClick={() => handleOpenPost(post)}
-                      className="touch-card w-full text-left cursor-pointer focus:outline-none"
-                    >
-                      <FilmPosterFrame
-                        src={posterUrl}
-                        alt={filmMeta?.filmTitle || post.title}
-                        fallbackTitle={filmMeta?.filmTitle || post.title}
-                        fallbackSubtitle={filmMeta?.director}
-                        rating={filmMeta?.rating}
-                        className="w-full aspect-[16/9]"
-                      />
-                    </button>
-
-                    <div className="p-5 sm:p-6 flex-1 flex flex-col justify-between gap-4">
-                      <div
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => handleOpenPost(post)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            handleOpenPost(post);
-                          }
-                        }}
-                        className="space-y-2.5 cursor-pointer text-left"
-                      >
-                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[#5C5C58] dark:text-[#A8A49B] tabular-nums">
-                          <span className="font-semibold text-[#C80812] dark:text-[#FDA4AF]">
-                            {post.category || 'Кіноблог'}
-                          </span>
-                          {filmMeta?.releaseYear && (
-                            <>
-                              <span aria-hidden="true">·</span>
-                              <span className="font-mono">{filmMeta.releaseYear}</span>
-                            </>
-                          )}
-                          <span aria-hidden="true">·</span>
-                          <span>{post.readingMinutes} хв читання</span>
-                          {filmMeta?.hasSpoilers && (
-                            <>
-                              <span aria-hidden="true">·</span>
-                              <span className="text-amber-700 dark:text-amber-300">Спойлери</span>
-                            </>
-                          )}
-                        </div>
-
-                        <h3 className="text-lg sm:text-xl font-semibold tracking-[-0.015em] text-[#141413] dark:text-[#F4F1EA] group-hover:text-[#E50914] dark:group-hover:text-[#FDA4AF] transition-colors duration-150 leading-snug">
-                          {post.title}
-                        </h3>
-
-                        {(filmMeta?.filmTitle || filmMeta?.director) && (
-                          <p className="text-xs text-[#4D4D48] dark:text-[#D8D3C8] font-medium truncate">
-                            {[
-                              filmMeta?.filmTitle,
-                              filmMeta?.director ? `реж. ${filmMeta.director}` : null,
-                            ]
-                              .filter(Boolean)
-                              .join(' · ')}
-                          </p>
-                        )}
-
-                        <p className="text-xs sm:text-sm text-[#5C5C58] dark:text-[#A8A49B] line-clamp-3 leading-relaxed">
-                          {post.excerpt}
-                        </p>
-                      </div>
-
-                      <div className="pt-3.5 border-t border-[#EFECE6] dark:border-[#323232] flex items-center justify-between gap-2 text-xs">
-                        <div className="flex items-center gap-2.5 text-[#5C5C58] dark:text-[#A8A49B] tabular-nums min-w-0">
-                          <span className="inline-flex items-center gap-1.5 truncate">
-                            <Calendar className="w-3.5 h-3.5 shrink-0" />
-                            <span className="truncate">{post.publishedAt}</span>
-                          </span>
-                          {soundtracksCount > 0 && (
-                            <span
-                              title="У рецензії є саундтрек"
-                              className="inline-flex items-center gap-1 text-[#9F1239] dark:text-[#FDA4AF] shrink-0"
-                            >
-                              <Music2 className="w-3.5 h-3.5" />
-                            </span>
-                          )}
-                          {videosCount > 0 && (
-                            <span
-                              title="У рецензії є відео з YouTube"
-                              className="inline-flex items-center gap-1 text-[#E50914] dark:text-[#FDA4AF] shrink-0"
-                            >
-                              <Video className="w-3.5 h-3.5" />
-                            </span>
-                          )}
-                          {stillsCount > 0 && (
-                            <span className="font-mono text-[11px] shrink-0">
-                              {stillsCount} кадр.
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="flex items-center gap-2 shrink-0">
-                          <span className="inline-flex items-center gap-1 font-mono tabular-nums text-[#5C5C58] dark:text-[#A8A49B]">
-                            <Eye className="w-3.5 h-3.5" strokeWidth={1.75} />
-                            <span>{post.viewsCount}</span>
-                          </span>
-
-                          <button
-                            type="button"
-                            onClick={() => toggleSavePost(post.id)}
-                            aria-label={isSaved ? 'Прибрати із закладок' : 'Зберегти у закладки'}
-                            aria-pressed={isSaved}
-                            className={`w-8 h-8 rounded-lg inline-flex items-center justify-center transition-colors cursor-pointer ${
-                              isSaved
-                                ? 'text-[#E50914] dark:text-[#FDA4AF] bg-[#E50914]/10'
-                                : 'text-[#5C5C58] dark:text-[#A8A49B] hover:bg-[#EFECE6] dark:hover:bg-[#323232]'
-                            }`}
-                          >
-                            <Bookmark className={`w-3.5 h-3.5 ${isSaved ? 'fill-current' : ''}`} />
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => handleOpenPost(post)}
-                            className="inline-flex items-center gap-1 text-[#141413] dark:text-[#F4F1EA] hover:text-[#E50914] dark:hover:text-[#FDA4AF] font-semibold cursor-pointer transition-colors whitespace-nowrap"
-                          >
-                            <span>Читати</span>
-                            <ArrowRight className="w-3.5 h-3.5" strokeWidth={1.85} />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </m.article>
-                );
-              })}
+              {gridEntries.map((entry, index) => (
+                <BlogGridCard
+                  key={entry.post.id}
+                  entry={entry}
+                  index={index}
+                  isSaved={savedSet.has(entry.post.id)}
+                  touchProps={getTouchProps(entry.post.id)}
+                  isTouchActive={isTouchActive(entry.post.id)}
+                  onOpenPost={handleOpenPost}
+                  onToggleSave={toggleSavePost}
+                />
+              ))}
             </div>
           )}
         </div>
@@ -1610,7 +1716,7 @@ export const BlogSection = memo(function BlogSection({
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.18 }}
-                className="fixed inset-0 z-50 bg-[#141413]/65 dark:bg-black/80 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 md:p-6"
+                className="fixed inset-0 z-50 bg-ink/75 dark:bg-black/84 flex items-center justify-center p-3 sm:p-4 md:p-6"
                 onClick={handleClosePost}
                 role="dialog"
                 aria-modal="true"
@@ -1623,20 +1729,20 @@ export const BlogSection = memo(function BlogSection({
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.97, y: 12 }}
                   transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-                  className="relative bg-[#F9F9F7] dark:bg-[#1E1E20] rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl will-change-transform text-[#141413] dark:text-[#F4F1EA]"
+                  className="relative bg-paper dark:bg-night-panel rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl will-change-transform text-ink dark:text-cream"
                   onClick={(e) => e.stopPropagation()}
                 >
                   {/* Sticky Reading Progress Bar */}
                   <div className="sticky top-0 z-20 h-1 w-full bg-black/5 dark:bg-white/5 pointer-events-none">
                     <div
-                      className="h-full bg-[#E50914] transition-[width] duration-100 ease-out"
+                      className="h-full bg-cinema-red transition-[width] duration-100 ease-out"
                       style={{ width: `${readProgress}%` }}
                     />
                   </div>
 
                   {/* Optional Poster / Film Still Hero inside Reader */}
                   {activeEntry.posterUrl && (
-                    <div className="relative h-52 sm:h-64 w-full overflow-hidden bg-[#141215]">
+                    <div className="relative h-52 sm:h-64 w-full overflow-hidden bg-ink">
                       <img
                         src={activeEntry.posterUrl}
                         alt={activeEntry.filmMeta?.filmTitle || activePost.title}
@@ -1649,17 +1755,17 @@ export const BlogSection = memo(function BlogSection({
                       />
                       <div
                         aria-hidden="true"
-                        className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#F9F9F7] via-black/25 to-black/35 dark:from-[#1E1E20]"
+                        className="pointer-events-none absolute inset-0 bg-gradient-to-t from-paper via-black/25 to-black/35 dark:from-night-panel"
                       />
                     </div>
                   )}
 
                   <div className="p-5 sm:p-8 md:p-11">
                     {/* Reader Top Header */}
-                    <div className="flex items-start justify-between gap-4 pb-6 border-b border-[#EFECE6] dark:border-[#323232]">
+                    <div className="flex items-start justify-between gap-4 pb-6 border-b border-paper-warm dark:border-night-elevated">
                       <div className="space-y-2 min-w-0">
-                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[#5C5C58] dark:text-[#A8A49B] tabular-nums">
-                          <span className="inline-flex items-center gap-1 font-semibold text-[#C80812] dark:text-[#FDA4AF]">
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-muted dark:text-sandstone-light tabular-nums">
+                          <span className="inline-flex items-center gap-1 font-semibold text-cinema-red-hover dark:text-[#FDA4AF]">
                             <Clapperboard className="w-3.5 h-3.5" />
                             <span>{activePost.category || 'Кіноблог'}</span>
                           </span>
@@ -1676,7 +1782,7 @@ export const BlogSection = memo(function BlogSection({
 
                         <h3
                           id="blog-modal-title"
-                          className="font-editorial-display text-2xl sm:text-3xl md:text-4xl font-semibold tracking-[-0.015em] text-[#141413] dark:text-[#F4F1EA] leading-[1.12]"
+                          className="font-editorial-display text-2xl sm:text-3xl md:text-4xl font-semibold tracking-[-0.015em] text-ink dark:text-cream leading-[1.12]"
                         >
                           {activePost.title}
                         </h3>
@@ -1694,8 +1800,8 @@ export const BlogSection = memo(function BlogSection({
                           aria-pressed={savedSet.has(activePost.id)}
                           className={`w-9 h-9 rounded-lg inline-flex items-center justify-center transition-colors cursor-pointer ${
                             savedSet.has(activePost.id)
-                              ? 'bg-[#E50914]/12 text-[#E50914] dark:text-[#FDA4AF]'
-                              : 'text-[#5C5C58] dark:text-[#A8A49B] hover:bg-[#EFECE6] dark:hover:bg-[#323232]'
+                              ? 'bg-cinema-red/12 text-cinema-red dark:text-[#FDA4AF]'
+                              : 'text-ink-muted dark:text-sandstone-light hover:bg-paper-warm dark:hover:bg-night-elevated'
                           }`}
                         >
                           <Bookmark
@@ -1713,7 +1819,7 @@ export const BlogSection = memo(function BlogSection({
                         <button
                           type="button"
                           onClick={handleClosePost}
-                          className="w-9 h-9 inline-flex items-center justify-center text-[#5C5C58] dark:text-[#A8A49B] hover:text-[#141413] dark:hover:text-[#F4F1EA] hover:bg-[#EFECE6] dark:hover:bg-[#323232] active:scale-[0.96] rounded-lg transition-all duration-150 cursor-pointer shrink-0"
+                          className="w-9 h-9 inline-flex items-center justify-center text-ink-muted dark:text-sandstone-light hover:text-ink dark:hover:text-cream hover:bg-paper-warm dark:hover:bg-night-elevated active:scale-[0.96] rounded-lg transition-all duration-150 cursor-pointer shrink-0"
                           aria-label="Закрити рецензію"
                         >
                           <X className="w-5 h-5" />
@@ -1723,33 +1829,33 @@ export const BlogSection = memo(function BlogSection({
 
                     {/* Film Passport Summary Strip */}
                     {activeEntry.filmMeta && (
-                      <div className="mt-6 p-4 sm:p-5 rounded-xl bg-[#EFECE6]/70 dark:bg-[#262629] grid grid-cols-2 sm:grid-cols-4 gap-3.5 text-xs">
+                      <div className="mt-6 p-4 sm:p-5 rounded-xl bg-paper-warm/70 dark:bg-night-card grid grid-cols-2 sm:grid-cols-4 gap-3.5 text-xs">
                         {activeEntry.filmMeta.filmTitle && (
                           <div>
-                            <p className="text-[11px] text-[#787872] dark:text-[#9E978D] mb-0.5">
+                            <p className="text-[11px] text-ink-subtle dark:text-[#9E978D] mb-0.5">
                               Стрічка
                             </p>
-                            <p className="font-semibold text-[#141413] dark:text-[#F4F1EA]">
+                            <p className="font-semibold text-ink dark:text-cream">
                               {activeEntry.filmMeta.filmTitle}
                             </p>
                           </div>
                         )}
                         {activeEntry.filmMeta.director && (
                           <div>
-                            <p className="text-[11px] text-[#787872] dark:text-[#9E978D] mb-0.5">
+                            <p className="text-[11px] text-ink-subtle dark:text-[#9E978D] mb-0.5">
                               Режисер
                             </p>
-                            <p className="font-semibold text-[#141413] dark:text-[#F4F1EA]">
+                            <p className="font-semibold text-ink dark:text-cream">
                               {activeEntry.filmMeta.director}
                             </p>
                           </div>
                         )}
                         {(activeEntry.filmMeta.releaseYear || activeEntry.filmMeta.country) && (
                           <div>
-                            <p className="text-[11px] text-[#787872] dark:text-[#9E978D] mb-0.5">
+                            <p className="text-[11px] text-ink-subtle dark:text-[#9E978D] mb-0.5">
                               Вихід
                             </p>
-                            <p className="font-semibold text-[#141413] dark:text-[#F4F1EA] tabular-nums">
+                            <p className="font-semibold text-ink dark:text-cream tabular-nums">
                               {[activeEntry.filmMeta.releaseYear, activeEntry.filmMeta.country]
                                 .filter(Boolean)
                                 .join(' · ')}
@@ -1758,28 +1864,28 @@ export const BlogSection = memo(function BlogSection({
                         )}
                         {activeEntry.filmMeta.runtimeMinutes && (
                           <div>
-                            <p className="text-[11px] text-[#787872] dark:text-[#9E978D] mb-0.5">
+                            <p className="text-[11px] text-ink-subtle dark:text-[#9E978D] mb-0.5">
                               Хронометраж
                             </p>
-                            <p className="font-semibold text-[#141413] dark:text-[#F4F1EA] inline-flex items-center gap-1 tabular-nums">
-                              <Clock className="w-3.5 h-3.5 text-[#787872]" />
+                            <p className="font-semibold text-ink dark:text-cream inline-flex items-center gap-1 tabular-nums">
+                              <Clock className="w-3.5 h-3.5 text-ink-subtle" />
                               <span>{formatRuntimeUk(activeEntry.filmMeta.runtimeMinutes)}</span>
                             </p>
                           </div>
                         )}
                         {activeEntry.filmMeta.watchFormat && (
                           <div>
-                            <p className="text-[11px] text-[#787872] dark:text-[#9E978D] mb-0.5">
+                            <p className="text-[11px] text-ink-subtle dark:text-[#9E978D] mb-0.5">
                               Формат перегляду
                             </p>
-                            <p className="font-semibold text-[#141413] dark:text-[#F4F1EA]">
+                            <p className="font-semibold text-ink dark:text-cream">
                               {activeEntry.filmMeta.watchFormat}
                             </p>
                           </div>
                         )}
                         {typeof activeEntry.filmMeta.rating === 'number' && (
                           <div>
-                            <p className="text-[11px] text-[#787872] dark:text-[#9E978D] mb-0.5">
+                            <p className="text-[11px] text-ink-subtle dark:text-[#9E978D] mb-0.5">
                               Оцінка БДК
                             </p>
                             <p className="font-mono font-semibold text-[#B45309] dark:text-[#FDE68A] inline-flex items-center gap-1 tabular-nums">
@@ -1793,15 +1899,15 @@ export const BlogSection = memo(function BlogSection({
 
                     {/* Spoiler Gate or Essay Body */}
                     {isSpoilerGated ? (
-                      <div className="my-8 py-10 px-6 rounded-2xl bg-[#EFECE6]/60 dark:bg-[#262629] text-center space-y-3">
+                      <div className="my-8 py-10 px-6 rounded-2xl bg-paper-warm/60 dark:bg-night-card text-center space-y-3">
                         <ShieldAlert
                           className="w-7 h-7 text-amber-600 dark:text-amber-300 mx-auto"
                           strokeWidth={1.7}
                         />
-                        <h4 className="text-base font-semibold text-[#141413] dark:text-[#F4F1EA]">
+                        <h4 className="text-base font-semibold text-ink dark:text-cream">
                           Ця рецензія містить важливі сюжетні деталі
                         </h4>
-                        <p className="text-xs sm:text-sm text-[#5C5C58] dark:text-[#A8A49B] max-w-md mx-auto leading-relaxed">
+                        <p className="text-xs sm:text-sm text-ink-muted dark:text-sandstone-light max-w-md mx-auto leading-relaxed">
                           Якщо ви ще не дивилися стрічку й хочете зберегти інтригу, можете зберегти розбір у закладки та повернутися після перегляду.
                         </p>
                         <div className="pt-2 flex flex-wrap items-center justify-center gap-2.5">
@@ -1813,7 +1919,7 @@ export const BlogSection = memo(function BlogSection({
                                 [activePost.id]: true,
                               }))
                             }
-                            className="px-4 py-2 rounded-lg bg-[#141413] dark:bg-[#F4F1EA] text-white dark:text-[#181818] text-xs font-semibold cursor-pointer hover:opacity-90 transition-opacity"
+                            className="px-4 py-2 rounded-lg bg-ink dark:bg-cream text-white dark:text-night text-xs font-semibold cursor-pointer hover:opacity-90 transition-opacity"
                           >
                             Показати рецензію зі спойлерами
                           </button>
@@ -1837,12 +1943,12 @@ export const BlogSection = memo(function BlogSection({
                       </div>
                     ) : (
                       <div
-                        className={`py-8 max-w-[65ch] mx-auto text-[#141413] dark:text-[#E5E2DA] space-y-6 leading-[1.82] transition-all ${
+                        className={`py-8 max-w-[65ch] mx-auto text-ink dark:text-[#E5E2DA] space-y-6 leading-[1.82] transition-all ${
                           largeText ? 'text-lg' : 'text-base'
                         }`}
                       >
                         {loadingPostId === activePost.id && activePost.contentTruncated && (
-                          <div className="flex items-center gap-2 text-xs text-[#787872] dark:text-[#A8A49B]">
+                          <div className="flex items-center gap-2 text-xs text-ink-subtle dark:text-sandstone-light">
                             <Loader2 className="w-3.5 h-3.5 animate-spin" />
                             <span>Завантаження повного тексту...</span>
                           </div>
@@ -1855,13 +1961,13 @@ export const BlogSection = memo(function BlogSection({
                               return (
                                 <blockquote
                                   key={`q-${index}`}
-                                  className="my-7 py-4 px-5 sm:px-7 rounded-xl bg-[#EFECE6]/55 dark:bg-[#262629] text-center space-y-2"
+                                  className="my-7 py-4 px-5 sm:px-7 rounded-xl bg-paper-warm/55 dark:bg-night-card text-center space-y-2"
                                 >
                                   <Quote
-                                    className="w-4 h-4 text-[#E50914] mx-auto opacity-80"
+                                    className="w-4 h-4 text-cinema-red mx-auto opacity-80"
                                     strokeWidth={1.75}
                                   />
-                                  <p className="font-editorial-display italic text-xl sm:text-2xl text-[#141413] dark:text-[#F4F1EA] leading-relaxed whitespace-pre-line">
+                                  <p className="font-editorial-display italic text-xl sm:text-2xl text-ink dark:text-cream leading-relaxed whitespace-pre-line">
                                     {quoteText}
                                   </p>
                                 </blockquote>
@@ -1880,7 +1986,7 @@ export const BlogSection = memo(function BlogSection({
                                 <button
                                   type="button"
                                   onClick={() => setZoomedPhotoIndex(photoIdx >= 0 ? photoIdx : 0)}
-                                  className="group relative block w-full overflow-hidden rounded-2xl bg-[#EFECE6]/70 dark:bg-[#262626] cursor-zoom-in shadow-md"
+                                  className="group relative block w-full overflow-hidden rounded-2xl bg-paper-warm/70 dark:bg-night-card cursor-zoom-in shadow-md"
                                   aria-label={block.item.caption || 'Збільшити кадр'}
                                 >
                                   <img
@@ -1899,7 +2005,7 @@ export const BlogSection = memo(function BlogSection({
                                   </span>
                                 </button>
                                 {block.item.caption && (
-                                  <figcaption className="text-xs text-[#5C5C58] dark:text-[#A8A49B] text-center leading-relaxed">
+                                  <figcaption className="text-xs text-ink-muted dark:text-sandstone-light text-center leading-relaxed">
                                     {block.item.caption}
                                   </figcaption>
                                 )}
@@ -1929,11 +2035,11 @@ export const BlogSection = memo(function BlogSection({
 
                         {/* Author's Verdict Summary */}
                         {activeEntry.filmMeta?.verdict && (
-                          <div className="mt-8 p-5 rounded-xl bg-[#EFECE6]/70 dark:bg-[#262629] space-y-1.5">
-                            <p className="text-[11px] font-semibold text-[#C80812] dark:text-[#FDA4AF]">
+                          <div className="mt-8 p-5 rounded-xl bg-paper-warm/70 dark:bg-night-card space-y-1.5">
+                            <p className="text-[11px] font-semibold text-cinema-red-hover dark:text-[#FDA4AF]">
                               Підсумок БДК
                             </p>
-                            <p className="font-editorial-display text-lg sm:text-xl italic text-[#141413] dark:text-[#F4F1EA] leading-snug">
+                            <p className="font-editorial-display text-lg sm:text-xl italic text-ink dark:text-cream leading-snug">
                               «{activeEntry.filmMeta.verdict}»
                             </p>
                           </div>
@@ -1942,20 +2048,20 @@ export const BlogSection = memo(function BlogSection({
                     )}
 
                     {/* Modal Footer with Share & Prev/Next Review Navigation */}
-                    <div className="pt-6 border-t border-[#EFECE6] dark:border-[#323232] space-y-4">
+                    <div className="pt-6 border-t border-paper-warm dark:border-night-elevated space-y-4">
                       {(prevEntry || nextEntry) && (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                           {prevEntry ? (
                             <button
                               type="button"
                               onClick={() => handleOpenPost(prevEntry.post)}
-                              className="p-3 rounded-xl bg-[#EFECE6]/60 dark:bg-[#262629] hover:bg-[#EFECE6] dark:hover:bg-[#303034] text-left transition-colors cursor-pointer group"
+                              className="p-3 rounded-xl bg-paper-warm/60 dark:bg-night-card hover:bg-paper-warm dark:hover:bg-night-elevated text-left transition-colors cursor-pointer group"
                             >
-                              <span className="inline-flex items-center gap-1 text-[11px] text-[#787872] dark:text-[#9E978D]">
+                              <span className="inline-flex items-center gap-1 text-[11px] text-ink-subtle dark:text-[#9E978D]">
                                 <ArrowLeft className="w-3 h-3 group-hover:-translate-x-0.5 transition-transform" />
                                 <span>Попередня рецензія</span>
                               </span>
-                              <p className="mt-0.5 text-xs font-semibold text-[#141413] dark:text-[#F4F1EA] truncate">
+                              <p className="mt-0.5 text-xs font-semibold text-ink dark:text-cream truncate">
                                 {prevEntry.post.title}
                               </p>
                             </button>
@@ -1967,13 +2073,13 @@ export const BlogSection = memo(function BlogSection({
                             <button
                               type="button"
                               onClick={() => handleOpenPost(nextEntry.post)}
-                              className="p-3 rounded-xl bg-[#EFECE6]/60 dark:bg-[#262629] hover:bg-[#EFECE6] dark:hover:bg-[#303034] text-right transition-colors cursor-pointer group"
+                              className="p-3 rounded-xl bg-paper-warm/60 dark:bg-night-card hover:bg-paper-warm dark:hover:bg-night-elevated text-right transition-colors cursor-pointer group"
                             >
-                              <span className="inline-flex items-center gap-1 text-[11px] text-[#787872] dark:text-[#9E978D]">
+                              <span className="inline-flex items-center gap-1 text-[11px] text-ink-subtle dark:text-[#9E978D]">
                                 <span>Наступна рецензія</span>
                                 <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
                               </span>
-                              <p className="mt-0.5 text-xs font-semibold text-[#141413] dark:text-[#F4F1EA] truncate">
+                              <p className="mt-0.5 text-xs font-semibold text-ink dark:text-cream truncate">
                                 {nextEntry.post.title}
                               </p>
                             </button>
@@ -2016,7 +2122,7 @@ export const BlogSection = memo(function BlogSection({
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.16 }}
-                className="fixed inset-0 z-[60] bg-black/92 backdrop-blur-xs flex flex-col items-center justify-center p-4 sm:p-6"
+                className="fixed inset-0 z-[60] bg-black/94 flex flex-col items-center justify-center p-4 sm:p-6"
                 onClick={() => setZoomedPhotoIndex(null)}
                 role="dialog"
                 aria-modal="true"

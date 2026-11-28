@@ -1,0 +1,56 @@
+steps:
+  - name: 'node:22-slim'
+    id: 'test-and-audit'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        npm ci --legacy-peer-deps
+        npm audit --omit=dev --audit-level=critical
+        npm audit --omit=dev --audit-level=high || true
+        npm test
+        npm run lint
+
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-image'
+    args:
+      - 'build'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}:${SHORT_SHA}'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}:latest'
+      - '.'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'push-image'
+    args:
+      - 'push'
+      - '--all-tags'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}'
+
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'deploy-cloud-run'
+    entrypoint: 'gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - '${_SERVICE}'
+      - '--image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}:${SHORT_SHA}'
+      - '--region=${_REGION}'
+      - '--platform=managed'
+      - '--port=3000'
+      - '--min-instances=1'
+      - '--max-instances=10'
+      - '--cpu=1'
+      - '--memory=1Gi'
+      - '--cpu-boost'
+      - '--session-affinity'
+      - '--allow-unauthenticated'
+
+substitutions:
+  _REGION: europe-central2
+  _REPO: web
+  _SERVICE: dankiv-writer-site
+
+options:
+  logging: CLOUD_LOGGING_ONLY

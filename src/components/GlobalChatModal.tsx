@@ -178,7 +178,7 @@ const ChatMessageItem = memo(function ChatMessageItem({
       className={`flex items-start gap-2.5 p-2.5 sm:p-3 transition-colors ${
         hasFramedCard
           ? innerSurfaceClass
-          : `rounded-xl ${isOwn && !isAdminMsg ? 'bg-[#303531]' : 'bg-[#262626]'}`
+          : `rounded-xl ${isOwn && !isAdminMsg ? 'bg-[#303531]' : 'bg-night-card'}`
       }`}
     >
       {hasFramedCard && (
@@ -203,7 +203,7 @@ const ChatMessageItem = memo(function ChatMessageItem({
       )}
 
       <div
-        className={`relative z-10 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#323232] flex items-center justify-center overflow-hidden text-[#E5E5E5] shrink-0 mt-0.5 ${avatarRingClass}`}
+        className={`relative z-10 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-night-elevated flex items-center justify-center overflow-hidden text-silver shrink-0 mt-0.5 ${avatarRingClass}`}
       >
         <ChatAvatar photoUrl={msg.authorPhotoUrl} />
       </div>
@@ -211,18 +211,18 @@ const ChatMessageItem = memo(function ChatMessageItem({
       <div className="relative z-10 min-w-0 flex-1 space-y-1">
         <div className="flex items-center justify-between gap-2 min-w-0">
           <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-            <span className="text-xs font-semibold text-[#FAF9F5] truncate max-w-full">
+            <span className="text-xs font-semibold text-paper truncate max-w-full">
               {msg.authorName}
             </span>
             {!isAdminMsg && <UserRankBadges badges={msg.authorBadges} size="xs" />}
             {isAdminMsg && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#E5E5E5] text-[#181818] font-semibold shrink-0">
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-silver text-night font-semibold shrink-0">
                 Адмін
               </span>
             )}
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
-            <span className="text-[10px] text-[#C4BFB4] tabular-nums whitespace-nowrap">
+            <span className="text-[10px] text-parchment tabular-nums whitespace-nowrap">
               {formatMessageTime(msg.createdAt)}
             </span>
             <button
@@ -230,7 +230,7 @@ const ChatMessageItem = memo(function ChatMessageItem({
               onClick={() => onReply(msg)}
               title="Відповісти"
               aria-label={`Відповісти ${msg.authorName}`}
-              className="p-1 rounded text-[#C4BFB4] hover:text-[#FAF9F5] hover:bg-white/10 transition-colors cursor-pointer"
+              className="p-1 rounded text-parchment hover:text-paper hover:bg-white/10 transition-colors cursor-pointer"
             >
               <CornerUpLeft className="w-3.5 h-3.5" />
             </button>
@@ -241,7 +241,7 @@ const ChatMessageItem = memo(function ChatMessageItem({
                 className={`px-1 py-0.5 rounded transition-colors cursor-pointer ${
                   isConfirming
                     ? 'bg-red-500 text-white text-[10px] font-semibold px-1.5'
-                    : 'text-[#C4BFB4] hover:text-red-400'
+                    : 'text-parchment hover:text-red-400'
                 }`}
                 title={
                   isConfirming
@@ -268,15 +268,15 @@ const ChatMessageItem = memo(function ChatMessageItem({
             onClick={() => onJumpToMessage(msg.replyTo!.id)}
             className="w-full text-left px-2.5 py-1.5 rounded-lg bg-black/28 border border-white/10 hover:bg-black/38 transition-colors cursor-pointer"
           >
-            <span className="block text-[10px] font-semibold text-[#D6D3CB] truncate">
+            <span className="block text-[10px] font-semibold text-paper-stone truncate">
               {msg.replyTo.authorName}
             </span>
-            <span className="block text-[11px] text-[#C4BFB4] truncate">
+            <span className="block text-[11px] text-parchment truncate">
               {msg.replyTo.text}
             </span>
           </button>
         )}
-        <p className="text-xs sm:text-[13px] text-[#F4F1EA] leading-relaxed break-words whitespace-pre-wrap">
+        <p className="text-xs sm:text-[13px] text-cream leading-relaxed break-words whitespace-pre-wrap">
           {msg.text}
         </p>
       </div>
@@ -328,7 +328,7 @@ function ChatMessageRow({
   );
 }
 
-export function GlobalChatModal({
+export const GlobalChatModal = memo(function GlobalChatModal({
   isOpen,
   onClose,
   guestUser,
@@ -1238,29 +1238,29 @@ export function GlobalChatModal({
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-black/65 backdrop-blur-xs animate-fadeIn"
+      className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-black/75 animate-fadeIn"
       role="dialog"
       aria-modal="true"
       aria-labelledby="global-chat-title"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-xl bg-[#202020] rounded-2xl shadow-2xl overflow-hidden flex flex-col h-[min(86dvh,640px)]"
+        className="relative w-full max-w-xl bg-night-panel rounded-2xl shadow-2xl overflow-hidden flex flex-col h-[min(86dvh,640px)]"
       >
         {/* Header */}
-        <div className="px-4 py-3.5 sm:px-5 sm:py-4 flex items-center justify-between gap-2 bg-[#262626] shrink-0">
+        <div className="px-4 py-3.5 sm:px-5 sm:py-4 flex items-center justify-between gap-2 bg-night-card shrink-0">
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#323232] flex items-center justify-center text-[#E5E5E5] shrink-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-night-elevated flex items-center justify-center text-silver shrink-0">
               <MessagesSquare className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div className="min-w-0">
               <h2
                 id="global-chat-title"
-                className="text-base sm:text-lg font-bold text-[#FAF9F5] tracking-tight truncate"
+                className="text-base sm:text-lg font-bold text-paper tracking-tight truncate"
               >
                 Глобальний чат
               </h2>
-              <p className="text-[11px] sm:text-xs text-[#C4BFB4] flex items-center gap-1.5 truncate">
+              <p className="text-[11px] sm:text-xs text-parchment flex items-center gap-1.5 truncate">
                 <span
                   className={`inline-block w-1.5 h-1.5 rounded-full shrink-0 ${
                     wsStatus === 'connected' || firestoreConnected
@@ -1281,7 +1281,7 @@ export function GlobalChatModal({
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl hover:bg-white/10 flex items-center justify-center text-[#FAF9F5]/70 transition-colors cursor-pointer shrink-0"
+            className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl hover:bg-white/10 flex items-center justify-center text-paper/70 transition-colors cursor-pointer shrink-0"
             aria-label="Закрити чат"
           >
             <X className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -1291,14 +1291,14 @@ export function GlobalChatModal({
         {/* Message List */}
         <div className="flex-1 min-h-0 overflow-hidden">
           {loadingInitial && messages.length === 0 ? (
-            <div className="h-full p-3 sm:p-4 flex items-center justify-center text-sm text-[#C4BFB4] animate-pulse">
+            <div className="h-full p-3 sm:p-4 flex items-center justify-center text-sm text-parchment animate-pulse">
               Завантаження чату...
             </div>
           ) : messages.length === 0 ? (
-            <div className="h-full p-3 sm:p-4 flex flex-col items-center justify-center text-center gap-2 text-[#C4BFB4]">
+            <div className="h-full p-3 sm:p-4 flex flex-col items-center justify-center text-center gap-2 text-parchment">
               <MessagesSquare className="w-8 h-8 opacity-40" />
-              <p className="text-sm font-medium text-[#F4F1EA]">Поки немає повідомлень</p>
-              <p className="text-xs text-[#C4BFB4]">
+              <p className="text-sm font-medium text-cream">Поки немає повідомлень</p>
+              <p className="text-xs text-parchment">
                 Напишіть першим, щоб почати спілкування з читачами сайту.
               </p>
             </div>
@@ -1324,7 +1324,7 @@ export function GlobalChatModal({
         )}
 
         {/* Composer */}
-        <div className="p-3 sm:p-4 bg-[#262626] border-t border-white/5 shrink-0 space-y-2.5">
+        <div className="p-3 sm:p-4 bg-night-card border-t border-white/5 shrink-0 space-y-2.5">
           {canSetDonorText && (
             <form
               onSubmit={(e) => void handleSaveDonorText(e)}
@@ -1344,12 +1344,12 @@ export function GlobalChatModal({
                   value={donorTextDraft}
                   onChange={(e) => setDonorTextDraft(e.target.value.slice(0, 80))}
                   placeholder="Введіть власний текст у чаті..."
-                  className="flex-1 min-w-0 px-2.5 py-1.5 text-xs rounded-lg bg-[#141414] focus:bg-[#232323] text-[#FAF9F5] placeholder:text-[#7E7B73] focus:outline-none transition-colors"
+                  className="flex-1 min-w-0 px-2.5 py-1.5 text-xs rounded-lg bg-ink focus:bg-night-panel text-paper placeholder:text-ink-subtle focus:outline-none transition-colors"
                 />
                 <button
                   type="submit"
                   disabled={savingDonorText || donorTextDraft.trim() === savedDonorText.trim()}
-                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#E5E5E5] text-[#181818] text-[11px] font-semibold hover:opacity-95 transition-opacity whitespace-nowrap shrink-0 cursor-pointer disabled:opacity-45 disabled:pointer-events-none"
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-silver text-night text-[11px] font-semibold hover:opacity-95 transition-opacity whitespace-nowrap shrink-0 cursor-pointer disabled:opacity-45 disabled:pointer-events-none"
                 >
                   {donorTextSavedFlash ? (
                     <>
@@ -1366,19 +1366,19 @@ export function GlobalChatModal({
           {guestUser ? (
             <form onSubmit={(e) => void handleSend(e)} className="space-y-2">
               {replyingTo && (
-                <div className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl bg-[#1C1C1C] border border-white/10">
+                <div className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl bg-night-deep border border-white/10">
                   <div className="min-w-0 flex-1">
-                    <p className="text-[10px] font-semibold text-[#E5E5E5] flex items-center gap-1 truncate">
+                    <p className="text-[10px] font-semibold text-silver flex items-center gap-1 truncate">
                       <CornerUpLeft className="w-3 h-3 shrink-0" />
                       <span>Відповідь для {replyingTo.authorName}</span>
                     </p>
-                    <p className="text-[11px] text-[#C4BFB4] truncate">{replyingTo.text}</p>
+                    <p className="text-[11px] text-parchment truncate">{replyingTo.text}</p>
                   </div>
                   <button
                     type="button"
                     onClick={() => setReplyingTo(null)}
                     aria-label="Скасувати відповідь"
-                    className="p-1 rounded-lg text-[#C4BFB4] hover:text-white hover:bg-white/10 transition-colors cursor-pointer shrink-0"
+                    className="p-1 rounded-lg text-parchment hover:text-white hover:bg-white/10 transition-colors cursor-pointer shrink-0"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
@@ -1401,26 +1401,26 @@ export function GlobalChatModal({
                       : 'Напишіть повідомлення...'
                   }
                   rows={1}
-                  className="flex-1 min-w-0 max-h-28 px-3.5 py-2.5 text-xs sm:text-sm rounded-xl bg-[#1C1C1C] focus:bg-[#2F2F2F] text-[#FAF9F5] placeholder:text-[#7E7B73] focus:outline-none transition-colors resize-none"
+                  className="flex-1 min-w-0 max-h-28 px-3.5 py-2.5 text-xs sm:text-sm rounded-xl bg-night-deep focus:bg-night-hover text-paper placeholder:text-ink-subtle focus:outline-none transition-colors resize-none"
                 />
                 <button
                   type="submit"
                   disabled={!draft.trim()}
                   aria-label="Надіслати повідомлення"
-                  className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-[#E5E5E5] text-[#181818] hover:opacity-95 transition-opacity shrink-0 cursor-pointer disabled:opacity-45 disabled:pointer-events-none"
+                  className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-silver text-night hover:opacity-95 transition-opacity shrink-0 cursor-pointer disabled:opacity-45 disabled:pointer-events-none"
                 >
                   <Send className="w-4 h-4" />
                 </button>
               </div>
               {draft.length > 480 && (
-                <p className="text-[10px] text-[#C4BFB4] text-right tabular-nums">
+                <p className="text-[10px] text-parchment text-right tabular-nums">
                   {draft.length} / 600
                 </p>
               )}
             </form>
           ) : (
             <div className="flex items-center justify-between gap-3">
-              <p className="text-xs text-[#C4BFB4]">
+              <p className="text-xs text-parchment">
                 Увійдіть в акаунт, щоб писати в чат
               </p>
               <button
@@ -1429,7 +1429,7 @@ export function GlobalChatModal({
                   onClose();
                   onOpenAuthModal();
                 }}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#E5E5E5] text-[#181818] text-xs font-semibold hover:opacity-95 transition-opacity shrink-0 cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-silver text-night text-xs font-semibold hover:opacity-95 transition-opacity shrink-0 cursor-pointer"
               >
                 <LogIn className="w-3.5 h-3.5" />
                 <span>Увійти</span>
@@ -1440,4 +1440,4 @@ export function GlobalChatModal({
       </div>
     </div>
   );
-}
+});

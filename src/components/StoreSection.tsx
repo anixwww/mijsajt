@@ -90,6 +90,244 @@ function ColumnsLayoutIcon({ columns }: { columns: StoreViewColumns }) {
   );
 }
 
+const StoreProductCard = memo(function StoreProductCard({
+  product,
+  index,
+  isInCart,
+  unlocked,
+  viewColumns,
+  touchProps,
+  isTouchActive,
+  onOpenProduct,
+  onOpenLibrary,
+  onAddToCart,
+}: {
+  product: StoreProduct;
+  index: number;
+  isInCart: boolean;
+  unlocked: boolean;
+  viewColumns: StoreViewColumns;
+  touchProps: Record<string, unknown>;
+  isTouchActive: boolean;
+  onOpenProduct: (product: StoreProduct) => void;
+  onOpenLibrary: () => void;
+  onAddToCart: (productId: string) => void;
+}) {
+  const isPhysical = isPhysicalProduct(product.type);
+  const basePriceUah = Math.max(0, Math.round(Number(product.priceUah) || 0));
+  const finalPriceUah = getEffectivePriceUah(product);
+  const discountPct = Math.max(0, Math.min(90, Math.round(Number(product.discountPercent) || 0)));
+  const hasCatalogDiscount = discountPct > 0 && finalPriceUah < basePriceUah;
+  const parsedPromo = parseStoreProductPromo(product);
+  const promoText = product.promoActive
+    ? parsedPromo.cleanPromoLabel || (!parsedPromo.isBestseller && !hasCatalogDiscount ? 'Акція' : '')
+    : '';
+  const hasFutureCountdown = Boolean(
+    product.promoActive &&
+      parsedPromo.promoEndsAt &&
+      Number.isFinite(Date.parse(parsedPromo.promoEndsAt)) &&
+      Date.parse(parsedPromo.promoEndsAt) > Date.now()
+  );
+  const hasPromoBadge =
+    parsedPromo.isBestseller || Boolean(promoText) || hasCatalogDiscount || hasFutureCountdown;
+  const isSingle = viewColumns === 1;
+  const isCompactThree = viewColumns === 3;
+
+  return (
+    <m.article
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.16, delay: Math.min(index * 0.025, 0.1), ease: [0.16, 1, 0.3, 1] }}
+      className="perf-card"
+    >
+      <div
+        {...touchProps}
+        data-touch-active={isTouchActive ? 'true' : undefined}
+        className={`touch-card h-full bg-white dark:bg-night-card rounded-xl overflow-hidden flex flex-col ${
+          isSingle ? 'sm:flex-row' : 'justify-between'
+        } transition-colors duration-200`}
+      >
+        <button
+          type="button"
+          onClick={() => onOpenProduct(product)}
+          className={`relative block text-left cursor-pointer focus-visible:outline-2 focus-visible:outline-pine dark:focus-visible:outline-silver ${
+            isSingle ? 'w-full sm:w-[44%] sm:shrink-0' : 'w-full'
+          }`}
+          aria-label={`Детальніше про ${product.title}`}
+        >
+          <EditorialImage
+            src={product.coverImage}
+            alt={product.title}
+            titleFallback={product.title}
+            aspectClassName={isSingle ? 'aspect-[4/3] sm:h-full' : 'aspect-[4/3]'}
+            className="h-full"
+            priority={index < 3}
+          />
+          {hasPromoBadge && (
+            <div
+              className={`absolute flex flex-wrap items-center gap-1 pointer-events-none ${
+                isCompactThree ? 'top-1.5 left-1.5 right-1.5' : 'top-2.5 left-2.5 right-2.5 gap-1.5'
+              }`}
+            >
+              {parsedPromo.isBestseller && (
+                <span
+                  className={`inline-flex items-center gap-1 rounded-md bg-[#2A2012]/95 text-[#F7DF9C] font-semibold tracking-wide shadow-sm ${
+                    isCompactThree ? 'px-1.5 py-0.5 text-[9px]' : 'px-2 py-0.5 text-[10px]'
+                  }`}
+                >
+                  <Award className="w-2.5 h-2.5 shrink-0" strokeWidth={2.2} />
+                  <span>Бестселлер</span>
+                </span>
+              )}
+              {promoText && (
+                <span
+                  className={`inline-flex items-center gap-1 rounded-md bg-pine-dark/95 dark:bg-night-surface/95 text-[#E8F1C8] dark:text-cream font-semibold tracking-wide shadow-sm max-w-full truncate ${
+                    isCompactThree ? 'px-1.5 py-0.5 text-[9px]' : 'px-2 py-0.5 text-[10px]'
+                  }`}
+                >
+                  <Tag className="w-2.5 h-2.5 shrink-0" strokeWidth={2.2} />
+                  <span className="truncate">{promoText}</span>
+                </span>
+              )}
+              {hasCatalogDiscount && (
+                <span
+                  className={`inline-flex items-center rounded-md bg-[#BCD369] text-[#122218] dark:bg-silver dark:text-night font-mono font-bold tabular-nums shadow-sm ${
+                    isCompactThree ? 'px-1 py-0.5 text-[9px]' : 'px-1.5 py-0.5 text-[10px]'
+                  }`}
+                >
+                  −{discountPct}%
+                </span>
+              )}
+              {hasFutureCountdown && (
+                <PromoCountdown
+                  endsAtIso={parsedPromo.promoEndsAt}
+                  variant="card"
+                  isCompact={isCompactThree}
+                />
+              )}
+            </div>
+          )}
+        </button>
+
+        <div className="flex-1 min-w-0 flex flex-col justify-between">
+          <div className={isSingle ? 'p-4 sm:p-5 space-y-1.5' : isCompactThree ? 'p-2 sm:p-3.5 space-y-1' : 'p-3 sm:p-3.5 space-y-1'}>
+            <div className="flex items-center justify-between gap-1.5 text-[11px] text-ink-muted dark:text-sandstone-light">
+              <span className="truncate">{getTypeLabel(product.type)}</span>
+
+              {product.ratingCount > 0 && (
+                <span className="inline-flex items-center gap-0.5 font-mono text-ink dark:text-cream tabular-nums shrink-0">
+                  <Star className="w-3 h-3 fill-[#FACC15] text-[#EAB308]" strokeWidth={1.75} />
+                  <span>{product.ratingAverage.toFixed(1)}</span>
+                </span>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => onOpenProduct(product)}
+              className="w-full text-left cursor-pointer"
+            >
+              <h3
+                className={`font-serif font-semibold text-ink dark:text-cream hover:text-pine dark:hover:text-[#FFFFFF] leading-snug line-clamp-2 transition-colors duration-150 ${
+                  isSingle
+                    ? 'text-lg sm:text-xl'
+                    : isCompactThree
+                      ? 'text-xs sm:text-base'
+                      : 'text-base sm:text-lg'
+                }`}
+              >
+                {product.title}
+              </h3>
+            </button>
+
+            {product.subtitle && (
+              <p className="text-[11px] text-ink-muted dark:text-sandstone-light truncate">
+                {product.subtitle}
+              </p>
+            )}
+
+            {isSingle && product.description && (
+              <p className="pt-1 text-xs sm:text-sm text-[#444440] dark:text-parchment leading-relaxed line-clamp-2">
+                {product.description}
+              </p>
+            )}
+          </div>
+
+          {/* Compact Price + Action Row Below Details */}
+          <div
+            className={`flex justify-between gap-2 ${
+              isSingle
+                ? 'px-4 sm:px-5 py-3 items-center'
+                : isCompactThree
+                  ? 'px-2 sm:px-3.5 py-2 sm:py-2.5 flex-col items-stretch sm:flex-row sm:items-center gap-1.5 sm:gap-2'
+                  : 'px-3 sm:px-3.5 py-2.5 items-center'
+            }`}
+          >
+            <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 font-mono tabular-nums min-w-0">
+              <span
+                className={`font-semibold text-ink dark:text-cream whitespace-nowrap ${
+                  isSingle ? 'text-base' : isCompactThree ? 'text-xs sm:text-sm' : 'text-sm'
+                }`}
+              >
+                {finalPriceUah} ₴
+              </span>
+              {hasCatalogDiscount && (
+                <>
+                  <span className="text-[11px] text-ink-muted dark:text-stone-warm line-through whitespace-nowrap">
+                    {basePriceUah} ₴
+                  </span>
+                  {!promoText && (
+                    <span className="text-[10px] font-semibold text-pine-deep dark:text-silver whitespace-nowrap">
+                      −{discountPct}%
+                    </span>
+                  )}
+                </>
+              )}
+            </div>
+
+            {unlocked && !isPhysical ? (
+              <button
+                type="button"
+                data-card-action="true"
+                onClick={onOpenLibrary}
+                className={`inline-flex items-center justify-center gap-1 px-2.5 py-1.5 text-[11px] font-semibold text-white bg-pine-deep hover:bg-pine-deep dark:bg-night-soft dark:hover:bg-[#444444] active:scale-[0.96] rounded-lg transition-all duration-150 whitespace-nowrap shrink-0 cursor-pointer ${
+                  isCompactThree ? 'w-full sm:w-auto' : ''
+                }`}
+              >
+                <ExternalLink className="w-3 h-3" strokeWidth={1.8} />
+                <span>Відкрити</span>
+              </button>
+            ) : isInCart ? (
+              <button
+                type="button"
+                data-card-action="true"
+                onClick={onOpenLibrary}
+                className={`inline-flex items-center justify-center gap-1 px-2.5 py-1.5 text-[11px] font-semibold text-ink dark:text-cream bg-paper-warm dark:bg-night-elevated hover:bg-paper-sand dark:hover:bg-night-muted active:scale-[0.96] rounded-lg transition-all duration-150 whitespace-nowrap shrink-0 cursor-pointer ${
+                  isCompactThree ? 'w-full sm:w-auto' : ''
+                }`}
+              >
+                <Check className="w-3 h-3 text-pine-deep dark:text-silver" strokeWidth={2} />
+                <span>У кошику</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                data-card-action="true"
+                onClick={() => onAddToCart(product.id)}
+                className={`btn-editorial-primary px-2 py-1 text-[11px] rounded-lg shrink-0 ${
+                  isCompactThree ? 'w-full sm:w-auto' : ''
+                }`}
+              >
+                <span>{isPhysical ? 'Замовити' : 'Придбати'}</span>
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </m.article>
+  );
+});
+
 export const StoreSection = memo(function StoreSection({
   products,
   cartIds,
@@ -195,13 +433,13 @@ export const StoreSection = memo(function StoreSection({
 
         {products.length > 0 && (
           <div className="mb-4 flex items-center justify-end gap-2.5">
-            <span className="text-xs font-medium text-[#5C5C58] dark:text-[#A8A49B]">
+            <span className="text-xs font-medium text-ink-muted dark:text-sandstone-light">
               Перегляд
             </span>
             <div
               role="group"
               aria-label="Перегляд сітки товарів"
-              className="inline-flex items-center gap-1 p-1 rounded-xl bg-[#EFECE6] dark:bg-[#262626]"
+              className="inline-flex items-center gap-1 p-1 rounded-xl bg-paper-warm dark:bg-night-card"
             >
               {(
                 [
@@ -221,8 +459,8 @@ export const StoreSection = memo(function StoreSection({
                     title={title}
                     className={`min-h-[34px] px-2.5 py-1 rounded-lg text-xs font-medium inline-flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
                       isActive
-                        ? 'bg-white dark:bg-[#323232] text-[#141413] dark:text-[#F4F1EA] shadow-xs'
-                        : 'text-[#5C5C58] dark:text-[#C4BFB4] hover:text-[#141413] dark:hover:text-[#F4F1EA]'
+                        ? 'bg-white dark:bg-night-elevated text-ink dark:text-cream shadow-xs'
+                        : 'text-ink-muted dark:text-parchment hover:text-ink dark:hover:text-cream'
                     }`}
                   >
                     <ColumnsLayoutIcon columns={cols} />
@@ -239,224 +477,21 @@ export const StoreSection = memo(function StoreSection({
           <EmptySectionState />
         ) : (
           <div className={gridClassName}>
-            {products.map((product, index) => {
-              const isInCart = cartIds.includes(product.id);
-              const unlocked = unlockedMap[product.id];
-              const isPhysical = isPhysicalProduct(product.type);
-              const basePriceUah = Math.max(0, Math.round(Number(product.priceUah) || 0));
-              const finalPriceUah = getEffectivePriceUah(product);
-              const discountPct = Math.max(0, Math.min(90, Math.round(Number(product.discountPercent) || 0)));
-              const hasCatalogDiscount = discountPct > 0 && finalPriceUah < basePriceUah;
-              const parsedPromo = parseStoreProductPromo(product);
-              const promoText = product.promoActive
-                ? parsedPromo.cleanPromoLabel || (!parsedPromo.isBestseller && !hasCatalogDiscount ? 'Акція' : '')
-                : '';
-              const hasFutureCountdown = Boolean(
-                product.promoActive &&
-                  parsedPromo.promoEndsAt &&
-                  Number.isFinite(Date.parse(parsedPromo.promoEndsAt)) &&
-                  Date.parse(parsedPromo.promoEndsAt) > Date.now()
-              );
-              const hasPromoBadge =
-                parsedPromo.isBestseller || Boolean(promoText) || hasCatalogDiscount || hasFutureCountdown;
-              const isSingle = viewColumns === 1;
-              const isCompactThree = viewColumns === 3;
-
-              return (
-                <m.article
-                  key={product.id}
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.16, delay: Math.min(index * 0.025, 0.1), ease: [0.16, 1, 0.3, 1] }}
-                  className="perf-card"
-                >
-                  <div
-                    {...getTouchProps(product.id, '[data-card-action]')}
-                    data-touch-active={isTouchActive(product.id) ? 'true' : undefined}
-                    className={`touch-card h-full bg-white dark:bg-[#262626] rounded-xl overflow-hidden flex flex-col ${
-                      isSingle ? 'sm:flex-row' : 'justify-between'
-                    } transition-colors duration-200`}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => handleOpenProduct(product)}
-                      className={`relative block text-left cursor-pointer focus-visible:outline-2 focus-visible:outline-[#2C5937] dark:focus-visible:outline-[#E5E5E5] ${
-                        isSingle ? 'w-full sm:w-[44%] sm:shrink-0' : 'w-full'
-                      }`}
-                      aria-label={`Детальніше про ${product.title}`}
-                    >
-                      <EditorialImage
-                        src={product.coverImage}
-                        alt={product.title}
-                        titleFallback={product.title}
-                        aspectClassName={isSingle ? 'aspect-[4/3] sm:h-full' : 'aspect-[4/3]'}
-                        className="h-full"
-                        priority={index < 3}
-                      />
-                      {hasPromoBadge && (
-                        <div
-                          className={`absolute flex flex-wrap items-center gap-1 pointer-events-none ${
-                            isCompactThree ? 'top-1.5 left-1.5 right-1.5' : 'top-2.5 left-2.5 right-2.5 gap-1.5'
-                          }`}
-                        >
-                          {parsedPromo.isBestseller && (
-                            <span
-                              className={`inline-flex items-center gap-1 rounded-md bg-[#2A2012]/95 text-[#F7DF9C] font-semibold tracking-wide shadow-sm ${
-                                isCompactThree ? 'px-1.5 py-0.5 text-[9px]' : 'px-2 py-0.5 text-[10px]'
-                              }`}
-                            >
-                              <Award className="w-2.5 h-2.5 shrink-0" strokeWidth={2.2} />
-                              <span>Бестселлер</span>
-                            </span>
-                          )}
-                          {promoText && (
-                            <span
-                              className={`inline-flex items-center gap-1 rounded-md bg-[#183624]/95 dark:bg-[#2C2C2C]/95 text-[#E8F1C8] dark:text-[#F4F1EA] font-semibold tracking-wide shadow-sm max-w-full truncate ${
-                                isCompactThree ? 'px-1.5 py-0.5 text-[9px]' : 'px-2 py-0.5 text-[10px]'
-                              }`}
-                            >
-                              <Tag className="w-2.5 h-2.5 shrink-0" strokeWidth={2.2} />
-                              <span className="truncate">{promoText}</span>
-                            </span>
-                          )}
-                          {hasCatalogDiscount && (
-                            <span
-                              className={`inline-flex items-center rounded-md bg-[#BCD369] text-[#122218] dark:bg-[#E5E5E5] dark:text-[#181818] font-mono font-bold tabular-nums shadow-sm ${
-                                isCompactThree ? 'px-1 py-0.5 text-[9px]' : 'px-1.5 py-0.5 text-[10px]'
-                              }`}
-                            >
-                              −{discountPct}%
-                            </span>
-                          )}
-                          {hasFutureCountdown && (
-                            <PromoCountdown
-                              endsAtIso={parsedPromo.promoEndsAt}
-                              variant="card"
-                              isCompact={isCompactThree}
-                            />
-                          )}
-                        </div>
-                      )}
-                    </button>
-
-                    <div className="flex-1 min-w-0 flex flex-col justify-between">
-                      <div className={isSingle ? 'p-4 sm:p-5 space-y-1.5' : isCompactThree ? 'p-2 sm:p-3.5 space-y-1' : 'p-3 sm:p-3.5 space-y-1'}>
-                        <div className="flex items-center justify-between gap-1.5 text-[11px] text-[#5C5C58] dark:text-[#A8A49B]">
-                          <span className="truncate">{getTypeLabel(product.type)}</span>
-
-                          {product.ratingCount > 0 && (
-                            <span className="inline-flex items-center gap-0.5 font-mono text-[#141413] dark:text-[#F4F1EA] tabular-nums shrink-0">
-                              <Star className="w-3 h-3 fill-[#FACC15] text-[#EAB308]" strokeWidth={1.75} />
-                              <span>{product.ratingAverage.toFixed(1)}</span>
-                            </span>
-                          )}
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={() => handleOpenProduct(product)}
-                          className="w-full text-left cursor-pointer"
-                        >
-                          <h3
-                            className={`font-serif font-semibold text-[#141413] dark:text-[#F4F1EA] hover:text-[#2C5937] dark:hover:text-[#FFFFFF] leading-snug line-clamp-2 transition-colors duration-150 ${
-                              isSingle
-                                ? 'text-lg sm:text-xl'
-                                : isCompactThree
-                                  ? 'text-xs sm:text-base'
-                                  : 'text-base sm:text-lg'
-                            }`}
-                          >
-                            {product.title}
-                          </h3>
-                        </button>
-
-                        {product.subtitle && (
-                          <p className="text-[11px] text-[#5C5C58] dark:text-[#A8A49B] truncate">
-                            {product.subtitle}
-                          </p>
-                        )}
-
-                        {isSingle && product.description && (
-                          <p className="pt-1 text-xs sm:text-sm text-[#444440] dark:text-[#C5C1B8] leading-relaxed line-clamp-2">
-                            {product.description}
-                          </p>
-                        )}
-                      </div>
-
-                      {/* Compact Price + Action Row Below Details */}
-                      <div
-                        className={`flex justify-between gap-2 ${
-                          isSingle
-                            ? 'px-4 sm:px-5 py-3 items-center'
-                            : isCompactThree
-                              ? 'px-2 sm:px-3.5 py-2 sm:py-2.5 flex-col items-stretch sm:flex-row sm:items-center gap-1.5 sm:gap-2'
-                              : 'px-3 sm:px-3.5 py-2.5 items-center'
-                        }`}
-                      >
-                        <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 font-mono tabular-nums min-w-0">
-                          <span
-                            className={`font-semibold text-[#141413] dark:text-[#F4F1EA] whitespace-nowrap ${
-                              isSingle ? 'text-base' : isCompactThree ? 'text-xs sm:text-sm' : 'text-sm'
-                            }`}
-                          >
-                            {finalPriceUah} ₴
-                          </span>
-                          {hasCatalogDiscount && (
-                            <>
-                              <span className="text-[11px] text-[#5C5C58] dark:text-[#8D8980] line-through whitespace-nowrap">
-                                {basePriceUah} ₴
-                              </span>
-                              {!promoText && (
-                                <span className="text-[10px] font-semibold text-[#1E563B] dark:text-[#E5E5E5] whitespace-nowrap">
-                                  −{discountPct}%
-                                </span>
-                              )}
-                            </>
-                          )}
-                        </div>
-
-                        {unlocked && !isPhysical ? (
-                          <button
-                            type="button"
-                            data-card-action="true"
-                            onClick={onOpenLibrary}
-                            className={`inline-flex items-center justify-center gap-1 px-2.5 py-1.5 text-[11px] font-semibold text-white bg-[#1E563B] hover:bg-[#16422D] dark:bg-[#363636] dark:hover:bg-[#444444] active:scale-[0.96] rounded-lg transition-all duration-150 whitespace-nowrap shrink-0 cursor-pointer ${
-                              isCompactThree ? 'w-full sm:w-auto' : ''
-                            }`}
-                          >
-                            <ExternalLink className="w-3 h-3" strokeWidth={1.8} />
-                            <span>Відкрити</span>
-                          </button>
-                        ) : isInCart ? (
-                          <button
-                            type="button"
-                            data-card-action="true"
-                            onClick={onOpenLibrary}
-                            className={`inline-flex items-center justify-center gap-1 px-2.5 py-1.5 text-[11px] font-semibold text-[#141413] dark:text-[#F4F1EA] bg-[#EFECE6] dark:bg-[#323232] hover:bg-[#E4E0D6] dark:hover:bg-[#3D3D3D] active:scale-[0.96] rounded-lg transition-all duration-150 whitespace-nowrap shrink-0 cursor-pointer ${
-                              isCompactThree ? 'w-full sm:w-auto' : ''
-                            }`}
-                          >
-                            <Check className="w-3 h-3 text-[#1E563B] dark:text-[#E5E5E5]" strokeWidth={2} />
-                            <span>У кошику</span>
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            data-card-action="true"
-                            onClick={() => onAddToCart(product.id)}
-                            className={`btn-editorial-primary px-2 py-1 text-[11px] rounded-lg shrink-0 ${
-                              isCompactThree ? 'w-full sm:w-auto' : ''
-                            }`}
-                          >
-                            <span>{isPhysical ? 'Замовити' : 'Придбати'}</span>
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </m.article>
-              );
-            })}
+            {products.map((product, index) => (
+              <StoreProductCard
+                key={product.id}
+                product={product}
+                index={index}
+                isInCart={cartIds.includes(product.id)}
+                unlocked={Boolean(unlockedMap[product.id])}
+                viewColumns={viewColumns}
+                touchProps={getTouchProps(product.id, '[data-card-action]')}
+                isTouchActive={isTouchActive(product.id)}
+                onOpenProduct={handleOpenProduct}
+                onOpenLibrary={onOpenLibrary}
+                onAddToCart={onAddToCart}
+              />
+            ))}
           </div>
         )}
       </div>
@@ -469,7 +504,7 @@ export const StoreSection = memo(function StoreSection({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.18 }}
-            className="fixed inset-0 z-50 bg-[#141413]/55 dark:bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 md:p-6"
+            className="fixed inset-0 z-50 bg-ink/55 dark:bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 md:p-6"
             onClick={handleCloseProduct}
             role="dialog"
             aria-modal="true"
@@ -480,11 +515,11 @@ export const StoreSection = memo(function StoreSection({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.97, y: 12 }}
               transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-              className="bg-[#F9F9F7] dark:bg-[#202020] rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-xl will-change-transform text-[#141413] dark:text-[#F4F1EA]"
+              className="bg-paper dark:bg-night-panel rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-xl will-change-transform text-ink dark:text-cream"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="grid grid-cols-1 md:grid-cols-12">
-                <div className="md:col-span-5 bg-[#EFECE6] dark:bg-[#262626] p-6 flex flex-col justify-between">
+                <div className="md:col-span-5 bg-paper-warm dark:bg-night-card p-6 flex flex-col justify-between">
                   <EditorialImage
                     src={inspectProduct.coverImage}
                     alt={inspectProduct.title}
@@ -493,22 +528,22 @@ export const StoreSection = memo(function StoreSection({
                     className="rounded-xl"
                   />
 
-                  <div className="mt-5 pt-4 text-xs text-[#444440] dark:text-[#A8A49B] space-y-1.5">
+                  <div className="mt-5 pt-4 text-xs text-[#444440] dark:text-sandstone-light space-y-1.5">
                     {inspectProduct.type === 'wip_gdoc' && (
                       <>
-                        <p className="font-semibold text-[#141413] dark:text-[#F4F1EA]">Формат: Google Документи</p>
+                        <p className="font-semibold text-ink dark:text-cream">Формат: Google Документи</p>
                         <p className="tabular-nums">Статус: {inspectProduct.progressLabel}</p>
                       </>
                     )}
                     {inspectProduct.type === 'ebook' && (
                       <>
-                        <p className="font-semibold text-[#141413] dark:text-[#F4F1EA]">Формати: {inspectProduct.formats}</p>
+                        <p className="font-semibold text-ink dark:text-cream">Формати: {inspectProduct.formats}</p>
                         <p className="tabular-nums">Обсяг: {inspectProduct.pages} сторінок</p>
                       </>
                     )}
                     {inspectProduct.type === 'paper_book' && (
                       <>
-                        <p className="font-semibold text-[#141413] dark:text-[#F4F1EA]">
+                        <p className="font-semibold text-ink dark:text-cream">
                           {inspectProduct.binding || 'Тверда палітурка'}
                         </p>
                         <p className="tabular-nums">Обсяг: {inspectProduct.pages || 200} сторінок</p>
@@ -516,13 +551,13 @@ export const StoreSection = memo(function StoreSection({
                     )}
                     {inspectProduct.type === 'poem_frame' && (
                       <>
-                        <p className="font-semibold text-[#141413] dark:text-[#F4F1EA]">Скляна антирамка</p>
+                        <p className="font-semibold text-ink dark:text-cream">Скляна антирамка</p>
                         <p>{inspectProduct.dimensions || '21 × 30 см (А4)'}</p>
                       </>
                     )}
                     {inspectProduct.type === 'painting' && (
                       <>
-                        <p className="font-semibold text-[#141413] dark:text-[#F4F1EA]">Оригінальна картина</p>
+                        <p className="font-semibold text-ink dark:text-cream">Оригінальна картина</p>
                         {inspectProduct.dimensions && <p>{inspectProduct.dimensions}</p>}
                         {inspectProduct.material && <p>{inspectProduct.material}</p>}
                       </>
@@ -534,10 +569,10 @@ export const StoreSection = memo(function StoreSection({
                   <div>
                     <div className="flex items-start justify-between gap-4 mb-4">
                       <div>
-                        <p className="text-xs text-[#5C5C58] dark:text-[#A8A49B] mb-1">{inspectProduct.subtitle}</p>
+                        <p className="text-xs text-ink-muted dark:text-sandstone-light mb-1">{inspectProduct.subtitle}</p>
                         <h3
                           id="product-modal-title"
-                          className="font-serif text-3xl font-semibold tracking-[-0.015em] text-[#141413] dark:text-[#F4F1EA] leading-tight"
+                          className="font-serif text-3xl font-semibold tracking-[-0.015em] text-ink dark:text-cream leading-tight"
                         >
                           {inspectProduct.title}
                         </h3>
@@ -570,13 +605,13 @@ export const StoreSection = memo(function StoreSection({
                                 </span>
                               )}
                               {modalPromoText && (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-[#183624] text-[#E8F1C8] dark:bg-[#323232] dark:text-[#F4F1EA] text-[11px] font-semibold">
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-pine-dark text-[#E8F1C8] dark:bg-night-elevated dark:text-cream text-[11px] font-semibold">
                                   <Tag className="w-3 h-3 shrink-0" strokeWidth={2} />
                                   <span>{modalPromoText}</span>
                                 </span>
                               )}
                               {(inspectProduct.discountPercent ?? 0) > 0 && (
-                                <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-[#BCD369] text-[#122218] dark:bg-[#E5E5E5] dark:text-[#181818] font-mono text-[11px] font-bold tabular-nums">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-[#BCD369] text-[#122218] dark:bg-silver dark:text-night font-mono text-[11px] font-bold tabular-nums">
                                   −{Math.max(0, Math.min(90, Math.round(Number(inspectProduct.discountPercent) || 0)))}%
                                 </span>
                               )}
@@ -594,20 +629,20 @@ export const StoreSection = memo(function StoreSection({
                       <button
                         type="button"
                         onClick={handleCloseProduct}
-                        className="w-9 h-9 inline-flex items-center justify-center text-[#5C5C58] dark:text-[#A8A49B] hover:text-[#141413] dark:hover:text-[#F4F1EA] hover:bg-[#EFECE6] dark:hover:bg-[#323232] active:scale-[0.96] rounded-lg transition-all duration-150 cursor-pointer shrink-0"
+                        className="w-9 h-9 inline-flex items-center justify-center text-ink-muted dark:text-sandstone-light hover:text-ink dark:hover:text-cream hover:bg-paper-warm dark:hover:bg-night-elevated active:scale-[0.96] rounded-lg transition-all duration-150 cursor-pointer shrink-0"
                         aria-label="Закрити вікно"
                       >
                         <X className="w-5 h-5" />
                       </button>
                     </div>
 
-                    <p className="text-sm text-[#444440] dark:text-[#C5C1B8] leading-relaxed mb-6">
+                    <p className="text-sm text-[#444440] dark:text-parchment leading-relaxed mb-6">
                       {inspectProduct.description}
                     </p>
 
-                    <div className="p-5 bg-white dark:bg-[#262626] rounded-xl mb-6">
-                      <p className="text-xs font-medium text-[#5C5C58] dark:text-[#A8A49B] mb-2">Ознайомчий фрагмент</p>
-                      <p className="font-serif text-lg italic text-[#141413] dark:text-[#F4F1EA] leading-relaxed">
+                    <div className="p-5 bg-white dark:bg-night-card rounded-xl mb-6">
+                      <p className="text-xs font-medium text-ink-muted dark:text-sandstone-light mb-2">Ознайомчий фрагмент</p>
+                      <p className="font-serif text-lg italic text-ink dark:text-cream leading-relaxed">
                         {inspectProduct.sampleExcerpt}
                       </p>
                     </div>
@@ -624,15 +659,15 @@ export const StoreSection = memo(function StoreSection({
                       const hasModalDiscount = modalDiscountPct > 0 && modalFinalPrice < modalBasePrice;
                       return (
                         <div className="flex items-baseline gap-2.5 font-mono tabular-nums">
-                          <span className="text-2xl font-semibold text-[#141413] dark:text-[#F4F1EA]">
+                          <span className="text-2xl font-semibold text-ink dark:text-cream">
                             {modalFinalPrice} ₴
                           </span>
                           {hasModalDiscount && (
                             <>
-                              <span className="text-sm text-[#5C5C58] dark:text-[#8D8980] line-through">
+                              <span className="text-sm text-ink-muted dark:text-stone-warm line-through">
                                 {modalBasePrice} ₴
                               </span>
-                              <span className="text-xs font-semibold text-[#1E563B] dark:text-[#E5E5E5]">
+                              <span className="text-xs font-semibold text-pine-deep dark:text-silver">
                                 −{modalDiscountPct}%
                               </span>
                             </>
@@ -648,7 +683,7 @@ export const StoreSection = memo(function StoreSection({
                           handleCloseProduct();
                           onOpenLibrary();
                         }}
-                        className="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-xs font-semibold text-white bg-[#1E563B] hover:bg-[#16422D] dark:bg-[#363636] dark:hover:bg-[#444444] active:scale-[0.98] rounded-lg transition-all duration-150 whitespace-nowrap shrink-0 cursor-pointer"
+                        className="inline-flex items-center justify-center gap-2 px-5 py-2.5 text-xs font-semibold text-white bg-pine-deep hover:bg-pine-deep dark:bg-night-soft dark:hover:bg-[#444444] active:scale-[0.98] rounded-lg transition-all duration-150 whitespace-nowrap shrink-0 cursor-pointer"
                       >
                         <ExternalLink className="w-4 h-4" />
                         <span>Перейти до мого доступу</span>

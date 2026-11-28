@@ -282,7 +282,7 @@ export const SiteBottomNav = memo(function SiteBottomNav({
   return (
     <nav
       aria-label="Нижня панель навігації"
-      className="fixed bottom-0 left-0 right-0 z-40 rounded-t-[20px] bg-[#18181A] dark:bg-[#18181A] shadow-[0_-10px_30px_-18px_rgba(0,0,0,0.6)] py-2 px-3 sm:px-6 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+      className="fixed bottom-0 left-0 right-0 z-40 rounded-t-[20px] bg-night dark:bg-night shadow-[0_-10px_30px_-18px_rgba(0,0,0,0.6)] py-2 px-3 sm:px-6 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
     >
       <LayoutGroup id="site-bottom-nav">
         <div

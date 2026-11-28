@@ -93,7 +93,7 @@ function WeeklyTrackThumb({
         loading="lazy"
         decoding="async"
         onError={() => setFailed(true)}
-        className="w-10 h-10 rounded-lg object-cover shrink-0 bg-[#262626]"
+        className="w-10 h-10 rounded-lg object-cover shrink-0 bg-night-card"
       />
     );
   }
@@ -101,7 +101,7 @@ function WeeklyTrackThumb({
   return (
     <div
       aria-hidden="true"
-      className="w-10 h-10 rounded-lg shrink-0 flex items-center justify-center bg-[#E4DFD4] dark:bg-[#323232] text-[#5C5C58] dark:text-[#C4BFB4]"
+      className="w-10 h-10 rounded-lg shrink-0 flex items-center justify-center bg-paper-sand dark:bg-night-elevated text-ink-muted dark:text-parchment"
     >
       <Music2 className="w-4 h-4" strokeWidth={1.65} />
     </div>
@@ -681,7 +681,7 @@ export function WeeklyMusicBox({
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.22 }}
-          className="rounded-[26px] bg-[#EFECE4]/90 dark:bg-[#222222] p-5 sm:p-6 space-y-4 shadow-[0_18px_42px_-28px_rgba(20,30,22,0.18)] dark:shadow-[0_24px_54px_-28px_rgba(0,0,0,0.75)]"
+          className="rounded-[26px] bg-paper-warm/90 dark:bg-night-panel p-5 sm:p-6 space-y-4 shadow-[0_18px_42px_-28px_rgba(20,30,22,0.18)] dark:shadow-[0_24px_54px_-28px_rgba(0,0,0,0.75)]"
         >
           {/* Quiet week picker + close */}
           <div className="flex items-center justify-between gap-2">
@@ -690,13 +690,13 @@ export function WeeklyMusicBox({
               aria-label="Тиждень"
               value={draftWeekKey}
               onChange={(e) => setDraftWeekKey(e.target.value)}
-              className="rounded-lg bg-[#E4DFD4]/80 dark:bg-[#2C2C2C] px-2.5 py-1.5 text-xs font-mono text-[#3A3D38] dark:text-[#D4CFC4] border-0 focus:outline-none"
+              className="rounded-lg bg-paper-sand/80 dark:bg-night-surface px-2.5 py-1.5 text-xs font-mono text-[#3A3D38] dark:text-[#D4CFC4] border-0 focus:outline-none"
             />
             <button
               type="button"
               onClick={closeEditor}
               aria-label="Закрити"
-              className="p-1.5 rounded-lg text-[#5C5C58] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
+              className="p-1.5 rounded-lg text-ink-muted dark:text-sandstone hover:text-ink dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
@@ -708,7 +708,7 @@ export function WeeklyMusicBox({
             value={draftText}
             onChange={(e) => setDraftText(e.target.value)}
             placeholder="Кілька слів..."
-            className="w-full rounded-xl bg-white/75 dark:bg-[#2A2A2A] px-3.5 py-3 text-sm leading-[1.7] text-[#141413] dark:text-[#F4F1EA] placeholder:text-[#7A7A73] dark:placeholder:text-[#7E7B73] resize-y focus:outline-none"
+            className="w-full rounded-xl bg-white/75 dark:bg-night-lift px-3.5 py-3 text-sm leading-[1.7] text-ink dark:text-cream placeholder:text-ink-subtle dark:placeholder:text-ink-subtle resize-y focus:outline-none"
           />
 
           {/* Photos uploader & preview */}
@@ -726,7 +726,7 @@ export function WeeklyMusicBox({
                 type="button"
                 disabled={uploadingPhotos || draftPhotos.length >= 12}
                 onClick={() => fileInputRef.current?.click()}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#E4DFD4]/90 dark:bg-[#2E2E2E] hover:bg-[#DBD5C8] dark:hover:bg-[#383838] text-xs font-medium text-[#1F211E] dark:text-[#F4F1EA] transition-colors cursor-pointer disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-paper-sand/90 dark:bg-night-hover hover:bg-paper-stone dark:hover:bg-night-soft text-xs font-medium text-[#1F211E] dark:text-cream transition-colors cursor-pointer disabled:opacity-50"
               >
                 {uploadingPhotos ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -748,13 +748,13 @@ export function WeeklyMusicBox({
                     }
                   }}
                   placeholder="або URL фото..."
-                  className="flex-1 rounded-xl bg-white/65 dark:bg-[#2A2A2A] px-2.5 py-1.5 text-xs text-[#141413] dark:text-[#F4F1EA] placeholder:text-[#7A7A73] focus:outline-none"
+                  className="flex-1 rounded-xl bg-white/65 dark:bg-night-lift px-2.5 py-1.5 text-xs text-ink dark:text-cream placeholder:text-ink-subtle focus:outline-none"
                 />
                 {photoUrlInput.trim() && (
                   <button
                     type="button"
                     onClick={handleAddPhotoUrl}
-                    className="px-2.5 py-1.5 rounded-xl bg-[#2C5937] dark:bg-[#3A3A3A] text-white text-xs cursor-pointer"
+                    className="px-2.5 py-1.5 rounded-xl bg-pine dark:bg-night-soft text-white text-xs cursor-pointer"
                   >
                     +
                   </button>
@@ -833,13 +833,13 @@ export function WeeklyMusicBox({
                 }}
                 placeholder="https://soundcloud.com/... (трек або плейлист)"
                 disabled={resolvingSc || !isOnline}
-                className="flex-1 min-h-[38px] rounded-xl bg-white/75 dark:bg-[#2A2A2A] px-3 py-2 font-mono text-xs text-[#141413] dark:text-[#F4F1EA] placeholder:text-[#7A7A73] resize-y focus:outline-none"
+                className="flex-1 min-h-[38px] rounded-xl bg-white/75 dark:bg-night-lift px-3 py-2 font-mono text-xs text-ink dark:text-cream placeholder:text-ink-subtle resize-y focus:outline-none"
               />
               <button
                 type="button"
                 disabled={resolvingSc || !scInput.trim() || !isOnline}
                 onClick={() => void handleImportSoundCloud()}
-                className="px-3.5 py-2 rounded-xl bg-[#E4DFD4] dark:bg-[#343434] hover:bg-[#DBD4C6] dark:hover:bg-[#3F3F3F] text-xs font-medium text-[#141413] dark:text-[#F4F1EA] whitespace-nowrap cursor-pointer disabled:opacity-50 inline-flex items-center gap-1.5"
+                className="px-3.5 py-2 rounded-xl bg-paper-sand dark:bg-night-elevated hover:bg-paper-stone dark:hover:bg-night-muted text-xs font-medium text-ink dark:text-cream whitespace-nowrap cursor-pointer disabled:opacity-50 inline-flex items-center gap-1.5"
               >
                 {resolvingSc && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                 <span>Імпорт</span>
@@ -847,7 +847,7 @@ export function WeeklyMusicBox({
             </div>
 
             {draftTracks.length > 0 && (
-              <div className="rounded-xl bg-white/50 dark:bg-[#1B1B1B]/65 divide-y divide-black/5 dark:divide-white/5 overflow-hidden">
+              <div className="rounded-xl bg-white/50 dark:bg-night-deep/65 divide-y divide-black/5 dark:divide-white/5 overflow-hidden">
                 {draftTracks.map((track, idx) => (
                   <div
                     key={track.id}
@@ -855,7 +855,7 @@ export function WeeklyMusicBox({
                   >
                     <WeeklyTrackThumb artworkUrl={track.artworkUrl} title={track.title} />
                     <div className="min-w-0 flex-1">
-                      <p className="text-xs font-medium text-[#141413] dark:text-[#F4F1EA] truncate">
+                      <p className="text-xs font-medium text-ink dark:text-cream truncate">
                         {track.title}
                       </p>
                       <p className="text-[11px] text-[#6B6B65] dark:text-[#9E998E] truncate">
@@ -868,7 +868,7 @@ export function WeeklyMusicBox({
                           type="button"
                           onClick={() => moveDraftTrack(idx, -1)}
                           aria-label="Вгору"
-                          className="p-1 rounded-md text-[#5C5C58] dark:text-[#A6A196] hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer"
+                          className="p-1 rounded-md text-ink-muted dark:text-sandstone hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer"
                         >
                           <ArrowUp className="w-3.5 h-3.5" />
                         </button>
@@ -878,7 +878,7 @@ export function WeeklyMusicBox({
                           type="button"
                           onClick={() => moveDraftTrack(idx, 1)}
                           aria-label="Вниз"
-                          className="p-1 rounded-md text-[#5C5C58] dark:text-[#A6A196] hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer"
+                          className="p-1 rounded-md text-ink-muted dark:text-sandstone hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer"
                         >
                           <ArrowDown className="w-3.5 h-3.5" />
                         </button>
@@ -904,7 +904,7 @@ export function WeeklyMusicBox({
             <p
               className={`text-xs ${
                 editorMessage.type === 'ok'
-                  ? 'text-[#2B5434] dark:text-[#D4CFC4]'
+                  ? 'text-pine dark:text-[#D4CFC4]'
                   : 'text-rose-700 dark:text-rose-400'
               }`}
             >
@@ -933,11 +933,11 @@ export function WeeklyMusicBox({
         </m.div>
       ) : !activeSelection ? (
         isAdmin && (
-          <div className="rounded-[26px] border border-dashed border-black/15 dark:border-white/12 bg-[#EFECE4]/45 dark:bg-[#222222]/55 p-6 flex items-center justify-center">
+          <div className="rounded-[26px] border border-dashed border-black/15 dark:border-white/12 bg-paper-warm/45 dark:bg-night-panel/55 p-6 flex items-center justify-center">
             <button
               type="button"
               onClick={openCreateEditor}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#EFECE4] dark:bg-[#2E2E2E] hover:bg-[#E4DFD4] dark:hover:bg-[#383838] text-xs font-medium text-[#1F211E] dark:text-[#F4F1EA] transition-colors cursor-pointer"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-paper-warm dark:bg-night-hover hover:bg-paper-sand dark:hover:bg-night-soft text-xs font-medium text-[#1F211E] dark:text-cream transition-colors cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>Додати тижневу підбірку</span>
@@ -950,7 +950,7 @@ export function WeeklyMusicBox({
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-          className="rounded-[26px] bg-[#EFECE4]/85 dark:bg-[#222222] p-5 sm:p-6 space-y-4 shadow-[0_18px_42px_-28px_rgba(20,30,22,0.18)] dark:shadow-[0_24px_54px_-28px_rgba(0,0,0,0.75)]"
+          className="rounded-[26px] bg-paper-warm/85 dark:bg-night-panel p-5 sm:p-6 space-y-4 shadow-[0_18px_42px_-28px_rgba(20,30,22,0.18)] dark:shadow-[0_24px_54px_-28px_rgba(0,0,0,0.75)]"
         >
           {/* Cozy Photos (1 or multiple, no header) */}
           {photos.length === 1 && (
@@ -1040,8 +1040,8 @@ export function WeeklyMusicBox({
                     key={track.id}
                     className={`rounded-xl px-3 py-2 transition-colors ${
                       isCurrent && (isPlaying || isLoadingTrack || iframeMounted)
-                        ? 'bg-white/75 dark:bg-[#2D2D2D]'
-                        : 'bg-white/40 dark:bg-[#292929]/70 hover:bg-white/65 dark:hover:bg-[#2E2E2E]'
+                        ? 'bg-white/75 dark:bg-night-surface'
+                        : 'bg-white/40 dark:bg-night-lift/70 hover:bg-white/65 dark:hover:bg-night-hover'
                     }`}
                   >
                     <div className="flex items-center gap-2.5">
@@ -1049,7 +1049,7 @@ export function WeeklyMusicBox({
                         type="button"
                         onClick={() => handleTrackPlayToggle(idx)}
                         aria-label={isCurrentPlaying ? `Пауза ${track.title}` : `Відтворити ${track.title}`}
-                        className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center bg-[#2C5937] dark:bg-[#3A3A3A] text-white hover:brightness-110 active:scale-95 transition-all cursor-pointer"
+                        className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center bg-pine dark:bg-night-soft text-white hover:brightness-110 active:scale-95 transition-all cursor-pointer"
                       >
                         {isCurrentLoading ? (
                           <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -1067,10 +1067,10 @@ export function WeeklyMusicBox({
                         onClick={() => handleTrackPlayToggle(idx)}
                         className="min-w-0 flex-1 text-left cursor-pointer"
                       >
-                        <p className="text-[13px] font-medium text-[#141413] dark:text-[#F4F1EA] truncate">
+                        <p className="text-[13px] font-medium text-ink dark:text-cream truncate">
                           {track.title}
                         </p>
-                        <p className="text-[11px] text-[#6B6B65] dark:text-[#A6A196] truncate">
+                        <p className="text-[11px] text-[#6B6B65] dark:text-sandstone truncate">
                           {track.artist}
                         </p>
                       </button>
@@ -1081,7 +1081,7 @@ export function WeeklyMusicBox({
                           target="_blank"
                           rel="noopener noreferrer"
                           aria-label={`Відкрити ${track.title} на SoundCloud`}
-                          className="p-1.5 rounded-lg text-[#6B6B65] dark:text-[#9E998E] hover:text-[#141413] dark:hover:text-white transition-colors shrink-0"
+                          className="p-1.5 rounded-lg text-[#6B6B65] dark:text-[#9E998E] hover:text-ink dark:hover:text-white transition-colors shrink-0"
                         >
                           <ExternalLink className="w-3.5 h-3.5" />
                         </a>
@@ -1101,7 +1101,7 @@ export function WeeklyMusicBox({
                           value={Math.min(positionMs, Math.max(1000, durationMs || 1000))}
                           disabled={!durationMs}
                           onChange={(e) => handleSeek(Number(e.target.value))}
-                          className="flex-1 h-1 rounded-full appearance-none bg-black/15 dark:bg-white/15 accent-[#2C5937] dark:accent-[#E5E5E5] cursor-pointer"
+                          className="flex-1 h-1 rounded-full appearance-none bg-black/15 dark:bg-white/15 accent-pine dark:accent-silver cursor-pointer"
                         />
                         <span className="font-mono text-[10px] text-[#6B6B65] dark:text-[#9E998E] tabular-nums w-8 text-right shrink-0">
                           {durationMs > 0 ? formatDurationMs(durationMs) : '--:--'}
@@ -1204,7 +1204,7 @@ export function WeeklyMusicBox({
           role="dialog"
           aria-modal="true"
           onClick={() => setLightboxIndex(null)}
-          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xs flex items-center justify-center p-4 sm:p-8"
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 sm:p-8"
         >
           <button
             type="button"

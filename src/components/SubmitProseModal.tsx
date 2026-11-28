@@ -37,13 +37,13 @@ const MAX_MOODBOARD_PHOTOS = 6;
 const GENRE_PRESETS = ['Оповідання', 'Новела', 'Есей', 'Повість', 'Мініатюра'] as const;
 
 const INPUT_CLASS =
-  'w-full px-3.5 py-2.5 text-sm bg-[#EFECE6] dark:bg-[#1B1B1B] rounded-xl text-[#141413] dark:text-[#EDEAE1] placeholder:text-[#787872] focus:outline-none focus:bg-[#FAF9F5] dark:focus:bg-[#2E2E2E] transition-colors';
+  'w-full px-3.5 py-2.5 text-sm bg-paper-warm dark:bg-night-deep rounded-xl text-ink dark:text-cream-soft placeholder:text-ink-subtle focus:outline-none focus:bg-paper dark:focus:bg-night-hover transition-colors';
 
 const INPUT_SM_CLASS =
-  'w-full px-3 py-2 text-xs bg-[#EFECE6] dark:bg-[#1B1B1B] rounded-lg text-[#141413] dark:text-[#EDEAE1] placeholder:text-[#787872] focus:outline-none focus:bg-[#FAF9F5] dark:focus:bg-[#2E2E2E] transition-colors';
+  'w-full px-3 py-2 text-xs bg-paper-warm dark:bg-night-deep rounded-lg text-ink dark:text-cream-soft placeholder:text-ink-subtle focus:outline-none focus:bg-paper dark:focus:bg-night-hover transition-colors';
 
 const LABEL_CLASS =
-  'block text-xs font-medium text-[#5C5C58] dark:text-[#A6A196] mb-1.5';
+  'block text-xs font-medium text-ink-muted dark:text-sandstone mb-1.5';
 
 export function SubmitProseModal({
   isOpen,
@@ -329,23 +329,23 @@ export function SubmitProseModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 bg-[#141413]/55 dark:bg-black/75 backdrop-blur-xs flex items-center justify-center p-0 sm:p-4"
+      className="fixed inset-0 z-50 bg-ink/55 dark:bg-black/75 backdrop-blur-xs flex items-center justify-center p-0 sm:p-4"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-label="Запропонувати прозу"
     >
       <div
-        className="relative bg-white dark:bg-[#222222] sm:rounded-2xl w-full max-w-2xl h-full sm:h-auto sm:max-h-[90vh] flex flex-col overflow-hidden shadow-2xl text-[#141413] dark:text-[#EDEAE1]"
+        className="relative bg-white dark:bg-night-panel sm:rounded-2xl w-full max-w-2xl h-full sm:h-auto sm:max-h-[90vh] flex flex-col overflow-hidden shadow-2xl text-ink dark:text-cream-soft"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <header className="px-5 sm:px-6 py-4 flex items-center justify-between gap-3 bg-[#F5F4EE] dark:bg-[#181818] shrink-0">
+        <header className="px-5 sm:px-6 py-4 flex items-center justify-between gap-3 bg-paper-oat dark:bg-night shrink-0">
           <div className="min-w-0">
-            <h3 className="text-base sm:text-lg font-semibold text-[#141413] dark:text-[#EDEAE1] truncate">
+            <h3 className="text-base sm:text-lg font-semibold text-ink dark:text-cream-soft truncate">
               Запропонувати прозу
             </h3>
-            <p className="text-xs text-[#5C5C58] dark:text-[#A6A196] truncate">
+            <p className="text-xs text-ink-muted dark:text-sandstone truncate">
               Після перевірки автором твір з’явиться у вкладці «Стрічка»
             </p>
           </div>
@@ -353,14 +353,14 @@ export function SubmitProseModal({
             type="button"
             onClick={onClose}
             aria-label="Закрити вікно"
-            className="p-2 rounded-lg text-[#5C5C58] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-[#EDEAE1] hover:bg-[#EAE7DF] dark:hover:bg-[#323232] cursor-pointer shrink-0"
+            className="p-2 rounded-lg text-ink-muted dark:text-sandstone hover:text-ink dark:hover:text-cream-soft hover:bg-paper-sand dark:hover:bg-night-elevated cursor-pointer shrink-0"
           >
             <X className="w-5 h-5" />
           </button>
         </header>
 
         {/* Tabs */}
-        <div className="px-5 sm:px-6 pt-3 pb-2 flex items-center justify-between gap-2 bg-white dark:bg-[#222222] shrink-0 border-b border-[#EFECE6] dark:border-[#2E2E2E]">
+        <div className="px-5 sm:px-6 pt-3 pb-2 flex items-center justify-between gap-2 bg-white dark:bg-night-panel shrink-0 border-b border-paper-warm dark:border-night-hover">
           <div className="flex items-center gap-1.5">
             <button
               type="button"
@@ -371,7 +371,7 @@ export function SubmitProseModal({
               className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
                 activeTab === 'form'
                   ? 'bg-pear-pine-gradient text-white font-semibold'
-                  : 'text-[#5C5C58] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-[#EDEAE1] hover:bg-[#F5F4EE] dark:hover:bg-[#323232]'
+                  : 'text-ink-muted dark:text-sandstone hover:text-ink dark:hover:text-cream-soft hover:bg-paper-oat dark:hover:bg-night-elevated'
               }`}
             >
               Надіслати прозу
@@ -385,7 +385,7 @@ export function SubmitProseModal({
               className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
                 activeTab === 'mine'
                   ? 'bg-pear-pine-gradient text-white font-semibold'
-                  : 'text-[#5C5C58] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-[#EDEAE1] hover:bg-[#F5F4EE] dark:hover:bg-[#323232]'
+                  : 'text-ink-muted dark:text-sandstone hover:text-ink dark:hover:text-cream-soft hover:bg-paper-oat dark:hover:bg-night-elevated'
               }`}
             >
               <span>Мої заявки</span>
@@ -403,7 +403,7 @@ export function SubmitProseModal({
               onClick={() => void loadMySubmissions()}
               disabled={loadingSubmissions}
               aria-label="Оновити заявки"
-              className="p-1.5 rounded-lg text-[#5C5C58] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-[#EDEAE1] hover:bg-[#F5F4EE] dark:hover:bg-[#323232] cursor-pointer disabled:opacity-50"
+              className="p-1.5 rounded-lg text-ink-muted dark:text-sandstone hover:text-ink dark:hover:text-cream-soft hover:bg-paper-oat dark:hover:bg-night-elevated cursor-pointer disabled:opacity-50"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${loadingSubmissions ? 'animate-spin' : ''}`} />
             </button>
@@ -418,7 +418,7 @@ export function SubmitProseModal({
               className={`px-4 py-2.5 rounded-xl flex items-center justify-between gap-3 text-xs font-medium ${
                 feedback.isError
                   ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300'
-                  : 'bg-[#F2F6EE] dark:bg-[#323232] text-[#1E3A29] dark:text-[#F4F1EA]'
+                  : 'bg-[#F2F6EE] dark:bg-night-elevated text-pine-dark dark:text-cream'
               }`}
             >
               <span>{feedback.text}</span>
@@ -434,8 +434,8 @@ export function SubmitProseModal({
           )}
 
           {!guestUser ? (
-            <div className="py-10 text-center space-y-3 bg-[#FAF9F5] dark:bg-[#262626] rounded-xl p-6">
-              <p className="text-sm text-[#5C5C58] dark:text-[#A6A196]">
+            <div className="py-10 text-center space-y-3 bg-paper dark:bg-night-card rounded-xl p-6">
+              <p className="text-sm text-ink-muted dark:text-sandstone">
                 Щоб запропонувати свою прозу, увійдіть на сайт.
               </p>
               <button
@@ -496,8 +496,8 @@ export function SubmitProseModal({
                         onClick={() => setGenre(preset)}
                         className={`px-2 py-0.5 rounded-md text-[11px] font-medium cursor-pointer transition-colors ${
                           genre.trim() === preset
-                            ? 'bg-[#EAE7DF] dark:bg-[#323232] text-[#141413] dark:text-[#EDEAE1] font-semibold'
-                            : 'bg-[#FAF9F5] dark:bg-[#262626] text-[#5C5C58] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-[#EDEAE1]'
+                            ? 'bg-paper-sand dark:bg-night-elevated text-ink dark:text-cream-soft font-semibold'
+                            : 'bg-paper dark:bg-night-card text-ink-muted dark:text-sandstone hover:text-ink dark:hover:text-cream-soft'
                         }`}
                       >
                         {preset}
@@ -538,8 +538,8 @@ export function SubmitProseModal({
                     onClick={() => setWorkStatus('completed')}
                     className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-colors ${
                       workStatus === 'completed'
-                        ? 'bg-emerald-50 text-emerald-800 dark:bg-[#323232] dark:text-[#E5E5E5] font-semibold ring-1 ring-emerald-500/30'
-                        : 'bg-[#FAF9F5] dark:bg-[#262626] text-[#5C5C58] dark:text-[#A6A196]'
+                        ? 'bg-emerald-50 text-emerald-800 dark:bg-night-elevated dark:text-silver font-semibold ring-1 ring-emerald-500/30'
+                        : 'bg-paper dark:bg-night-card text-ink-muted dark:text-sandstone'
                     }`}
                   >
                     <CheckCircle2 className="w-3.5 h-3.5" />
@@ -551,7 +551,7 @@ export function SubmitProseModal({
                     className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-colors ${
                       workStatus === 'in_progress'
                         ? 'bg-amber-50 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 font-semibold ring-1 ring-amber-500/30'
-                        : 'bg-[#FAF9F5] dark:bg-[#262626] text-[#5C5C58] dark:text-[#A6A196]'
+                        : 'bg-paper dark:bg-night-card text-ink-muted dark:text-sandstone'
                     }`}
                   >
                     <Clock className="w-3.5 h-3.5" />
@@ -562,10 +562,10 @@ export function SubmitProseModal({
 
               <div>
                 <div className="flex items-center justify-between gap-2 mb-1.5">
-                  <label className="block text-xs font-medium text-[#5C5C58] dark:text-[#A6A196]">
+                  <label className="block text-xs font-medium text-ink-muted dark:text-sandstone">
                     Текст твору *
                   </label>
-                  <span className="font-mono text-[11px] text-[#5C5C58] dark:text-[#A6A196] tabular-nums">
+                  <span className="font-mono text-[11px] text-ink-muted dark:text-sandstone tabular-nums">
                     {liveWords.toLocaleString('uk-UA')} слів · ~{livePages} стор.
                   </span>
                 </div>
@@ -578,19 +578,19 @@ export function SubmitProseModal({
                   placeholder="Впишіть або вставте текст оповідання, новели чи есею..."
                   className={`${INPUT_CLASS} leading-relaxed`}
                 />
-                <p className="mt-1 text-[11px] text-[#787872] dark:text-[#8E8B82]">
+                <p className="mt-1 text-[11px] text-ink-subtle dark:text-stone-warm">
                   Відступи, перенесення рядків і слова в стовпчик зберігаються без змін.
                 </p>
               </div>
 
               {/* Moodboard Photos */}
-              <div className="p-3.5 rounded-xl bg-[#FAF9F5] dark:bg-[#262626] space-y-3">
+              <div className="p-3.5 rounded-xl bg-paper dark:bg-night-card space-y-3">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#141413] dark:text-[#EDEAE1]">
-                    <ImagePlus className="w-4 h-4 text-[#2C5937] dark:text-[#E5E5E5]" />
+                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink dark:text-cream-soft">
+                    <ImagePlus className="w-4 h-4 text-pine dark:text-silver" />
                     <span>Обкладинка / фото до твору (необов’язково)</span>
                   </span>
-                  <span className="font-mono text-[11px] text-[#5C5C58] dark:text-[#A6A196] tabular-nums">
+                  <span className="font-mono text-[11px] text-ink-muted dark:text-sandstone tabular-nums">
                     {moodboardUrls.length}/{MAX_MOODBOARD_PHOTOS}
                   </span>
                 </div>
@@ -600,7 +600,7 @@ export function SubmitProseModal({
                     {moodboardUrls.map((url, idx) => (
                       <div
                         key={`${url}-${idx}`}
-                        className="relative group rounded-lg overflow-hidden aspect-[4/3] bg-[#EFECE6] dark:bg-[#1B1B1B]"
+                        className="relative group rounded-lg overflow-hidden aspect-[4/3] bg-paper-warm dark:bg-night-deep"
                       >
                         <img
                           src={url}
@@ -687,12 +687,12 @@ export function SubmitProseModal({
           ) : (
             <div className="space-y-3">
               {loadingSubmissions && mySubmissions.length === 0 ? (
-                <div className="py-10 text-center text-xs text-[#5C5C58] dark:text-[#A6A196]">
+                <div className="py-10 text-center text-xs text-ink-muted dark:text-sandstone">
                   Завантаження ваших заявок...
                 </div>
               ) : mySubmissions.length === 0 ? (
-                <div className="py-10 text-center space-y-2.5 bg-[#FAF9F5] dark:bg-[#262626] rounded-xl p-6">
-                  <p className="text-sm text-[#5C5C58] dark:text-[#A6A196]">
+                <div className="py-10 text-center space-y-2.5 bg-paper dark:bg-night-card rounded-xl p-6">
+                  <p className="text-sm text-ink-muted dark:text-sandstone">
                     Ви ще не пропонували власних прозових творів.
                   </p>
                   <button
@@ -711,14 +711,14 @@ export function SubmitProseModal({
                   return (
                     <div
                       key={sub.id}
-                      className="p-4 rounded-xl bg-[#FAF9F5] dark:bg-[#262626] space-y-2.5"
+                      className="p-4 rounded-xl bg-paper dark:bg-night-card space-y-2.5"
                     >
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <h4 className="text-sm font-semibold text-[#141413] dark:text-[#EDEAE1]">
+                          <h4 className="text-sm font-semibold text-ink dark:text-cream-soft">
                             {sub.title}
                           </h4>
-                          <p className="text-[11px] text-[#5C5C58] dark:text-[#A6A196]">
+                          <p className="text-[11px] text-ink-muted dark:text-sandstone">
                             {sub.authorName}
                             {sub.genre ? ` · ${sub.genre}` : ''}
                             {' · '}
@@ -733,7 +733,7 @@ export function SubmitProseModal({
                             <span
                               className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold ${
                                 sub.workStatus === 'completed'
-                                  ? 'bg-emerald-50 text-emerald-800 dark:bg-[#323232] dark:text-[#E5E5E5]'
+                                  ? 'bg-emerald-50 text-emerald-800 dark:bg-night-elevated dark:text-silver'
                                   : 'bg-amber-50 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300'
                               }`}
                             >
@@ -770,18 +770,18 @@ export function SubmitProseModal({
                       </div>
 
                       {sub.slogan && (
-                        <p className="italic text-xs text-[#5C5C58] dark:text-[#A6A196]">
+                        <p className="italic text-xs text-ink-muted dark:text-sandstone">
                           «{sub.slogan}»
                         </p>
                       )}
 
-                      <p className="text-xs text-[#5C5C58] dark:text-[#A6A196] whitespace-pre-wrap line-clamp-3">
+                      <p className="text-xs text-ink-muted dark:text-sandstone whitespace-pre-wrap line-clamp-3">
                         {sub.excerpt || sub.content}
                       </p>
 
                       {sub.moodboardUrls && sub.moodboardUrls.length > 0 && (
-                        <div className="flex flex-wrap items-center gap-2 text-[11px] text-[#2C5937] dark:text-[#E5E5E5]">
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-white dark:bg-[#202020]">
+                        <div className="flex flex-wrap items-center gap-2 text-[11px] text-pine dark:text-silver">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-white dark:bg-night-panel">
                             <ImagePlus className="w-3 h-3" />
                             <span>Обкладинка ({sub.moodboardUrls.length})</span>
                           </span>
@@ -789,11 +789,11 @@ export function SubmitProseModal({
                       )}
 
                       {sub.moderationNote && (
-                        <div className="px-3 py-2 rounded-lg bg-white dark:bg-[#202020] text-xs">
-                          <span className="font-semibold text-[#141413] dark:text-[#EDEAE1]">
+                        <div className="px-3 py-2 rounded-lg bg-white dark:bg-night-panel text-xs">
+                          <span className="font-semibold text-ink dark:text-cream-soft">
                             Коментар редактора:{' '}
                           </span>
-                          <span className="text-[#5C5C58] dark:text-[#A6A196]">
+                          <span className="text-ink-muted dark:text-sandstone">
                             {sub.moderationNote}
                           </span>
                         </div>
@@ -807,7 +807,7 @@ export function SubmitProseModal({
                               onOpenPublishedProse(sub.publishedProseId!);
                               onClose();
                             }}
-                            className="text-xs font-semibold text-[#2C5937] dark:text-[#E5E5E5] hover:underline cursor-pointer"
+                            className="text-xs font-semibold text-pine dark:text-silver hover:underline cursor-pointer"
                           >
                             Відкрити опублікований твір →
                           </button>

@@ -1,0 +1,28 @@
+# Google Cloud Global External Application Load Balancer + Cloud CDN backend
+# Honors origin Cache-Control headers emitted by Express:
+#   - public, max-age=60, stale-while-revalidate=300 (/api/home, /api/catalog anon, /api/poems/:id/read, /api/blog/:id/read, /api/users/leaderboard)
+#   - public, max-age=10, stale-while-revalidate=30  (/api/chat/messages anon)
+#   - public, max-age=31536000, immutable            (/assets/*, /src/assets/*)
+#   - no-store, private                              (/api/auth/*, /api/payments/*, /api/author/*, /api/guest/*)
+#
+# Use together with Serverless NEG pointing to Cloud Run service `dankiv-writer-site`.
+name: dankiv-writer-backend-service
+protocol: HTTP
+loadBalancingScheme: EXTERNAL_MANAGED
+enableCDN: true
+cdnPolicy:
+  cacheMode: USE_ORIGIN_HEADERS
+  serveWhileStale: 300
+  negativeCaching: false
+  requestCoalescing: true
+  cacheKeyPolicy:
+    includeProtocol: true
+    includeHost: true
+    includeQueryString: true
+    includeHttpHeaders:
+      - Origin
+backends:
+  - group: projects/PROJECT_ID/regions/europe-central2/networkEndpointGroups/dankiv-writer-serverless-neg
+logConfig:
+  enable: true
+  sampleRate: 0.25

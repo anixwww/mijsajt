@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { Flame, Heart, Trophy, User, X, Plus, Trash2 } from 'lucide-react';
+import { List, useDynamicRowHeight, type RowComponentProps } from 'react-window';
 import type { UserLeaderboardResponse } from '../types.ts';
 import { UserRankBadges } from './UserRankBadges.tsx';
 
@@ -39,7 +40,7 @@ function LeaderboardAvatar({ photoUrl }: { photoUrl?: string }) {
   }, [photoUrl]);
 
   return (
-    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#323232] flex items-center justify-center overflow-hidden text-[#E5E5E5] font-semibold text-xs shrink-0">
+    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-night-elevated flex items-center justify-center overflow-hidden text-silver font-semibold text-xs shrink-0">
       {photoUrl && !failed ? (
         <img
           src={photoUrl}
@@ -59,7 +60,175 @@ function LeaderboardAvatar({ photoUrl }: { photoUrl?: string }) {
   );
 }
 
-export function UserLeaderboardModal({
+type ActivityEntry = UserLeaderboardResponse['activity'][number];
+type DonorEntry = UserLeaderboardResponse['donors'][number];
+
+const ActivityLeaderboardRow = memo(function ActivityLeaderboardRow({
+  item,
+  isCurrent,
+}: {
+  item: ActivityEntry;
+  isCurrent: boolean;
+}) {
+  return (
+    <div
+      className={`flex items-center justify-between gap-2 p-2.5 sm:p-3 rounded-xl transition-all ${
+        isCurrent ? 'bg-night-elevated' : 'bg-night-card'
+      }`}
+    >
+      <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+        <span
+          className={`w-6 h-6 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${
+            item.rank === 1
+              ? 'bg-amber-500 text-white shadow-sm'
+              : item.rank === 2
+              ? 'bg-slate-400 text-white'
+              : item.rank === 3
+              ? 'bg-amber-700 text-white'
+              : 'bg-white/10 text-paper'
+          }`}
+        >
+          {item.rank}
+        </span>
+        <LeaderboardAvatar photoUrl={item.photoUrl} />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+            <p className="text-xs sm:text-sm font-semibold text-paper truncate max-w-full">
+              {item.displayName}
+            </p>
+            <UserRankBadges badges={item.badges} size="xs" />
+            {isCurrent && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-silver text-night font-medium shrink-0">
+                Ви
+              </span>
+            )}
+          </div>
+          <p className="text-[10px] sm:text-[11px] text-paper/60 truncate">
+            Коментарі: {item.commentsCount} · Вподобайки: {item.likesCount} · Покупки: {item.purchasesCount}
+          </p>
+        </div>
+      </div>
+      <div className="shrink-0 text-right">
+        <p className="text-xs sm:text-sm font-bold text-silver whitespace-nowrap tabular-nums">
+          {formatPointsLabel(item.points)}
+        </p>
+      </div>
+    </div>
+  );
+});
+
+interface VirtualActivityRowData {
+  entries: ActivityEntry[];
+  currentUserUid?: string;
+  guestUid?: string;
+  guestFirebaseUid?: string;
+}
+
+function VirtualActivityRow({
+  ariaAttributes,
+  index,
+  style,
+  entries,
+  currentUserUid,
+  guestUid,
+  guestFirebaseUid,
+}: RowComponentProps<VirtualActivityRowData>): ReactElement | null {
+  const item = entries[index];
+  if (!item) return null;
+  const isCurrent = Boolean(
+    (currentUserUid && currentUserUid === item.uid) ||
+      (guestUid && guestUid === item.uid) ||
+      (guestFirebaseUid && guestFirebaseUid === item.uid)
+  );
+  return (
+    <div {...ariaAttributes} style={style}>
+      <div className="pb-2">
+        <ActivityLeaderboardRow item={item} isCurrent={isCurrent} />
+      </div>
+    </div>
+  );
+}
+
+const DonorLeaderboardRow = memo(function DonorLeaderboardRow({
+  item,
+  formattedDate,
+  isAdmin,
+  isConfirming,
+  onDelete,
+}: {
+  item: DonorEntry;
+  formattedDate: string;
+  isAdmin: boolean;
+  isConfirming: boolean;
+  onDelete: (donationId: string) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-2 p-2.5 sm:p-3 rounded-xl bg-night-card">
+      <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+        <span
+          className={`w-6 h-6 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${
+            item.rank === 1
+              ? 'bg-amber-500 text-white shadow-sm'
+              : item.rank === 2
+              ? 'bg-slate-400 text-white'
+              : item.rank === 3
+              ? 'bg-amber-700 text-white'
+              : 'bg-white/10 text-paper'
+          }`}
+        >
+          {item.rank}
+        </span>
+        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-night-elevated flex items-center justify-center overflow-hidden text-silver font-semibold text-xs shrink-0">
+          {item.photoUrl ? (
+            <img
+              src={item.photoUrl}
+              alt=""
+              width={32}
+              height={32}
+              loading="lazy"
+              decoding="async"
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <Heart className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+            <p className="text-xs sm:text-sm font-semibold text-paper truncate max-w-full">
+              {item.displayName}
+            </p>
+            <UserRankBadges badges={item.badges} size="xs" />
+          </div>
+          <p className="text-[10px] sm:text-[11px] text-paper/60 truncate">
+            Донатів: {item.donationsCount} · {formattedDate}
+          </p>
+        </div>
+      </div>
+      <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+        <p className="text-xs sm:text-sm font-bold text-silver whitespace-nowrap tabular-nums">
+          {item.totalAmountUah.toLocaleString('uk-UA')} ₴
+        </p>
+        {isAdmin && (
+          <button
+            type="button"
+            onClick={() => onDelete(item.id)}
+            className={`px-1.5 py-1 rounded-lg transition-colors cursor-pointer ${
+              isConfirming
+                ? 'bg-red-500 text-white text-[10px] font-semibold'
+                : 'text-red-400 hover:bg-red-500/10'
+            }`}
+            title={isConfirming ? 'Натисніть ще раз для підтвердження' : 'Видалити запис донату'}
+          >
+            {isConfirming ? 'Видалити?' : <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+});
+
+export const UserLeaderboardModal = memo(function UserLeaderboardModal({
   isOpen,
   onClose,
   guestUser,
@@ -216,6 +385,30 @@ export function UserLeaderboardModal({
     }
   };
 
+  const activityEntries = data?.activity ?? [];
+  const shouldVirtualizeActivity = activityEntries.length > 12;
+  const activityRowHeight = useDynamicRowHeight({
+    defaultRowHeight: 64,
+    key: `${isOpen ? 'open' : 'closed'}-${activityEntries.length}`,
+  });
+  const activityRowProps = useMemo<VirtualActivityRowData>(
+    () => ({
+      entries: activityEntries,
+      currentUserUid: data?.currentUserUid ?? undefined,
+      guestUid: guestUser?.uid,
+      guestFirebaseUid: guestUser?.firebaseUid,
+    }),
+    [activityEntries, data?.currentUserUid, guestUser?.uid, guestUser?.firebaseUid]
+  );
+
+  const handleDeleteDonorStable = useCallback(
+    (donationId: string) => {
+      void handleDeleteDonor(donationId);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [confirmDeleteId, authToken, guestUser?.guestToken]
+  );
+
   if (!isOpen) return null;
 
   const formatDate = (isoStr: string): string => {
@@ -232,8 +425,6 @@ export function UserLeaderboardModal({
     }
   };
 
-  const activityEntries = data?.activity ?? [];
-
   return (
     <div
       onClick={onClose}
@@ -241,19 +432,19 @@ export function UserLeaderboardModal({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-xl bg-[#202020] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90dvh] sm:max-h-[88vh]"
+        className="relative w-full max-w-xl bg-night-panel rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90dvh] sm:max-h-[88vh]"
       >
         {/* Header */}
-        <div className="px-4 py-3.5 sm:px-6 sm:py-5 flex items-center justify-between gap-2 bg-[#262626]">
+        <div className="px-4 py-3.5 sm:px-6 sm:py-5 flex items-center justify-between gap-2 bg-night-card">
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#323232] flex items-center justify-center text-[#E5E5E5] shrink-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-night-elevated flex items-center justify-center text-silver shrink-0">
               <Trophy className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div className="min-w-0">
-              <h2 className="text-base sm:text-lg font-bold text-[#FAF9F5] tracking-tight truncate">
+              <h2 className="text-base sm:text-lg font-bold text-paper tracking-tight truncate">
                 Рейтинг учасників
               </h2>
-              <p className="text-[11px] sm:text-xs text-[#C4BFB4] truncate">
+              <p className="text-[11px] sm:text-xs text-parchment truncate">
                 Всього учасників: {data?.totalRegisteredUsers || 0}
               </p>
             </div>
@@ -261,7 +452,7 @@ export function UserLeaderboardModal({
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl hover:bg-white/10 flex items-center justify-center text-[#FAF9F5]/70 transition-colors cursor-pointer shrink-0"
+            className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl hover:bg-white/10 flex items-center justify-center text-paper/70 transition-colors cursor-pointer shrink-0"
             aria-label="Закрити"
           >
             <X className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -269,14 +460,14 @@ export function UserLeaderboardModal({
         </div>
 
         {/* Tabs */}
-        <div className="grid grid-cols-2 p-1.5 sm:p-2 gap-1.5 bg-[#262626] border-t border-white/5">
+        <div className="grid grid-cols-2 p-1.5 sm:p-2 gap-1.5 bg-night-card border-t border-white/5">
           <button
             type="button"
             onClick={() => setActiveTab('activity')}
             className={`py-2 px-2.5 sm:px-3 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer ${
               activeTab === 'activity'
-                ? 'bg-[#E5E5E5] text-[#181818] shadow-sm'
-                : 'text-[#FAF9F5]/70 hover:bg-white/5'
+                ? 'bg-silver text-night shadow-sm'
+                : 'text-paper/70 hover:bg-white/5'
             }`}
           >
             <Flame className="w-3.5 h-3.5 shrink-0" />
@@ -287,8 +478,8 @@ export function UserLeaderboardModal({
             onClick={() => setActiveTab('donors')}
             className={`py-2 px-2.5 sm:px-3 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer ${
               activeTab === 'donors'
-                ? 'bg-[#E5E5E5] text-[#181818] shadow-sm'
-                : 'text-[#FAF9F5]/70 hover:bg-white/5'
+                ? 'bg-silver text-night shadow-sm'
+                : 'text-paper/70 hover:bg-white/5'
             }`}
           >
             <Heart className="w-3.5 h-3.5 shrink-0" />
@@ -299,7 +490,7 @@ export function UserLeaderboardModal({
         {/* Content body */}
         <div className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-4 space-y-2.5">
           {loading && !data && (
-            <div className="py-12 text-center text-sm text-[#C4BFB4] animate-pulse">
+            <div className="py-12 text-center text-sm text-parchment animate-pulse">
               Завантаження рейтингу...
             </div>
           )}
@@ -312,12 +503,23 @@ export function UserLeaderboardModal({
 
           {data && activeTab === 'activity' && (
             <div className="space-y-2">
-              <p className="text-[11px] sm:text-xs text-[#FAF9F5]/65 px-1 mb-1.5 leading-relaxed font-medium">
+              <p className="text-[11px] sm:text-xs text-paper/65 px-1 mb-1.5 leading-relaxed font-medium">
                 Коментар, вподобайка, покупка в Прозі чи Крамниці = 1 бал
               </p>
               {activityEntries.length === 0 ? (
-                <div className="py-10 text-center text-sm text-[#FAF9F5]/50">
+                <div className="py-10 text-center text-sm text-paper/50">
                   Ще немає активності учасників
+                </div>
+              ) : shouldVirtualizeActivity ? (
+                <div className="h-[min(56dvh,440px)] w-full overflow-hidden">
+                  <List
+                    rowCount={activityEntries.length}
+                    rowHeight={activityRowHeight}
+                    rowComponent={VirtualActivityRow}
+                    rowProps={activityRowProps}
+                    overscanCount={5}
+                    className="h-full w-full overflow-x-hidden pr-0.5"
+                  />
                 </div>
               ) : (
                 activityEntries.map((item) => {
@@ -327,50 +529,11 @@ export function UserLeaderboardModal({
                       (guestUser?.firebaseUid && guestUser.firebaseUid === item.uid)
                   );
                   return (
-                    <div
+                    <ActivityLeaderboardRow
                       key={item.uid}
-                      className={`flex items-center justify-between gap-2 p-2.5 sm:p-3 rounded-xl transition-all ${
-                        isCurrent ? 'bg-[#343434]' : 'bg-[#262626]'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
-                        <span
-                          className={`w-6 h-6 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${
-                            item.rank === 1
-                              ? 'bg-amber-500 text-white shadow-sm'
-                              : item.rank === 2
-                              ? 'bg-slate-400 text-white'
-                              : item.rank === 3
-                              ? 'bg-amber-700 text-white'
-                              : 'bg-white/10 text-[#FAF9F5]'
-                          }`}
-                        >
-                          {item.rank}
-                        </span>
-                        <LeaderboardAvatar photoUrl={item.photoUrl} />
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-                            <p className="text-xs sm:text-sm font-semibold text-[#FAF9F5] truncate max-w-full">
-                              {item.displayName}
-                            </p>
-                            <UserRankBadges badges={item.badges} size="xs" />
-                            {isCurrent && (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#E5E5E5] text-[#181818] font-medium shrink-0">
-                                Ви
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-[10px] sm:text-[11px] text-[#FAF9F5]/60 truncate">
-                            Коментарі: {item.commentsCount} · Вподобайки: {item.likesCount} · Покупки: {item.purchasesCount}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="shrink-0 text-right">
-                        <p className="text-xs sm:text-sm font-bold text-[#E5E5E5] whitespace-nowrap tabular-nums">
-                          {formatPointsLabel(item.points)}
-                        </p>
-                      </div>
-                    </div>
+                      item={item}
+                      isCurrent={isCurrent}
+                    />
                   );
                 })
               )}
@@ -380,14 +543,14 @@ export function UserLeaderboardModal({
           {data && activeTab === 'donors' && (
             <div className="space-y-2.5 sm:space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2 px-1">
-                <p className="text-[11px] sm:text-xs text-[#FAF9F5]/60">
+                <p className="text-[11px] sm:text-xs text-paper/60">
                   Топ-10 меценатів та донатерів проєкту:
                 </p>
                 {isAdmin && (
                   <button
                     type="button"
                     onClick={() => setShowAddDonor(!showAddDonor)}
-                    className="text-xs px-2.5 py-1 rounded-lg bg-[#E5E5E5] text-[#181818] font-medium flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0"
+                    className="text-xs px-2.5 py-1 rounded-lg bg-silver text-night font-medium flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>Додати донат</span>
@@ -399,14 +562,14 @@ export function UserLeaderboardModal({
               {isAdmin && showAddDonor && (
                 <form
                   onSubmit={handleAddDonor}
-                  className="p-3 sm:p-3.5 rounded-xl bg-[#262626] space-y-2.5 sm:space-y-3"
+                  className="p-3 sm:p-3.5 rounded-xl bg-night-card space-y-2.5 sm:space-y-3"
                 >
-                  <p className="text-xs font-bold text-[#FAF9F5]">
+                  <p className="text-xs font-bold text-paper">
                     Ручне додавання донату (адмін)
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     <div>
-                      <label className="block text-[11px] text-[#FAF9F5]/60 mb-1">
+                      <label className="block text-[11px] text-paper/60 mb-1">
                         Ім'я мецената
                       </label>
                       <input
@@ -415,11 +578,11 @@ export function UserLeaderboardModal({
                         onChange={(e) => setDonorName(e.target.value)}
                         placeholder="Наприклад: Олександр К."
                         required
-                        className="w-full px-3 py-1.5 text-xs rounded-lg bg-[#202020] focus:bg-[#323232] text-[#FAF9F5] focus:outline-none transition-colors"
+                        className="w-full px-3 py-1.5 text-xs rounded-lg bg-night-panel focus:bg-night-elevated text-paper focus:outline-none transition-colors"
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] text-[#FAF9F5]/60 mb-1">
+                      <label className="block text-[11px] text-paper/60 mb-1">
                         Сума (₴)
                       </label>
                       <input
@@ -429,12 +592,12 @@ export function UserLeaderboardModal({
                         placeholder="500"
                         required
                         min="1"
-                        className="w-full px-3 py-1.5 text-xs rounded-lg bg-[#202020] focus:bg-[#323232] text-[#FAF9F5] focus:outline-none transition-colors"
+                        className="w-full px-3 py-1.5 text-xs rounded-lg bg-night-panel focus:bg-night-elevated text-paper focus:outline-none transition-colors"
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-[11px] text-[#FAF9F5]/60 mb-1">
+                    <label className="block text-[11px] text-paper/60 mb-1">
                       Коментар / Примітка (необов'язково)
                     </label>
                     <input
@@ -442,21 +605,21 @@ export function UserLeaderboardModal({
                       value={donorNote}
                       onChange={(e) => setDonorNote(e.target.value)}
                       placeholder="Наприклад: На нову збірку"
-                      className="w-full px-3 py-1.5 text-xs rounded-lg bg-[#202020] focus:bg-[#323232] text-[#FAF9F5] focus:outline-none transition-colors"
+                      className="w-full px-3 py-1.5 text-xs rounded-lg bg-night-panel focus:bg-night-elevated text-paper focus:outline-none transition-colors"
                     />
                   </div>
                   <div className="flex justify-end gap-2 pt-1">
                     <button
                       type="button"
                       onClick={() => setShowAddDonor(false)}
-                      className="px-3 py-1 rounded-lg text-xs text-[#FAF9F5]/70 hover:bg-white/10 cursor-pointer"
+                      className="px-3 py-1 rounded-lg text-xs text-paper/70 hover:bg-white/10 cursor-pointer"
                     >
                       Скасувати
                     </button>
                     <button
                       type="submit"
                       disabled={submittingDonor}
-                      className="px-3.5 py-1 rounded-lg text-xs bg-[#E5E5E5] text-[#181818] font-semibold cursor-pointer"
+                      className="px-3.5 py-1 rounded-lg text-xs bg-silver text-night font-semibold cursor-pointer"
                     >
                       {submittingDonor ? 'Збереження...' : 'Зберегти донат'}
                     </button>
@@ -465,80 +628,20 @@ export function UserLeaderboardModal({
               )}
 
               {data.donors.length === 0 ? (
-                <div className="py-10 text-center text-sm text-[#FAF9F5]/50">
+                <div className="py-10 text-center text-sm text-paper/50">
                   Ще немає зареєстрованих донатів
                 </div>
               ) : (
-                data.donors.map((item) => {
-                  const isConfirming = confirmDeleteId === item.id;
-                  return (
-                    <div
-                      key={item.id}
-                      className="flex items-center justify-between gap-2 p-2.5 sm:p-3 rounded-xl bg-[#262626]"
-                    >
-                      <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
-                        <span
-                          className={`w-6 h-6 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${
-                            item.rank === 1
-                              ? 'bg-amber-500 text-white shadow-sm'
-                              : item.rank === 2
-                              ? 'bg-slate-400 text-white'
-                              : item.rank === 3
-                              ? 'bg-amber-700 text-white'
-                              : 'bg-white/10 text-[#FAF9F5]'
-                          }`}
-                        >
-                          {item.rank}
-                        </span>
-                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#323232] flex items-center justify-center overflow-hidden text-[#E5E5E5] font-semibold text-xs shrink-0">
-                          {item.photoUrl ? (
-                            <img
-                              src={item.photoUrl}
-                              alt=""
-                              width={32}
-                              height={32}
-                              loading="lazy"
-                              decoding="async"
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <Heart className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                          )}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-                            <p className="text-xs sm:text-sm font-semibold text-[#FAF9F5] truncate max-w-full">
-                              {item.displayName}
-                            </p>
-                            <UserRankBadges badges={item.badges} size="xs" />
-                          </div>
-                          <p className="text-[10px] sm:text-[11px] text-[#FAF9F5]/60 truncate">
-                            Донатів: {item.donationsCount} · {formatDate(item.lastDonatedAt)}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
-                        <p className="text-xs sm:text-sm font-bold text-[#E5E5E5] whitespace-nowrap tabular-nums">
-                          {item.totalAmountUah.toLocaleString('uk-UA')} ₴
-                        </p>
-                        {isAdmin && (
-                          <button
-                            type="button"
-                            onClick={() => void handleDeleteDonor(item.id)}
-                            className={`px-1.5 py-1 rounded-lg transition-colors cursor-pointer ${
-                              isConfirming
-                                ? 'bg-red-500 text-white text-[10px] font-semibold'
-                                : 'text-red-400 hover:bg-red-500/10'
-                            }`}
-                            title={isConfirming ? 'Натисніть ще раз для підтвердження' : 'Видалити запис донату'}
-                          >
-                            {isConfirming ? 'Видалити?' : <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })
+                data.donors.map((item) => (
+                  <DonorLeaderboardRow
+                    key={item.id}
+                    item={item}
+                    formattedDate={formatDate(item.lastDonatedAt)}
+                    isAdmin={isAdmin}
+                    isConfirming={confirmDeleteId === item.id}
+                    onDelete={handleDeleteDonorStable}
+                  />
+                ))
               )}
             </div>
           )}
@@ -546,4 +649,4 @@ export function UserLeaderboardModal({
       </div>
     </div>
   );
-}
+});

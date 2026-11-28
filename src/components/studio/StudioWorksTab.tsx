@@ -29,7 +29,7 @@ import {
   Video,
   X,
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import {
   getProseEffectivePriceUah,
   type BlogPost,
@@ -117,7 +117,7 @@ interface StudioWorksTabProps {
   onOpenTelegramSettings?: () => void;
 }
 
-export function StudioWorksTab({
+export const StudioWorksTab = memo(function StudioWorksTab({
   poems,
   setPoems,
   poemSubmissions,
@@ -1650,8 +1650,8 @@ export function StudioWorksTab({
             onClick={() => setSubTab('list')}
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
               subTab === 'list'
-                ? 'bg-[#141413] dark:bg-[#EDEAE1] text-white dark:text-[#181818] font-semibold'
-                : 'text-[#5C5C58] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-[#EDEAE1] hover:bg-[#F5F4EE] dark:hover:bg-[#323232]'
+                ? 'bg-ink dark:bg-cream-soft text-white dark:text-night font-semibold'
+                : 'text-ink-muted dark:text-sandstone hover:text-ink dark:hover:text-cream-soft hover:bg-paper-oat dark:hover:bg-night-elevated'
             }`}
           >
             <span>Усі твори</span>
@@ -1663,8 +1663,8 @@ export function StudioWorksTab({
             onClick={() => setSubTab('compose')}
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
               subTab === 'compose'
-                ? 'bg-[#141413] dark:bg-[#EDEAE1] text-white dark:text-[#181818] font-semibold'
-                : 'text-[#5C5C58] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-[#EDEAE1] hover:bg-[#F5F4EE] dark:hover:bg-[#323232]'
+                ? 'bg-ink dark:bg-cream-soft text-white dark:text-night font-semibold'
+                : 'text-ink-muted dark:text-sandstone hover:text-ink dark:hover:text-cream-soft hover:bg-paper-oat dark:hover:bg-night-elevated'
             }`}
           >
             <Plus className="w-3.5 h-3.5" />
@@ -1676,8 +1676,8 @@ export function StudioWorksTab({
             onClick={() => setSubTab('submissions')}
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
               subTab === 'submissions'
-                ? 'bg-[#141413] dark:bg-[#EDEAE1] text-white dark:text-[#181818] font-semibold'
-                : 'text-[#5C5C58] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-[#EDEAE1] hover:bg-[#F5F4EE] dark:hover:bg-[#323232]'
+                ? 'bg-ink dark:bg-cream-soft text-white dark:text-night font-semibold'
+                : 'text-ink-muted dark:text-sandstone hover:text-ink dark:hover:text-cream-soft hover:bg-paper-oat dark:hover:bg-night-elevated'
             }`}
           >
             <span>Заявки читачів</span>
@@ -1699,8 +1699,8 @@ export function StudioWorksTab({
             onClick={() => setSubTab('settings')}
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
               subTab === 'settings'
-                ? 'bg-[#141413] dark:bg-[#EDEAE1] text-white dark:text-[#181818] font-semibold'
-                : 'text-[#5C5C58] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-[#EDEAE1] hover:bg-[#F5F4EE] dark:hover:bg-[#323232]'
+                ? 'bg-ink dark:bg-cream-soft text-white dark:text-night font-semibold'
+                : 'text-ink-muted dark:text-sandstone hover:text-ink dark:hover:text-cream-soft hover:bg-paper-oat dark:hover:bg-night-elevated'
             }`}
           >
             <span>Теги й знижки</span>
@@ -1717,13 +1717,13 @@ export function StudioWorksTab({
           {/* Search + Type Filter */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="relative flex-1 max-w-sm">
-              <Search className="w-3.5 h-3.5 text-[#787872] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <Search className="w-3.5 h-3.5 text-ink-subtle absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Пошук за назвою..."
-                className="w-full pl-8 pr-3 py-1.5 text-xs bg-[#EFECE6] dark:bg-[#1B1B1B] rounded-lg text-[#141413] dark:text-[#EDEAE1] placeholder:text-[#787872] focus:outline-none focus:bg-[#FAF9F5] dark:focus:bg-[#323232]"
+                className="w-full pl-8 pr-3 py-1.5 text-xs bg-paper-warm dark:bg-night-deep rounded-lg text-ink dark:text-cream-soft placeholder:text-ink-subtle focus:outline-none focus:bg-paper dark:focus:bg-night-elevated"
               />
             </div>
 
@@ -1742,8 +1742,8 @@ export function StudioWorksTab({
                   onClick={() => setTypeFilter(f.id)}
                   className={`px-2.5 py-1 rounded-lg text-xs font-medium whitespace-nowrap cursor-pointer transition-colors ${
                     typeFilter === f.id
-                      ? 'bg-[#EAE7DF] dark:bg-[#323232] text-[#141413] dark:text-[#EDEAE1] font-semibold'
-                      : 'text-[#5C5C58] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-[#EDEAE1]'
+                      ? 'bg-paper-sand dark:bg-night-elevated text-ink dark:text-cream-soft font-semibold'
+                      : 'text-ink-muted dark:text-sandstone hover:text-ink dark:hover:text-cream-soft'
                   }`}
                 >
                   {f.label} <span className="font-mono text-[11px] opacity-70 tabular-nums">{f.count}</span>
@@ -1753,8 +1753,8 @@ export function StudioWorksTab({
           </div>
 
           {filteredCount === 0 ? (
-            <div className="py-12 text-center space-y-2 bg-[#FAF9F5] dark:bg-[#262626] rounded-xl">
-              <p className="text-sm font-medium text-[#141413] dark:text-[#EDEAE1]">
+            <div className="py-12 text-center space-y-2 bg-paper dark:bg-night-card rounded-xl">
+              <p className="text-sm font-medium text-ink dark:text-cream-soft">
                 {normalizedQuery ? 'Нічого не знайдено' : 'Матеріалів поки немає'}
               </p>
               <button
@@ -1787,37 +1787,37 @@ export function StudioWorksTab({
                     : null;
 
                 return (
-                  <div key={p.id} className="p-4 rounded-xl text-xs space-y-2.5 bg-[#FAF9F5] dark:bg-[#262626]">
+                  <div key={p.id} className="p-4 rounded-xl text-xs space-y-2.5 bg-paper dark:bg-night-card">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                          <span className="text-[11px] font-medium text-[#5C5C58] dark:text-[#A6A196]">
+                          <span className="text-[11px] font-medium text-ink-muted dark:text-sandstone">
                             Проза
                           </span>
                           {p.isCommunity && (
                             <>
-                              <span aria-hidden="true" className="text-[#C4BFB4]">·</span>
-                              <span className="text-[11px] font-medium text-[#2C5937] dark:text-[#E5E5E5]">
+                              <span aria-hidden="true" className="text-parchment">·</span>
+                              <span className="text-[11px] font-medium text-pine dark:text-silver">
                                 {p.authorName || 'Читач'}
                               </span>
                             </>
                           )}
-                          <span aria-hidden="true" className="text-[#C4BFB4]">·</span>
-                          <span className="text-sm font-semibold text-[#141413] dark:text-[#EDEAE1]">
+                          <span aria-hidden="true" className="text-parchment">·</span>
+                          <span className="text-sm font-semibold text-ink dark:text-cream-soft">
                             {p.title}
                           </span>
-                          <span aria-hidden="true" className="text-[#C4BFB4]">·</span>
-                          <span className="font-mono text-[11px] text-[#5C5C58] dark:text-[#A6A196] tabular-nums">
+                          <span aria-hidden="true" className="text-parchment">·</span>
+                          <span className="font-mono text-[11px] text-ink-muted dark:text-sandstone tabular-nums">
                             {p.pages} стор.
                           </span>
-                          <span aria-hidden="true" className="text-[#C4BFB4]">·</span>
-                          <span className="inline-flex items-center gap-1 font-mono text-[11px] text-[#2C5937] dark:text-[#E5E5E5] tabular-nums">
+                          <span aria-hidden="true" className="text-parchment">·</span>
+                          <span className="inline-flex items-center gap-1 font-mono text-[11px] text-pine dark:text-silver tabular-nums">
                             {pMode === 'paid' ? (
                               <>
                                 <HryvniaIcon className="w-3 h-3" />
                                 <span>{p.priceUah}</span>
                                 {discountedPreview !== null && (
-                                  <span className="text-[#1E563B] dark:text-[#E5E5E5]">
+                                  <span className="text-pine-deep dark:text-silver">
                                     ({discountedPreview} ₴ авториз.)
                                   </span>
                                 )}
@@ -1837,7 +1837,7 @@ export function StudioWorksTab({
                       <button
                         type="button"
                         onClick={() => handleDeleteWork('prose', p.id)}
-                        className="p-1.5 text-[#5C5C58] dark:text-[#A6A196] hover:text-rose-700 dark:hover:text-rose-400 rounded-lg hover:bg-rose-700/10 cursor-pointer shrink-0"
+                        className="p-1.5 text-ink-muted dark:text-sandstone hover:text-rose-700 dark:hover:text-rose-400 rounded-lg hover:bg-rose-700/10 cursor-pointer shrink-0"
                         aria-label={`Видалити твір ${p.title}`}
                         title="Видалити твір"
                       >
@@ -1848,7 +1848,7 @@ export function StudioWorksTab({
                     {/* Inline Action Controls */}
                     <div className="flex flex-wrap items-center gap-1.5">
                       <div
-                        className="inline-flex items-center gap-0.5 p-0.5 bg-[#EFECE6] dark:bg-[#202020] rounded-lg"
+                        className="inline-flex items-center gap-0.5 p-0.5 bg-paper-warm dark:bg-night-panel rounded-lg"
                         role="group"
                         aria-label={`Доступ для ${p.title}`}
                       >
@@ -1866,7 +1866,7 @@ export function StudioWorksTab({
                             className={`px-2 py-1 text-[11px] font-medium rounded-md cursor-pointer whitespace-nowrap transition-colors ${
                               pMode === mode
                                 ? 'bg-pear-pine-gradient text-white font-semibold'
-                                : 'text-[#5C5C58] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-[#EDEAE1]'
+                                : 'text-ink-muted dark:text-sandstone hover:text-ink dark:hover:text-cream-soft'
                             }`}
                           >
                             {mode === 'public' ? 'Відкритий' : mode === 'authorized' ? 'Авторизованим' : 'Платний'}
@@ -1875,7 +1875,7 @@ export function StudioWorksTab({
                       </div>
 
                       {pMode === 'paid' && (
-                        <div className="inline-flex items-center gap-1 bg-[#EFECE6] dark:bg-[#202020] rounded-lg px-2 py-0.5">
+                        <div className="inline-flex items-center gap-1 bg-paper-warm dark:bg-night-panel rounded-lg px-2 py-0.5">
                           <input
                             type="number"
                             min={10}
@@ -1884,9 +1884,9 @@ export function StudioWorksTab({
                               setProsePriceDrafts((prev) => ({ ...prev, [p.id]: e.target.value }))
                             }
                             aria-label={`Ціна для ${p.title}`}
-                            className="w-12 py-0.5 text-[11px] font-mono tabular-nums bg-transparent text-[#141413] dark:text-[#EDEAE1] focus:outline-none"
+                            className="w-12 py-0.5 text-[11px] font-mono tabular-nums bg-transparent text-ink dark:text-cream-soft focus:outline-none"
                           />
-                          <span className="text-[11px] font-mono text-[#5C5C58]">₴</span>
+                          <span className="text-[11px] font-mono text-ink-muted">₴</span>
                           <button
                             type="button"
                             onClick={() =>
@@ -1896,15 +1896,15 @@ export function StudioWorksTab({
                                 Number(prosePriceDrafts[p.id] || p.priceUah || 75)
                               )
                             }
-                            className="px-1.5 py-0.5 text-[10px] font-semibold bg-white dark:bg-[#323232] text-[#2C5937] dark:text-[#E5E5E5] rounded cursor-pointer"
+                            className="px-1.5 py-0.5 text-[10px] font-semibold bg-white dark:bg-night-elevated text-pine dark:text-silver rounded cursor-pointer"
                           >
                             Ок
                           </button>
                         </div>
                       )}
 
-                      <label className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium bg-[#EFECE6] dark:bg-[#202020] rounded-lg cursor-pointer whitespace-nowrap hover:bg-[#E5E1D8] dark:hover:bg-[#323232] transition-colors">
-                        <Upload className="w-3 h-3 text-[#2C5937] dark:text-[#E5E5E5]" />
+                      <label className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium bg-paper-warm dark:bg-night-panel rounded-lg cursor-pointer whitespace-nowrap hover:bg-paper-sand dark:hover:bg-night-elevated transition-colors">
+                        <Upload className="w-3 h-3 text-pine dark:text-silver" />
                         <span>
                           {uploadingProsePdfId === p.id
                             ? 'Завантаження...'
@@ -1928,7 +1928,7 @@ export function StudioWorksTab({
                         <button
                           type="button"
                           onClick={() => handleClearProsePdf(p.id)}
-                          className="inline-flex items-center gap-1 px-2 py-1 text-[11px] text-[#5C5C58] dark:text-[#A6A196] hover:text-rose-700 dark:hover:text-rose-400 cursor-pointer"
+                          className="inline-flex items-center gap-1 px-2 py-1 text-[11px] text-ink-muted dark:text-sandstone hover:text-rose-700 dark:hover:text-rose-400 cursor-pointer"
                           title={p.pdfFileName || 'Прибрати PDF'}
                         >
                           <FileText className="w-3 h-3" />
@@ -1947,7 +1947,7 @@ export function StudioWorksTab({
                         className={`inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium rounded-lg cursor-pointer whitespace-nowrap transition-colors ${
                           expandedProseFolderId === p.id
                             ? 'bg-pear-pine-gradient text-white'
-                            : 'bg-[#EFECE6] dark:bg-[#202020] text-[#141413] dark:text-[#EDEAE1]'
+                            : 'bg-paper-warm dark:bg-night-panel text-ink dark:text-cream-soft'
                         }`}
                       >
                         <FolderPlus className="w-3 h-3" />
@@ -1961,8 +1961,8 @@ export function StudioWorksTab({
                         }
                         className={`inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded-lg cursor-pointer whitespace-nowrap transition-colors ${
                           p.status === 'completed'
-                            ? 'bg-emerald-50 text-emerald-800 dark:bg-[#323232] dark:text-[#E5E5E5]'
-                            : 'bg-[#EFECE6] dark:bg-[#202020] text-[#5C5C58] dark:text-[#A6A196]'
+                            ? 'bg-emerald-50 text-emerald-800 dark:bg-night-elevated dark:text-silver'
+                            : 'bg-paper-warm dark:bg-night-panel text-ink-muted dark:text-sandstone'
                         }`}
                       >
                         <CheckCircle2 className="w-3 h-3" strokeWidth={2} />
@@ -1977,7 +1977,7 @@ export function StudioWorksTab({
                         className={`inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded-lg cursor-pointer whitespace-nowrap transition-colors ${
                           p.status === 'in_progress'
                             ? 'bg-amber-50 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300'
-                            : 'bg-[#EFECE6] dark:bg-[#202020] text-[#5C5C58] dark:text-[#A6A196]'
+                            : 'bg-paper-warm dark:bg-night-panel text-ink-muted dark:text-sandstone'
                         }`}
                       >
                         <Clock className="w-3 h-3" strokeWidth={2} />
@@ -2000,7 +2000,7 @@ export function StudioWorksTab({
                               className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${
                                 assigned
                                   ? preset.badgeClass
-                                  : 'bg-[#EFECE6] dark:bg-[#202020] text-[#5C5C58] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-[#EDEAE1]'
+                                  : 'bg-paper-warm dark:bg-night-panel text-ink-muted dark:text-sandstone hover:text-ink dark:hover:text-cream-soft'
                               }`}
                             >
                               <span
@@ -2016,13 +2016,13 @@ export function StudioWorksTab({
 
                     {/* Expandable Chapters Folder */}
                     {expandedProseFolderId === p.id && (
-                      <div className="mt-2 p-3.5 rounded-xl bg-white dark:bg-[#202020] space-y-3">
+                      <div className="mt-2 p-3.5 rounded-xl bg-white dark:bg-night-panel space-y-3">
                         <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-1.5 text-xs font-semibold text-[#141413] dark:text-[#EDEAE1]">
-                            <FolderOpen className="w-3.5 h-3.5 text-[#2C5937] dark:text-[#E5E5E5]" />
+                          <div className="flex items-center gap-1.5 text-xs font-semibold text-ink dark:text-cream-soft">
+                            <FolderOpen className="w-3.5 h-3.5 text-pine dark:text-silver" />
                             <span>Тека твору · {(p.chapters || []).length + 1} ч.</span>
                           </div>
-                          <span className="text-[11px] text-[#5C5C58] dark:text-[#A6A196]">
+                          <span className="text-[11px] text-ink-muted dark:text-sandstone">
                             {p.isPaid && (p.priceUah || 0) > 0
                               ? 'Платна картка: розділи відкриються після покупки'
                               : 'Доступні читачам одразу'}
@@ -2032,19 +2032,19 @@ export function StudioWorksTab({
                         {(p.chapters || []).length > 0 && (
                           <div className="rounded-lg space-y-1">
                             {(p.chapters || []).map((ch, chIdx) => (
-                              <div key={ch.id} className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-[#FAF9F5] dark:bg-[#262626]">
+                              <div key={ch.id} className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-paper dark:bg-night-card">
                                 <div className="min-w-0">
-                                  <p className="text-xs font-medium text-[#141413] dark:text-[#EDEAE1] truncate">
+                                  <p className="text-xs font-medium text-ink dark:text-cream-soft truncate">
                                     {chIdx + 2}. {ch.title}
                                   </p>
-                                  <p className="text-[10px] font-mono text-[#5C5C58] dark:text-[#A6A196] tabular-nums">
+                                  <p className="text-[10px] font-mono text-ink-muted dark:text-sandstone tabular-nums">
                                     {ch.publishedAt}
                                   </p>
                                 </div>
                                 <button
                                   type="button"
                                   onClick={() => handleDeleteProseChapter(p.id, ch.id)}
-                                  className="p-1 text-[#5C5C58] hover:text-rose-700 dark:hover:text-rose-400 cursor-pointer shrink-0"
+                                  className="p-1 text-ink-muted hover:text-rose-700 dark:hover:text-rose-400 cursor-pointer shrink-0"
                                   aria-label={`Видалити розділ ${ch.title}`}
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
@@ -2075,7 +2075,7 @@ export function StudioWorksTab({
                           </div>
                           <div className="flex flex-wrap items-center justify-between gap-2">
                             <label className="btn-editorial-secondary py-1 px-2.5 text-[11px] cursor-pointer">
-                              <Upload className="w-3 h-3 text-[#2C5937] dark:text-[#E5E5E5]" />
+                              <Upload className="w-3 h-3 text-pine dark:text-silver" />
                               <span>Завантажити .txt / .md</span>
                               <input
                                 type="file"
@@ -2085,7 +2085,7 @@ export function StudioWorksTab({
                               />
                             </label>
                             {newChapterContent.trim() && (
-                              <span className="text-[11px] font-mono text-[#5C5C58] dark:text-[#A6A196] tabular-nums">
+                              <span className="text-[11px] font-mono text-ink-muted dark:text-sandstone tabular-nums">
                                 Авто: {Math.max(1, countPagesForText(newChapterContent))} стор. ·{' '}
                                 {countProseWords(newChapterContent).toLocaleString('uk-UA')} слів
                               </span>
@@ -2157,10 +2157,10 @@ export function StudioWorksTab({
                     }}
                     className={`px-3 sm:px-4 py-3 rounded-xl flex items-center justify-between gap-2.5 text-xs transition-all ${
                       isDragging
-                        ? 'opacity-45 scale-[0.99] bg-[#EAE7DF] dark:bg-[#1E1E1E]'
+                        ? 'opacity-45 scale-[0.99] bg-paper-sand dark:bg-night-panel'
                         : isDropTarget
-                          ? 'bg-[#EEF3E8] dark:bg-[#2E362F] ring-2 ring-[#2C5937]/65 dark:ring-[#E5E5E5]/55'
-                          : 'bg-[#FAF9F5] dark:bg-[#262626]'
+                          ? 'bg-[#EEF3E8] dark:bg-[#2E362F] ring-2 ring-pine/65 dark:ring-silver/55'
+                          : 'bg-paper dark:bg-night-card'
                     } ${canReorderPoems && !isEditingPos ? 'cursor-grab active:cursor-grabbing' : ''}`}
                   >
                     <div className="min-w-0 flex items-center gap-2 sm:gap-2.5 flex-1">
@@ -2168,7 +2168,7 @@ export function StudioWorksTab({
                         <span
                           aria-hidden="true"
                           title="Перетягніть, щоб змінити порядок"
-                          className="text-[#8E8B82] dark:text-[#78756E] hover:text-[#141413] dark:hover:text-[#EDEAE1] shrink-0"
+                          className="text-stone-warm dark:text-[#78756E] hover:text-ink dark:hover:text-cream-soft shrink-0"
                         >
                           <GripVertical className="w-4 h-4" />
                         </span>
@@ -2199,12 +2199,12 @@ export function StudioWorksTab({
                               if (e.key === 'Escape') setEditingOrderPoemId(null);
                             }}
                             aria-label={`Нова позиція для ${p.title}`}
-                            className="w-12 px-1.5 py-0.5 rounded bg-white dark:bg-[#1C1C1C] font-mono text-[11px] tabular-nums text-[#141413] dark:text-[#EDEAE1] ring-1 ring-[#2C5937]/50 focus:outline-none"
+                            className="w-12 px-1.5 py-0.5 rounded bg-white dark:bg-night-deep font-mono text-[11px] tabular-nums text-ink dark:text-cream-soft ring-1 ring-pine/50 focus:outline-none"
                           />
                           <button
                             type="submit"
                             aria-label="Застосувати позицію"
-                            className="p-1 rounded bg-[#2C5937] text-white cursor-pointer"
+                            className="p-1 rounded bg-pine text-white cursor-pointer"
                           >
                             <Check className="w-3 h-3" />
                           </button>
@@ -2212,7 +2212,7 @@ export function StudioWorksTab({
                             type="button"
                             onClick={() => setEditingOrderPoemId(null)}
                             aria-label="Скасувати"
-                            className="p-1 rounded text-[#5C5C58] hover:text-[#141413] dark:hover:text-white cursor-pointer"
+                            className="p-1 rounded text-ink-muted hover:text-ink dark:hover:text-white cursor-pointer"
                           >
                             <X className="w-3 h-3" />
                           </button>
@@ -2230,24 +2230,24 @@ export function StudioWorksTab({
                           title={canReorderPoems ? 'Натисніть, щоб перемістити на точний номер' : undefined}
                           className={`font-mono text-[11px] tabular-nums px-1.5 py-0.5 rounded shrink-0 transition-colors ${
                             isFeaturedHome
-                              ? 'bg-[#EEF3E8] dark:bg-[#323232] text-[#2C5937] dark:text-[#E5E5E5] font-semibold'
-                              : 'bg-[#EFECE6] dark:bg-[#202020] text-[#5C5C58] dark:text-[#A6A196]'
-                          } ${canReorderPoems ? 'hover:bg-[#E4E0D6] dark:hover:bg-[#383838] cursor-pointer' : 'cursor-default'}`}
+                              ? 'bg-[#EEF3E8] dark:bg-night-elevated text-pine dark:text-silver font-semibold'
+                              : 'bg-paper-warm dark:bg-night-panel text-ink-muted dark:text-sandstone'
+                          } ${canReorderPoems ? 'hover:bg-paper-sand dark:hover:bg-night-soft cursor-pointer' : 'cursor-default'}`}
                         >
                           #{globalIdx + 1}
                         </button>
                       )}
 
                       <div className="min-w-0 flex items-baseline gap-2 flex-wrap">
-                        <span className="text-[11px] font-medium text-[#5C5C58] dark:text-[#A6A196] shrink-0">
+                        <span className="text-[11px] font-medium text-ink-muted dark:text-sandstone shrink-0">
                           {p.isCommunity ? (p.authorName || 'Читач') : 'Вірш'}
                         </span>
-                        <span aria-hidden="true" className="text-[#C4BFB4]">·</span>
-                        <span className="text-sm font-medium text-[#141413] dark:text-[#EDEAE1] truncate">
+                        <span aria-hidden="true" className="text-parchment">·</span>
+                        <span className="text-sm font-medium text-ink dark:text-cream-soft truncate">
                           {p.title}
                         </span>
                         {isFeaturedHome && (
-                          <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#EEF3E8] dark:bg-[#323232] text-[#2C5937] dark:text-[#E5E5E5] shrink-0">
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#EEF3E8] dark:bg-night-elevated text-pine dark:text-silver shrink-0">
                             На головній
                           </span>
                         )}
@@ -2268,8 +2268,8 @@ export function StudioWorksTab({
                             p.workStatus === 'in_progress'
                               ? 'bg-amber-50 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300'
                               : p.workStatus === 'completed'
-                                ? 'bg-emerald-50 text-emerald-800 dark:bg-[#323232] dark:text-[#E5E5E5]'
-                                : 'bg-[#EFECE6] text-[#787872] dark:bg-[#202020] dark:text-[#8E8B82]'
+                                ? 'bg-emerald-50 text-emerald-800 dark:bg-night-elevated dark:text-silver'
+                                : 'bg-paper-warm text-ink-subtle dark:bg-night-panel dark:text-stone-warm'
                           }`}
                         >
                           {p.workStatus === 'in_progress'
@@ -2279,25 +2279,25 @@ export function StudioWorksTab({
                               : 'Статус +'}
                         </button>
                         {Number.isFinite(p.year) && (
-                          <span className="text-[11px] font-mono text-[#787872] dark:text-[#C4BFB4] tabular-nums shrink-0">
+                          <span className="text-[11px] font-mono text-ink-subtle dark:text-parchment tabular-nums shrink-0">
                             · {p.year}
                           </span>
                         )}
                         {p.cycle && (
                           <>
-                            <span aria-hidden="true" className="text-[#C4BFB4] hidden sm:inline">·</span>
-                            <span className="text-[11px] text-[#5C5C58] dark:text-[#A6A196] truncate hidden sm:inline">
+                            <span aria-hidden="true" className="text-parchment hidden sm:inline">·</span>
+                            <span className="text-[11px] text-ink-muted dark:text-sandstone truncate hidden sm:inline">
                               {p.cycle}
                             </span>
                           </>
                         )}
                         {p.imageUrl && (
-                          <span className="text-[11px] font-mono text-[#2C5937] dark:text-[#E5E5E5] shrink-0">
+                          <span className="text-[11px] font-mono text-pine dark:text-silver shrink-0">
                             · Фото
                           </span>
                         )}
                         {(p.soundcloudTracks?.length || p.soundcloudTrack) && (
-                          <span className="text-[11px] font-mono text-[#2C5937] dark:text-[#E5E5E5] shrink-0">
+                          <span className="text-[11px] font-mono text-pine dark:text-silver shrink-0">
                             ·{' '}
                             {p.soundcloudTracks && p.soundcloudTracks.length > 1
                               ? `SoundCloud (${p.soundcloudTracks.length})`
@@ -2327,7 +2327,7 @@ export function StudioWorksTab({
                             type="button"
                             disabled={globalIdx === 0}
                             onClick={() => handleMovePoemByDelta(p.id, -1)}
-                            className="p-1.5 text-[#5C5C58] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-[#EDEAE1] rounded-lg hover:bg-[#EFECE6] dark:hover:bg-[#323232] disabled:opacity-30 cursor-pointer disabled:cursor-default shrink-0"
+                            className="p-1.5 text-ink-muted dark:text-sandstone hover:text-ink dark:hover:text-cream-soft rounded-lg hover:bg-paper-warm dark:hover:bg-night-elevated disabled:opacity-30 cursor-pointer disabled:cursor-default shrink-0"
                             title="Підняти вище у списку"
                             aria-label={`Підняти вірш ${p.title} вище`}
                           >
@@ -2337,7 +2337,7 @@ export function StudioWorksTab({
                             type="button"
                             disabled={globalIdx >= poems.length - 1}
                             onClick={() => handleMovePoemByDelta(p.id, 1)}
-                            className="p-1.5 text-[#5C5C58] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-[#EDEAE1] rounded-lg hover:bg-[#EFECE6] dark:hover:bg-[#323232] disabled:opacity-30 cursor-pointer disabled:cursor-default shrink-0"
+                            className="p-1.5 text-ink-muted dark:text-sandstone hover:text-ink dark:hover:text-cream-soft rounded-lg hover:bg-paper-warm dark:hover:bg-night-elevated disabled:opacity-30 cursor-pointer disabled:cursor-default shrink-0"
                             title="Опустити нижче у списку"
                             aria-label={`Опустити вірш ${p.title} нижче`}
                           >
@@ -2348,7 +2348,7 @@ export function StudioWorksTab({
                       <button
                         type="button"
                         onClick={() => handleStartEditPoem(p)}
-                        className="p-1.5 text-[#5C5C58] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-[#EDEAE1] rounded-lg hover:bg-[#F5F4EE] dark:hover:bg-[#323232] cursor-pointer shrink-0"
+                        className="p-1.5 text-ink-muted dark:text-sandstone hover:text-ink dark:hover:text-cream-soft rounded-lg hover:bg-paper-oat dark:hover:bg-night-elevated cursor-pointer shrink-0"
                         title="Редагувати вірш"
                         aria-label={`Редагувати вірш ${p.title}`}
                       >
@@ -2357,7 +2357,7 @@ export function StudioWorksTab({
                       <button
                         type="button"
                         onClick={() => handleDeleteWork('poem', p.id)}
-                        className="p-1.5 text-[#5C5C58] dark:text-[#A6A196] hover:text-rose-700 dark:hover:text-rose-400 rounded-lg hover:bg-rose-700/10 cursor-pointer shrink-0"
+                        className="p-1.5 text-ink-muted dark:text-sandstone hover:text-rose-700 dark:hover:text-rose-400 rounded-lg hover:bg-rose-700/10 cursor-pointer shrink-0"
                         aria-label={`Видалити вірш ${p.title}`}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -2370,13 +2370,13 @@ export function StudioWorksTab({
               return (
                 <div className="space-y-6">
                   {filteredPoems.length > 0 && poems.length > 1 && (
-                    <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-[11px] text-[#5C5C58] dark:text-[#A6A196]">
+                    <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-[11px] text-ink-muted dark:text-sandstone">
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold uppercase tracking-[0.06em] text-[#141413] dark:text-[#EDEAE1]">
+                        <span className="font-semibold uppercase tracking-[0.06em] text-ink dark:text-cream-soft">
                           Вірші · порядок показу
                         </span>
                         {reorderingPoems && (
-                          <span className="text-[#2C5937] dark:text-[#A7F3D0] font-medium">
+                          <span className="text-pine dark:text-[#A7F3D0] font-medium">
                             Збереження...
                           </span>
                         )}
@@ -2391,7 +2391,7 @@ export function StudioWorksTab({
                           <button
                             type="button"
                             onClick={() => setTypeFilter('poem')}
-                            className="font-semibold text-[#2C5937] dark:text-[#E5E5E5] hover:underline cursor-pointer"
+                            className="font-semibold text-pine dark:text-silver hover:underline cursor-pointer"
                           >
                             Лише вірші
                           </button>
@@ -2402,17 +2402,17 @@ export function StudioWorksTab({
 
                   {/* Section 1: Author / Admin Works */}
                   <section className="space-y-2">
-                    <div className="flex items-center justify-between gap-2 px-1 pb-1 border-b border-[#E5E0D5]/70 dark:border-[#333333]">
-                      <h4 className="text-xs font-semibold uppercase tracking-[0.06em] text-[#141413] dark:text-[#EDEAE1]">
+                    <div className="flex items-center justify-between gap-2 px-1 pb-1 border-b border-paper-sand/70 dark:border-night-elevated">
+                      <h4 className="text-xs font-semibold uppercase tracking-[0.06em] text-ink dark:text-cream-soft">
                         Твори автора (адміністратора)
                       </h4>
-                      <span className="font-mono text-[11px] tabular-nums text-[#5C5C58] dark:text-[#A6A196]">
+                      <span className="font-mono text-[11px] tabular-nums text-ink-muted dark:text-sandstone">
                         {adminTotal}
                       </span>
                     </div>
 
                     {adminTotal === 0 ? (
-                      <div className="py-6 text-center text-xs text-[#5C5C58] dark:text-[#A6A196] bg-[#FAF9F5] dark:bg-[#262626] rounded-xl">
+                      <div className="py-6 text-center text-xs text-ink-muted dark:text-sandstone bg-paper dark:bg-night-card rounded-xl">
                         У цьому фільтрі творів адміністратора поки немає.
                       </div>
                     ) : (
@@ -2427,36 +2427,36 @@ export function StudioWorksTab({
                           return (
                             <div
                               key={b.id}
-                              className="px-4 py-3 rounded-xl flex items-center justify-between gap-3 bg-[#FAF9F5] dark:bg-[#262626] text-xs"
+                              className="px-4 py-3 rounded-xl flex items-center justify-between gap-3 bg-paper dark:bg-night-card text-xs"
                             >
                               <div className="min-w-0 flex items-baseline gap-2 flex-wrap">
-                                <span className="text-[11px] font-medium text-[#5C5C58] dark:text-[#A6A196] shrink-0">
+                                <span className="text-[11px] font-medium text-ink-muted dark:text-sandstone shrink-0">
                                   БДК
                                 </span>
-                                <span aria-hidden="true" className="text-[#C4BFB4]">·</span>
-                                <span className="text-sm font-medium text-[#141413] dark:text-[#EDEAE1] truncate">
+                                <span aria-hidden="true" className="text-parchment">·</span>
+                                <span className="text-sm font-medium text-ink dark:text-cream-soft truncate">
                                   {b.title}
                                 </span>
                                 {b.category && (
                                   <>
-                                    <span aria-hidden="true" className="text-[#C4BFB4] hidden sm:inline">·</span>
-                                    <span className="text-[11px] text-[#5C5C58] dark:text-[#A6A196] truncate hidden sm:inline">
+                                    <span aria-hidden="true" className="text-parchment hidden sm:inline">·</span>
+                                    <span className="text-[11px] text-ink-muted dark:text-sandstone truncate hidden sm:inline">
                                       {b.category}
                                     </span>
                                   </>
                                 )}
                                 {photoCount > 0 && (
-                                  <span className="text-[11px] font-mono text-[#2C5937] dark:text-[#E5E5E5] tabular-nums">
+                                  <span className="text-[11px] font-mono text-pine dark:text-silver tabular-nums">
                                     · {photoCount} фото
                                   </span>
                                 )}
                                 {videoCount > 0 && (
-                                  <span className="text-[11px] font-mono text-[#E50914] dark:text-[#FDA4AF] tabular-nums">
+                                  <span className="text-[11px] font-mono text-cinema-red dark:text-[#FDA4AF] tabular-nums">
                                     · {videoCount} відео
                                   </span>
                                 )}
                                 {trackCount > 0 && (
-                                  <span className="text-[11px] font-mono text-[#2C5937] dark:text-[#E5E5E5] tabular-nums">
+                                  <span className="text-[11px] font-mono text-pine dark:text-silver tabular-nums">
                                     · {trackCount} трек.
                                   </span>
                                 )}
@@ -2465,7 +2465,7 @@ export function StudioWorksTab({
                                 <button
                                   type="button"
                                   onClick={() => handleStartEditBlog(b)}
-                                  className="p-1.5 text-[#5C5C58] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-[#EDEAE1] rounded-lg hover:bg-[#F5F4EE] dark:hover:bg-[#323232] cursor-pointer shrink-0"
+                                  className="p-1.5 text-ink-muted dark:text-sandstone hover:text-ink dark:hover:text-cream-soft rounded-lg hover:bg-paper-oat dark:hover:bg-night-elevated cursor-pointer shrink-0"
                                   title="Редагувати допис"
                                   aria-label={`Редагувати допис ${b.title}`}
                                 >
@@ -2474,7 +2474,7 @@ export function StudioWorksTab({
                                 <button
                                   type="button"
                                   onClick={() => handleDeleteWork('blog', b.id)}
-                                  className="p-1.5 text-[#5C5C58] dark:text-[#A6A196] hover:text-rose-700 dark:hover:text-rose-400 rounded-lg hover:bg-rose-700/10 cursor-pointer shrink-0"
+                                  className="p-1.5 text-ink-muted dark:text-sandstone hover:text-rose-700 dark:hover:text-rose-400 rounded-lg hover:bg-rose-700/10 cursor-pointer shrink-0"
                                   aria-label={`Видалити допис ${b.title}`}
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
@@ -2489,9 +2489,9 @@ export function StudioWorksTab({
 
                   {/* Section 2: User / Reader Works */}
                   <section className="space-y-2">
-                    <div className="flex items-center justify-between gap-2 px-1 pb-1 border-b border-[#E5E0D5]/70 dark:border-[#333333]">
+                    <div className="flex items-center justify-between gap-2 px-1 pb-1 border-b border-paper-sand/70 dark:border-night-elevated">
                       <div className="flex items-center gap-2">
-                        <h4 className="text-xs font-semibold uppercase tracking-[0.06em] text-[#2C5937] dark:text-[#E5E5E5]">
+                        <h4 className="text-xs font-semibold uppercase tracking-[0.06em] text-pine dark:text-silver">
                           Твори користувачів
                         </h4>
                         {pendingSubmissionsCount > 0 && (
@@ -2504,13 +2504,13 @@ export function StudioWorksTab({
                           </button>
                         )}
                       </div>
-                      <span className="font-mono text-[11px] tabular-nums text-[#5C5C58] dark:text-[#A6A196]">
+                      <span className="font-mono text-[11px] tabular-nums text-ink-muted dark:text-sandstone">
                         {userTotal}
                       </span>
                     </div>
 
                     {userTotal === 0 ? (
-                      <div className="py-6 text-center text-xs text-[#5C5C58] dark:text-[#A6A196] bg-[#FAF9F5] dark:bg-[#262626] rounded-xl">
+                      <div className="py-6 text-center text-xs text-ink-muted dark:text-sandstone bg-paper dark:bg-night-card rounded-xl">
                         Опублікованих творів користувачів у цьому фільтрі поки немає.
                       </div>
                     ) : (
@@ -2531,27 +2531,27 @@ export function StudioWorksTab({
       {subTab === 'compose' && (
         <form onSubmit={handlePublishWork} className="max-w-3xl space-y-5">
           {editingBlogId && pubKind === 'blog' ? (
-            <div className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl bg-[#EEF3E8] dark:bg-[#323232]">
-              <div className="text-xs font-medium text-[#1F4229] dark:text-[#F4F1EA]">
+            <div className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl bg-[#EEF3E8] dark:bg-night-elevated">
+              <div className="text-xs font-medium text-[#1F4229] dark:text-cream">
                 Редагування рецензії в кіноблозі БДК
               </div>
               <button
                 type="button"
                 onClick={resetComposeForm}
-                className="text-xs font-semibold text-[#5C5C58] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-[#EDEAE1] cursor-pointer"
+                className="text-xs font-semibold text-ink-muted dark:text-sandstone hover:text-ink dark:hover:text-cream-soft cursor-pointer"
               >
                 Скасувати редагування
               </button>
             </div>
           ) : editingPoemId && pubKind === 'poem' ? (
-            <div className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl bg-[#EEF3E8] dark:bg-[#323232]">
-              <div className="text-xs font-medium text-[#1F4229] dark:text-[#F4F1EA]">
+            <div className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl bg-[#EEF3E8] dark:bg-night-elevated">
+              <div className="text-xs font-medium text-[#1F4229] dark:text-cream">
                 Редагування вірша
               </div>
               <button
                 type="button"
                 onClick={resetComposeForm}
-                className="text-xs font-semibold text-[#5C5C58] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-[#EDEAE1] cursor-pointer"
+                className="text-xs font-semibold text-ink-muted dark:text-sandstone hover:text-ink dark:hover:text-cream-soft cursor-pointer"
               >
                 Скасувати редагування
               </button>
@@ -2573,7 +2573,7 @@ export function StudioWorksTab({
                   className={`px-3.5 py-2 rounded-lg text-xs font-semibold cursor-pointer transition-colors ${
                     pubKind === k.id
                       ? 'bg-pear-pine-gradient text-white'
-                      : 'bg-[#FAF9F5] dark:bg-[#262626] text-[#5C5C58] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-[#EDEAE1]'
+                      : 'bg-paper dark:bg-night-card text-ink-muted dark:text-sandstone hover:text-ink dark:hover:text-cream-soft'
                   }`}
                 >
                   {k.label}
@@ -2611,9 +2611,9 @@ export function StudioWorksTab({
           </div>
 
           {pubKind === 'poem' && (
-            <div className="p-4 bg-[#FAF9F5] dark:bg-[#262626] rounded-xl space-y-4">
+            <div className="p-4 bg-paper dark:bg-night-card rounded-xl space-y-4">
               {/* Year & Display Order Position */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pb-2 border-b border-[#E5E0D5]/70 dark:border-[#333333]">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pb-2 border-b border-paper-sand/70 dark:border-night-elevated">
                 <div>
                   <label className={STUDIO_LABEL_CLASS}>Рік написання</label>
                   <input
@@ -2644,7 +2644,7 @@ export function StudioWorksTab({
                           className={`px-2.5 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-colors ${
                             pubPoemPositionMode === opt.id
                               ? 'bg-pear-pine-gradient text-white font-semibold'
-                              : 'bg-white dark:bg-[#202020] text-[#5C5C58] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-[#EDEAE1]'
+                              : 'bg-white dark:bg-night-panel text-ink-muted dark:text-sandstone hover:text-ink dark:hover:text-cream-soft'
                           }`}
                         >
                           {opt.label}
@@ -2659,11 +2659,11 @@ export function StudioWorksTab({
                           value={pubPoemCustomPosition}
                           onChange={(e) => setPubPoemCustomPosition(e.target.value)}
                           aria-label="Номер позиції вірша у списку"
-                          className="w-16 px-2 py-1 rounded-lg bg-white dark:bg-[#202020] font-mono text-xs tabular-nums text-[#141413] dark:text-[#EDEAE1] ring-1 ring-[#D7D2C6] dark:ring-[#3E3E3E] focus:outline-none"
+                          className="w-16 px-2 py-1 rounded-lg bg-white dark:bg-night-panel font-mono text-xs tabular-nums text-ink dark:text-cream-soft ring-1 ring-[#D7D2C6] dark:ring-[#3E3E3E] focus:outline-none"
                         />
                       )}
                     </div>
-                    <p className="text-[11px] text-[#5C5C58] dark:text-[#A6A196]">
+                    <p className="text-[11px] text-ink-muted dark:text-sandstone">
                       Якщо публікуєте давній вірш, оберіть «В кінець» або вкажіть позицію — тоді він не витіснить найновіший вірш із головної сторінки.
                     </p>
                   </div>
@@ -2687,7 +2687,7 @@ export function StudioWorksTab({
                       className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-colors ${
                         pubPoemWorkStatus === opt.id
                           ? 'bg-pear-pine-gradient text-white font-semibold'
-                          : 'bg-white dark:bg-[#202020] text-[#5C5C58] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-[#EDEAE1]'
+                          : 'bg-white dark:bg-night-panel text-ink-muted dark:text-sandstone hover:text-ink dark:hover:text-cream-soft'
                       }`}
                     >
                       {opt.id === 'completed' && <CheckCircle2 className="w-3 h-3" />}
@@ -2699,12 +2699,12 @@ export function StudioWorksTab({
               </div>
 
               <div className="flex items-center gap-2">
-                <Palette className="w-4 h-4 text-[#2C5937] dark:text-[#E5E5E5]" />
-                <h4 className="text-xs font-semibold text-[#141413] dark:text-[#EDEAE1]">
+                <Palette className="w-4 h-4 text-pine dark:text-silver" />
+                <h4 className="text-xs font-semibold text-ink dark:text-cream-soft">
                   Верстка та візуальна тема вірша
                 </h4>
               </div>
-              <p className="text-xs text-[#5C5C58] dark:text-[#A6A196]">
+              <p className="text-xs text-ink-muted dark:text-sandstone">
                 Налаштуйте кегль, вирівнювання, інтервал між рядками, колір тексту та колір фону для створення унікальної естетики твору.
               </p>
 
@@ -2765,8 +2765,8 @@ export function StudioWorksTab({
                       }}
                       className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium cursor-pointer transition-all ${
                         !pubPoemBackgroundColor && !pubPoemTextColor
-                          ? 'bg-[#EAE7DF] dark:bg-[#323232] text-[#141413] dark:text-[#EDEAE1] shadow-xs'
-                          : 'bg-white dark:bg-[#202020] text-[#5C5C58] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-[#EDEAE1]'
+                          ? 'bg-paper-sand dark:bg-night-elevated text-ink dark:text-cream-soft shadow-xs'
+                          : 'bg-white dark:bg-night-panel text-ink-muted dark:text-sandstone hover:text-ink dark:hover:text-cream-soft'
                       }`}
                     >
                       <span
@@ -2796,8 +2796,8 @@ export function StudioWorksTab({
                         }}
                         className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium cursor-pointer transition-all ${
                           isActive
-                            ? 'bg-[#EAE7DF] dark:bg-[#323232] text-[#141413] dark:text-[#EDEAE1] shadow-xs'
-                            : 'bg-white dark:bg-[#202020] text-[#5C5C58] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-[#EDEAE1]'
+                            ? 'bg-paper-sand dark:bg-night-elevated text-ink dark:text-cream-soft shadow-xs'
+                            : 'bg-white dark:bg-night-panel text-ink-muted dark:text-sandstone hover:text-ink dark:hover:text-cream-soft'
                         }`}
                       >
                         <span
@@ -2819,10 +2819,10 @@ export function StudioWorksTab({
               {/* Poem Photo & SoundCloud Track */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
                 {/* Photo Uploader / URL */}
-                <div className="p-3.5 rounded-xl bg-white dark:bg-[#202020] space-y-3">
+                <div className="p-3.5 rounded-xl bg-white dark:bg-night-panel space-y-3">
                   <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 text-xs font-semibold text-[#141413] dark:text-[#EDEAE1]">
-                      <ImagePlus className="w-4 h-4 text-[#2C5937] dark:text-[#E5E5E5]" />
+                    <div className="flex items-center gap-2 text-xs font-semibold text-ink dark:text-cream-soft">
+                      <ImagePlus className="w-4 h-4 text-pine dark:text-silver" />
                       <span>Фотографія до вірша</span>
                     </div>
                     {pubPoemImageUrl && (
@@ -2836,13 +2836,13 @@ export function StudioWorksTab({
                     )}
                   </div>
 
-                  <p className="text-[11px] text-[#5C5C58] dark:text-[#A6A196] leading-relaxed">
+                  <p className="text-[11px] text-ink-muted dark:text-sandstone leading-relaxed">
                     Фон картки вірша автоматично підлаштується під переважаючий тон фотографії.
                   </p>
 
                   {pubPoemImageUrl ? (
                     <div className="space-y-2.5">
-                      <div className="relative overflow-hidden rounded-xl bg-[#EFECE6] dark:bg-[#1B1B1B]">
+                      <div className="relative overflow-hidden rounded-xl bg-paper-warm dark:bg-night-deep">
                         <img
                           src={pubPoemImageUrl}
                           alt="Фото до вірша"
@@ -2857,7 +2857,7 @@ export function StudioWorksTab({
                       <div className="flex flex-wrap items-center justify-between gap-2 text-[11px]">
                         <div className="flex items-center gap-2 min-w-0">
                           {poemPaletteExtracting ? (
-                            <span className="text-[#5C5C58] dark:text-[#A6A196]">
+                            <span className="text-ink-muted dark:text-sandstone">
                               Визначення палітри...
                             </span>
                           ) : pubPoemImagePalette ? (
@@ -2871,12 +2871,12 @@ export function StudioWorksTab({
                                     : undefined,
                                 }}
                               />
-                              <span className="font-mono text-[#141413] dark:text-[#EDEAE1]">
+                              <span className="font-mono text-ink dark:text-cream-soft">
                                 {pubPoemImagePalette.background}
                               </span>
                             </>
                           ) : (
-                            <span className="text-[#5C5C58] dark:text-[#A6A196]">
+                            <span className="text-ink-muted dark:text-sandstone">
                               Палітра визначиться автоматично
                             </span>
                           )}
@@ -2886,7 +2886,7 @@ export function StudioWorksTab({
                           type="button"
                           disabled={poemPaletteExtracting}
                           onClick={() => void extractAndApplyPoemPalette(pubPoemImageUrl, true)}
-                          className="inline-flex items-center gap-1 text-[11px] font-medium text-[#2C5937] dark:text-[#E5E5E5] hover:underline cursor-pointer disabled:opacity-50"
+                          className="inline-flex items-center gap-1 text-[11px] font-medium text-pine dark:text-silver hover:underline cursor-pointer disabled:opacity-50"
                         >
                           <RefreshCw className={`w-3 h-3 ${poemPaletteExtracting ? 'animate-spin' : ''}`} />
                           <span>Оновити фон із фото</span>
@@ -2937,13 +2937,13 @@ export function StudioWorksTab({
                 </div>
 
                 {/* SoundCloud Track Importer */}
-                <div className="p-3.5 rounded-xl bg-white dark:bg-[#202020] space-y-3">
+                <div className="p-3.5 rounded-xl bg-white dark:bg-night-panel space-y-3">
                   <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 text-xs font-semibold text-[#141413] dark:text-[#EDEAE1]">
-                      <Music2 className="w-4 h-4 text-[#2C5937] dark:text-[#E5E5E5]" />
+                    <div className="flex items-center gap-2 text-xs font-semibold text-ink dark:text-cream-soft">
+                      <Music2 className="w-4 h-4 text-pine dark:text-silver" />
                       <span>Пісні з SoundCloud</span>
                       {pubPoemSoundCloudTracks.length > 0 && (
-                        <span className="font-mono text-[11px] text-[#787872] dark:text-[#8E8B82]">
+                        <span className="font-mono text-[11px] text-ink-subtle dark:text-stone-warm">
                           {pubPoemSoundCloudTracks.length}/10
                         </span>
                       )}
@@ -2964,9 +2964,9 @@ export function StudioWorksTab({
                       {pubPoemSoundCloudTracks.map((trackItem, idx) => (
                         <div
                           key={`${trackItem.id}-${idx}`}
-                          className="p-2 rounded-xl bg-[#FAF9F5] dark:bg-[#262626] flex items-center gap-2.5"
+                          className="p-2 rounded-xl bg-paper dark:bg-night-card flex items-center gap-2.5"
                         >
-                          <span className="font-mono text-[11px] text-[#787872] dark:text-[#8E8B82] w-4 text-center shrink-0">
+                          <span className="font-mono text-[11px] text-ink-subtle dark:text-stone-warm w-4 text-center shrink-0">
                             {idx + 1}
                           </span>
                           {trackItem.artworkUrl ? (
@@ -2977,18 +2977,18 @@ export function StudioWorksTab({
                               height={36}
                               loading="lazy"
                               decoding="async"
-                              className="w-9 h-9 rounded-lg object-cover shrink-0 bg-[#EFECE6] dark:bg-[#323232]"
+                              className="w-9 h-9 rounded-lg object-cover shrink-0 bg-paper-warm dark:bg-night-elevated"
                             />
                           ) : (
-                            <div className="w-9 h-9 rounded-lg shrink-0 flex items-center justify-center bg-[#EFECE6] dark:bg-[#323232] text-[#2C5937] dark:text-[#E5E5E5]">
+                            <div className="w-9 h-9 rounded-lg shrink-0 flex items-center justify-center bg-paper-warm dark:bg-night-elevated text-pine dark:text-silver">
                               <Music2 className="w-4 h-4" />
                             </div>
                           )}
                           <div className="min-w-0 flex-1">
-                            <p className="text-xs font-semibold text-[#141413] dark:text-[#EDEAE1] truncate">
+                            <p className="text-xs font-semibold text-ink dark:text-cream-soft truncate">
                               {trackItem.title}
                             </p>
-                            <p className="text-[11px] text-[#5C5C58] dark:text-[#A6A196] truncate">
+                            <p className="text-[11px] text-ink-muted dark:text-sandstone truncate">
                               {trackItem.artist}
                             </p>
                           </div>
@@ -3000,7 +3000,7 @@ export function StudioWorksTab({
                                   disabled={idx === 0}
                                   onClick={() => movePoemSoundCloudTrack(idx, -1)}
                                   aria-label="Перемістити вгору"
-                                  className="p-1 rounded-md text-[#5C5C58] dark:text-[#A6A196] hover:bg-[#EFECE6] dark:hover:bg-[#323232] disabled:opacity-30 cursor-pointer"
+                                  className="p-1 rounded-md text-ink-muted dark:text-sandstone hover:bg-paper-warm dark:hover:bg-night-elevated disabled:opacity-30 cursor-pointer"
                                 >
                                   <ArrowUp className="w-3.5 h-3.5" />
                                 </button>
@@ -3009,7 +3009,7 @@ export function StudioWorksTab({
                                   disabled={idx === pubPoemSoundCloudTracks.length - 1}
                                   onClick={() => movePoemSoundCloudTrack(idx, 1)}
                                   aria-label="Перемістити вниз"
-                                  className="p-1 rounded-md text-[#5C5C58] dark:text-[#A6A196] hover:bg-[#EFECE6] dark:hover:bg-[#323232] disabled:opacity-30 cursor-pointer"
+                                  className="p-1 rounded-md text-ink-muted dark:text-sandstone hover:bg-paper-warm dark:hover:bg-night-elevated disabled:opacity-30 cursor-pointer"
                                 >
                                   <ArrowDown className="w-3.5 h-3.5" />
                                 </button>
@@ -3073,7 +3073,7 @@ export function StudioWorksTab({
                       <button
                         type="button"
                         onClick={() => setPubPoemTextColor('')}
-                        className="text-[10px] text-[#5C5C58] hover:text-rose-600 dark:hover:text-rose-400 cursor-pointer"
+                        className="text-[10px] text-ink-muted hover:text-rose-600 dark:hover:text-rose-400 cursor-pointer"
                       >
                         Скинути
                       </button>
@@ -3111,7 +3111,7 @@ export function StudioWorksTab({
                       <button
                         type="button"
                         onClick={() => setPubPoemBackgroundColor('')}
-                        className="text-[10px] text-[#5C5C58] hover:text-rose-600 dark:hover:text-rose-400 cursor-pointer"
+                        className="text-[10px] text-ink-muted hover:text-rose-600 dark:hover:text-rose-400 cursor-pointer"
                       >
                         Скинути
                       </button>
@@ -3171,7 +3171,7 @@ export function StudioWorksTab({
                   undefined;
                 return (
                   <div className="space-y-1.5 pt-2">
-                    <div className="flex items-center justify-between text-xs font-semibold text-[#5C5C58] dark:text-[#A6A196]">
+                    <div className="flex items-center justify-between text-xs font-semibold text-ink-muted dark:text-sandstone">
                       <span>Попередній перегляд теми вірша</span>
                       <span className="font-mono text-[11px] opacity-75">
                         {pubPoemBackgroundColor
@@ -3189,7 +3189,7 @@ export function StudioWorksTab({
                         color: previewText,
                       }}
                       className={`p-4 rounded-xl transition-all duration-200 overflow-hidden space-y-3 ${
-                        previewBg ? 'shadow-xs' : 'bg-white dark:bg-[#202020]'
+                        previewBg ? 'shadow-xs' : 'bg-white dark:bg-night-panel'
                       }`}
                     >
                       {pubPoemImageUrl && (
@@ -3206,7 +3206,7 @@ export function StudioWorksTab({
                       <h4
                         style={previewText ? { color: previewText } : undefined}
                         className={`text-base font-semibold tracking-[-0.01em] mb-2 ${
-                          previewText ? '' : 'text-[#141413] dark:text-[#F4F1EA]'
+                          previewText ? '' : 'text-ink dark:text-cream'
                         }`}
                       >
                         {pubTitle.trim() || 'Назва вірша'}
@@ -3214,7 +3214,7 @@ export function StudioWorksTab({
                       <div
                         style={previewText ? { color: previewText } : undefined}
                         className={`whitespace-pre-wrap ${
-                          previewText ? '' : 'text-[#141413] dark:text-[#E5E2DA]'
+                          previewText ? '' : 'text-ink dark:text-[#E5E2DA]'
                         } ${
                           pubPoemFontSize === 'sm'
                             ? 'text-xs'
@@ -3250,7 +3250,7 @@ export function StudioWorksTab({
                         <p
                           style={previewText ? { color: previewText, opacity: 0.8 } : undefined}
                           className={`italic text-xs mt-3 ${
-                            previewText ? '' : 'text-[#5C5C58] dark:text-[#A8A49B]'
+                            previewText ? '' : 'text-ink-muted dark:text-sandstone-light'
                           } ${
                             pubPoemTextAlign === 'center'
                               ? 'text-center'
@@ -3300,11 +3300,11 @@ export function StudioWorksTab({
                       className={`${STUDIO_INPUT_CLASS} font-mono tabular-nums`}
                     />
                   ) : (
-                    <div className="w-full px-3 py-2 text-sm bg-[#EFECE6] dark:bg-[#1B1B1B] rounded-lg flex items-center justify-between gap-2">
-                      <span className="font-mono font-semibold text-[#141413] dark:text-[#EDEAE1] tabular-nums">
+                    <div className="w-full px-3 py-2 text-sm bg-paper-warm dark:bg-night-deep rounded-lg flex items-center justify-between gap-2">
+                      <span className="font-mono font-semibold text-ink dark:text-cream-soft tabular-nums">
                         {pubContent.trim() ? Math.max(1, countPagesForText(pubContent)) : 0} стор.
                       </span>
-                      <span className="text-[11px] font-mono text-[#5C5C58] dark:text-[#A6A196] tabular-nums">
+                      <span className="text-[11px] font-mono text-ink-muted dark:text-sandstone tabular-nums">
                         {countProseWords(pubContent).toLocaleString('uk-UA')} слів
                       </span>
                     </div>
@@ -3343,8 +3343,8 @@ export function StudioWorksTab({
                       onClick={() => setPubProseStatus((prev) => (prev === 'completed' ? '' : 'completed'))}
                       className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium cursor-pointer transition-colors ${
                         pubProseStatus === 'completed'
-                          ? 'bg-emerald-50 text-emerald-800 dark:bg-[#323232] dark:text-[#E5E5E5]'
-                          : 'bg-[#FAF9F5] dark:bg-[#262626] text-[#5C5C58] dark:text-[#A6A196]'
+                          ? 'bg-emerald-50 text-emerald-800 dark:bg-night-elevated dark:text-silver'
+                          : 'bg-paper dark:bg-night-card text-ink-muted dark:text-sandstone'
                       }`}
                     >
                       <CheckCircle2 className="w-3.5 h-3.5" />
@@ -3356,7 +3356,7 @@ export function StudioWorksTab({
                       className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium cursor-pointer transition-colors ${
                         pubProseStatus === 'in_progress'
                           ? 'bg-amber-50 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300'
-                          : 'bg-[#FAF9F5] dark:bg-[#262626] text-[#5C5C58] dark:text-[#A6A196]'
+                          : 'bg-paper dark:bg-night-card text-ink-muted dark:text-sandstone'
                       }`}
                     >
                       <Clock className="w-3.5 h-3.5" />
@@ -3399,7 +3399,7 @@ export function StudioWorksTab({
                           className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
                             selected
                               ? `${preset.badgeClass} shadow-md scale-[1.03]`
-                              : 'bg-[#FAF9F5] dark:bg-[#262626] text-[#5C5C58] dark:text-[#A6A196]'
+                              : 'bg-paper dark:bg-night-card text-ink-muted dark:text-sandstone'
                           }`}
                         >
                           <span
@@ -3436,8 +3436,8 @@ export function StudioWorksTab({
                     onClick={() => setPubMeta(genre)}
                     className={`px-2.5 py-1 rounded-lg text-[11px] font-medium cursor-pointer transition-colors ${
                       pubMeta.trim().toLowerCase() === genre.toLowerCase()
-                        ? 'bg-[#141413] text-white dark:bg-[#F4F1EA] dark:text-[#181818] font-semibold'
-                        : 'bg-[#EFECE6] dark:bg-[#262626] text-[#5C5C58] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-[#EDEAE1]'
+                        ? 'bg-ink text-white dark:bg-cream dark:text-night font-semibold'
+                        : 'bg-paper-warm dark:bg-night-card text-ink-muted dark:text-sandstone hover:text-ink dark:hover:text-cream-soft'
                     }`}
                   >
                     {genre}
@@ -3446,17 +3446,17 @@ export function StudioWorksTab({
               </div>
 
               {/* Poster / Cover Image + Film Passport Panel */}
-              <div className="p-4 bg-[#FAF9F5] dark:bg-[#262626] rounded-xl space-y-4">
-                <div className="flex items-center gap-2 text-xs font-semibold text-[#141413] dark:text-[#EDEAE1]">
-                  <Clapperboard className="w-4 h-4 text-[#E50914]" />
+              <div className="p-4 bg-paper dark:bg-night-card rounded-xl space-y-4">
+                <div className="flex items-center gap-2 text-xs font-semibold text-ink dark:text-cream-soft">
+                  <Clapperboard className="w-4 h-4 text-cinema-red" />
                   <span>Паспорт фільму та постер (необов’язково)</span>
                 </div>
 
                 {/* Cover Poster */}
-                <div className="p-3.5 rounded-xl bg-white dark:bg-[#202020] space-y-3">
+                <div className="p-3.5 rounded-xl bg-white dark:bg-night-panel space-y-3">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#141413] dark:text-[#EDEAE1]">
-                      <Film className="w-3.5 h-3.5 text-[#E50914]" />
+                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink dark:text-cream-soft">
+                      <Film className="w-3.5 h-3.5 text-cinema-red" />
                       <span>Постер або головний кадр-обкладинка</span>
                     </span>
                     {pubBlogCoverImage && (
@@ -3471,7 +3471,7 @@ export function StudioWorksTab({
                   </div>
 
                   {pubBlogCoverImage ? (
-                    <div className="overflow-hidden rounded-xl bg-[#141215]">
+                    <div className="overflow-hidden rounded-xl bg-ink">
                       <img
                         src={pubBlogCoverImage}
                         alt="Постер рецензії"
@@ -3622,7 +3622,7 @@ export function StudioWorksTab({
                       className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium cursor-pointer transition-colors w-full sm:w-auto ${
                         pubBlogHasSpoilers
                           ? 'bg-amber-500/15 text-amber-800 dark:text-amber-300 ring-1 ring-amber-500/35'
-                          : 'bg-white dark:bg-[#202020] text-[#5C5C58] dark:text-[#A6A196]'
+                          : 'bg-white dark:bg-night-panel text-ink-muted dark:text-sandstone'
                       }`}
                     >
                       <ShieldAlert className="w-3.5 h-3.5 shrink-0" />
@@ -3666,7 +3666,7 @@ export function StudioWorksTab({
 
           <div>
             <div className="flex flex-wrap items-center justify-between gap-2 mb-1.5">
-              <label className="text-xs font-medium text-[#5C5C58] dark:text-[#A6A196]">
+              <label className="text-xs font-medium text-ink-muted dark:text-sandstone">
                 {pubKind === 'prose' && pubProsePdfMeta
                   ? 'Вступний фрагмент (необов’язково з PDF)'
                   : pubKind === 'blog'
@@ -3674,8 +3674,8 @@ export function StudioWorksTab({
                     : 'Текст *'}
               </label>
               {(pubKind === 'prose' || pubKind === 'blog') && (
-                <label className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium bg-[#EFECE6] dark:bg-[#262626] rounded-lg cursor-pointer hover:bg-[#EAE7DF] dark:hover:bg-[#323232] transition-colors">
-                  <Upload className="w-3 h-3 text-[#2C5937] dark:text-[#E5E5E5]" />
+                <label className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium bg-paper-warm dark:bg-night-card rounded-lg cursor-pointer hover:bg-paper-sand dark:hover:bg-night-elevated transition-colors">
+                  <Upload className="w-3 h-3 text-pine dark:text-silver" />
                   <span>Завантажити .txt / .md</span>
                   <input
                     type="file"
@@ -3708,28 +3708,28 @@ export function StudioWorksTab({
               }`}
             />
             {(pubKind === 'poem' || pubKind === 'prose') && (
-              <p className="mt-1 text-[11px] text-[#5C5C58] dark:text-[#A6A196]">
+              <p className="mt-1 text-[11px] text-ink-muted dark:text-sandstone">
                 Пробіли, слова в стовпчик і переноси рядків зберігаються точно як у полі введення.
               </p>
             )}
           </div>
 
           {pubKind === 'blog' && (
-            <div className="p-4 bg-[#FAF9F5] dark:bg-[#262626] rounded-xl space-y-5">
+            <div className="p-4 bg-paper dark:bg-night-card rounded-xl space-y-5">
               <div className="space-y-1">
-                <h4 className="text-xs font-semibold text-[#141413] dark:text-[#EDEAE1]">
+                <h4 className="text-xs font-semibold text-ink dark:text-cream-soft">
                   Фото, відео з YouTube та пісні з SoundCloud у дописі
                 </h4>
-                <p className="text-xs text-[#5C5C58] dark:text-[#A6A196]">
+                <p className="text-xs text-ink-muted dark:text-sandstone">
                   Додавайте фото, відео з YouTube або треки SoundCloud і вибирайте, де їх показати: на початку тексту, між абзацами чи під текстом.
                 </p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* Photo Importer */}
-                <div className="p-3.5 rounded-xl bg-white dark:bg-[#202020] space-y-3">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-[#141413] dark:text-[#EDEAE1]">
-                    <ImagePlus className="w-4 h-4 text-[#2C5937] dark:text-[#E5E5E5]" />
+                <div className="p-3.5 rounded-xl bg-white dark:bg-night-panel space-y-3">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-ink dark:text-cream-soft">
+                    <ImagePlus className="w-4 h-4 text-pine dark:text-silver" />
                     <span>Додати фото</span>
                   </div>
 
@@ -3803,9 +3803,9 @@ export function StudioWorksTab({
                 </div>
 
                 {/* YouTube Video Importer */}
-                <div className="p-3.5 rounded-xl bg-white dark:bg-[#202020] space-y-3">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-[#141413] dark:text-[#EDEAE1]">
-                    <Video className="w-4 h-4 text-[#E50914] dark:text-[#FDA4AF]" />
+                <div className="p-3.5 rounded-xl bg-white dark:bg-night-panel space-y-3">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-ink dark:text-cream-soft">
+                    <Video className="w-4 h-4 text-cinema-red dark:text-[#FDA4AF]" />
                     <span>Імпортувати відео з YouTube</span>
                   </div>
 
@@ -3863,9 +3863,9 @@ export function StudioWorksTab({
                 </div>
 
                 {/* SoundCloud Track Importer */}
-                <div className="p-3.5 rounded-xl bg-white dark:bg-[#202020] space-y-3">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-[#141413] dark:text-[#EDEAE1]">
-                    <Music2 className="w-4 h-4 text-[#2C5937] dark:text-[#E5E5E5]" />
+                <div className="p-3.5 rounded-xl bg-white dark:bg-night-panel space-y-3">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-ink dark:text-cream-soft">
+                    <Music2 className="w-4 h-4 text-pine dark:text-silver" />
                     <span>Імпортувати пісню з SoundCloud</span>
                   </div>
 
@@ -3914,14 +3914,14 @@ export function StudioWorksTab({
               {/* Added Media List */}
               {pubBlogMedia.length > 0 && (
                 <div className="space-y-2.5 pt-2">
-                  <p className="text-xs font-semibold text-[#141413] dark:text-[#EDEAE1]">
+                  <p className="text-xs font-semibold text-ink dark:text-cream-soft">
                     Додані медіа ({pubBlogMedia.length})
                   </p>
                   <div className="space-y-2">
                     {pubBlogMedia.map((item, idx) => (
                       <div
                         key={item.id}
-                        className="p-3 rounded-xl bg-white dark:bg-[#202020] flex flex-col sm:flex-row sm:items-center gap-3 text-xs"
+                        className="p-3 rounded-xl bg-white dark:bg-night-panel flex flex-col sm:flex-row sm:items-center gap-3 text-xs"
                       >
                         <div className="flex items-center gap-3 min-w-0 flex-1">
                           {item.kind === 'photo' ? (
@@ -3932,7 +3932,7 @@ export function StudioWorksTab({
                               height={48}
                               loading="lazy"
                               decoding="async"
-                              className="w-12 h-12 rounded-lg object-cover shrink-0 bg-[#EFECE6] dark:bg-[#323232]"
+                              className="w-12 h-12 rounded-lg object-cover shrink-0 bg-paper-warm dark:bg-night-elevated"
                             />
                           ) : item.kind === 'youtube' ? (
                             item.thumbnailUrl ? (
@@ -3943,10 +3943,10 @@ export function StudioWorksTab({
                                 height={48}
                                 loading="lazy"
                                 decoding="async"
-                                className="w-16 h-12 rounded-lg object-cover shrink-0 bg-[#EFECE6] dark:bg-[#323232]"
+                                className="w-16 h-12 rounded-lg object-cover shrink-0 bg-paper-warm dark:bg-night-elevated"
                               />
                             ) : (
-                              <div className="w-16 h-12 rounded-lg shrink-0 flex items-center justify-center bg-[#E50914]/15 text-[#E50914] dark:text-[#FDA4AF]">
+                              <div className="w-16 h-12 rounded-lg shrink-0 flex items-center justify-center bg-cinema-red/15 text-cinema-red dark:text-[#FDA4AF]">
                                 <Video className="w-5 h-5" />
                               </div>
                             )
@@ -3958,10 +3958,10 @@ export function StudioWorksTab({
                               height={48}
                               loading="lazy"
                               decoding="async"
-                              className="w-12 h-12 rounded-lg object-cover shrink-0 bg-[#EFECE6] dark:bg-[#323232]"
+                              className="w-12 h-12 rounded-lg object-cover shrink-0 bg-paper-warm dark:bg-night-elevated"
                             />
                           ) : (
-                            <div className="w-12 h-12 rounded-lg shrink-0 flex items-center justify-center bg-[#EFECE6] dark:bg-[#323232] text-[#2C5937] dark:text-[#E5E5E5]">
+                            <div className="w-12 h-12 rounded-lg shrink-0 flex items-center justify-center bg-paper-warm dark:bg-night-elevated text-pine dark:text-silver">
                               <Music2 className="w-5 h-5" />
                             </div>
                           )}
@@ -3969,7 +3969,7 @@ export function StudioWorksTab({
                           <div className="min-w-0 flex-1 space-y-1">
                             {item.kind === 'photo' ? (
                               <>
-                                <p className="font-medium text-[#141413] dark:text-[#EDEAE1] truncate">
+                                <p className="font-medium text-ink dark:text-cream-soft truncate">
                                   Фото #{idx + 1}
                                 </p>
                                 <input
@@ -3987,15 +3987,15 @@ export function StudioWorksTab({
                                     );
                                   }}
                                   placeholder="Підпис під фото (необов’язково)..."
-                                  className="w-full px-2 py-1 text-[11px] bg-[#EFECE6] dark:bg-[#1B1B1B] rounded-md text-[#141413] dark:text-[#EDEAE1] focus:outline-none focus:bg-[#FAF9F5] dark:focus:bg-[#323232]"
+                                  className="w-full px-2 py-1 text-[11px] bg-paper-warm dark:bg-night-deep rounded-md text-ink dark:text-cream-soft focus:outline-none focus:bg-paper dark:focus:bg-night-elevated"
                                 />
                               </>
                             ) : item.kind === 'youtube' ? (
                               <>
-                                <p className="font-medium text-[#141413] dark:text-[#EDEAE1] truncate">
+                                <p className="font-medium text-ink dark:text-cream-soft truncate">
                                   {item.title}
                                 </p>
-                                <p className="text-[11px] text-[#5C5C58] dark:text-[#A6A196] truncate">
+                                <p className="text-[11px] text-ink-muted dark:text-sandstone truncate">
                                   {item.authorName ? `${item.authorName} · ` : ''}YouTube
                                 </p>
                                 <input
@@ -4013,15 +4013,15 @@ export function StudioWorksTab({
                                     );
                                   }}
                                   placeholder="Підпис під відео (необов’язково)..."
-                                  className="w-full px-2 py-1 text-[11px] bg-[#EFECE6] dark:bg-[#1B1B1B] rounded-md text-[#141413] dark:text-[#EDEAE1] focus:outline-none focus:bg-[#FAF9F5] dark:focus:bg-[#323232]"
+                                  className="w-full px-2 py-1 text-[11px] bg-paper-warm dark:bg-night-deep rounded-md text-ink dark:text-cream-soft focus:outline-none focus:bg-paper dark:focus:bg-night-elevated"
                                 />
                               </>
                             ) : (
                               <>
-                                <p className="font-medium text-[#141413] dark:text-[#EDEAE1] truncate">
+                                <p className="font-medium text-ink dark:text-cream-soft truncate">
                                   {item.title}
                                 </p>
-                                <p className="text-[11px] text-[#5C5C58] dark:text-[#A6A196] truncate">
+                                <p className="text-[11px] text-ink-muted dark:text-sandstone truncate">
                                   {item.artist} · SoundCloud
                                 </p>
                               </>
@@ -4041,7 +4041,7 @@ export function StudioWorksTab({
                               );
                             }}
                             aria-label="Розташування елемента"
-                            className="px-2 py-1.5 text-[11px] bg-[#EFECE6] dark:bg-[#1B1B1B] rounded-lg text-[#141413] dark:text-[#EDEAE1] focus:outline-none focus:bg-[#FAF9F5] dark:focus:bg-[#323232] max-w-[190px]"
+                            className="px-2 py-1.5 text-[11px] bg-paper-warm dark:bg-night-deep rounded-lg text-ink dark:text-cream-soft focus:outline-none focus:bg-paper dark:focus:bg-night-elevated max-w-[190px]"
                           >
                             {blogPlacementOptions.map((opt) => (
                               <option key={opt.value} value={opt.value}>
@@ -4062,7 +4062,7 @@ export function StudioWorksTab({
                               })
                             }
                             aria-label="Підняти вище"
-                            className="p-1.5 rounded-lg text-[#5C5C58] dark:text-[#A6A196] hover:bg-[#EFECE6] dark:hover:bg-[#323232] disabled:opacity-30 cursor-pointer"
+                            className="p-1.5 rounded-lg text-ink-muted dark:text-sandstone hover:bg-paper-warm dark:hover:bg-night-elevated disabled:opacity-30 cursor-pointer"
                           >
                             <ArrowUp className="w-3.5 h-3.5" />
                           </button>
@@ -4078,7 +4078,7 @@ export function StudioWorksTab({
                               })
                             }
                             aria-label="Опустити нижче"
-                            className="p-1.5 rounded-lg text-[#5C5C58] dark:text-[#A6A196] hover:bg-[#EFECE6] dark:hover:bg-[#323232] disabled:opacity-30 cursor-pointer"
+                            className="p-1.5 rounded-lg text-ink-muted dark:text-sandstone hover:bg-paper-warm dark:hover:bg-night-elevated disabled:opacity-30 cursor-pointer"
                           >
                             <ArrowDown className="w-3.5 h-3.5" />
                           </button>
@@ -4102,9 +4102,9 @@ export function StudioWorksTab({
           )}
 
           {pubKind === 'prose' && (
-            <div className="p-4 bg-[#FAF9F5] dark:bg-[#262626] rounded-xl space-y-3.5">
+            <div className="p-4 bg-paper dark:bg-night-card rounded-xl space-y-3.5">
               <div className="space-y-2">
-                <span className="block text-xs font-medium text-[#5C5C58] dark:text-[#A6A196]">
+                <span className="block text-xs font-medium text-ink-muted dark:text-sandstone">
                   Режим доступу до твору
                 </span>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2" role="radiogroup">
@@ -4124,7 +4124,7 @@ export function StudioWorksTab({
                       className={`px-3 py-2 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
                         pubProseAccessMode === mode.id
                           ? 'bg-pear-pine-gradient text-white'
-                          : 'bg-white dark:bg-[#202020] text-[#5C5C58] dark:text-[#A6A196]'
+                          : 'bg-white dark:bg-night-panel text-ink-muted dark:text-sandstone'
                       }`}
                     >
                       {mode.label}
@@ -4149,9 +4149,9 @@ export function StudioWorksTab({
                     </div>
                   )}
 
-                  <div className="flex-1 min-w-[220px] flex flex-wrap items-center justify-between gap-2 p-2.5 bg-white dark:bg-[#202020] rounded-lg">
+                  <div className="flex-1 min-w-[220px] flex flex-wrap items-center justify-between gap-2 p-2.5 bg-white dark:bg-night-panel rounded-lg">
                     <div className="min-w-0">
-                      <p className="text-xs font-medium text-[#141413] dark:text-[#EDEAE1] truncate">
+                      <p className="text-xs font-medium text-ink dark:text-cream-soft truncate">
                         {pubProsePdfMeta
                           ? `${pubProsePdfMeta.fileName} (${formatFileSize(pubProsePdfMeta.fileSize)})`
                           : 'PDF-документ (необов’язково)'}
@@ -4159,7 +4159,7 @@ export function StudioWorksTab({
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
                       <label className="btn-editorial-secondary py-1 px-2.5 text-[11px] cursor-pointer">
-                        <Upload className="w-3 h-3 text-[#2C5937] dark:text-[#E5E5E5]" />
+                        <Upload className="w-3 h-3 text-pine dark:text-silver" />
                         <span>
                           {uploadingProsePdfId === 'new-prose-pdf'
                             ? 'Завантаження...'
@@ -4182,7 +4182,7 @@ export function StudioWorksTab({
                         <button
                           type="button"
                           onClick={() => setPubProsePdfMeta(null)}
-                          className="p-1 text-[#5C5C58] hover:text-rose-700 cursor-pointer"
+                          className="p-1 text-ink-muted hover:text-rose-700 cursor-pointer"
                           aria-label="Прибрати PDF"
                         >
                           <X className="w-3.5 h-3.5" />
@@ -4222,7 +4222,7 @@ export function StudioWorksTab({
           <div
             role="tablist"
             aria-label="Тип заявок читачів"
-            className="inline-flex items-center gap-1 p-1 rounded-xl bg-[#EAE7DF] dark:bg-[#1B1B1B]"
+            className="inline-flex items-center gap-1 p-1 rounded-xl bg-paper-sand dark:bg-night-deep"
           >
             <button
               type="button"
@@ -4232,7 +4232,7 @@ export function StudioWorksTab({
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-colors ${
                 submissionKindTab === 'poems'
                   ? 'bg-pear-pine-gradient text-white font-semibold shadow-2xs'
-                  : 'text-[#5C5C58] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-[#EDEAE1]'
+                  : 'text-ink-muted dark:text-sandstone hover:text-ink dark:hover:text-cream-soft'
               }`}
             >
               <span>Вірші</span>
@@ -4256,7 +4256,7 @@ export function StudioWorksTab({
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-colors ${
                 submissionKindTab === 'prose'
                   ? 'bg-pear-pine-gradient text-white font-semibold shadow-2xs'
-                  : 'text-[#5C5C58] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-[#EDEAE1]'
+                  : 'text-ink-muted dark:text-sandstone hover:text-ink dark:hover:text-cream-soft'
               }`}
             >
               <span>Проза</span>
@@ -4307,11 +4307,11 @@ export function StudioWorksTab({
             className="pb-4 space-y-3"
           >
             <div>
-              <h4 className="text-sm font-semibold text-[#141413] dark:text-[#EDEAE1] flex items-center gap-2">
-                <Percent className="w-4 h-4 text-[#2C5937] dark:text-[#E5E5E5]" />
+              <h4 className="text-sm font-semibold text-ink dark:text-cream-soft flex items-center gap-2">
+                <Percent className="w-4 h-4 text-pine dark:text-silver" />
                 <span>Знижка на платну прозу для авторизованих</span>
               </h4>
-              <p className="text-xs text-[#5C5C58] dark:text-[#A6A196] mt-0.5">
+              <p className="text-xs text-ink-muted dark:text-sandstone mt-0.5">
                 Авторизовані читачі отримують цей відсоток знижки на всі платні прозові твори (0–90%).
               </p>
             </div>
@@ -4328,7 +4328,7 @@ export function StudioWorksTab({
                   aria-label="Відсоток знижки для авторизованих читачів"
                   className={`${STUDIO_INPUT_SM_CLASS} pr-7 font-mono tabular-nums`}
                 />
-                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-mono text-[#5C5C58]">
+                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-mono text-ink-muted">
                   %
                 </span>
               </div>
@@ -4339,7 +4339,7 @@ export function StudioWorksTab({
               </button>
 
               {Number(proseAuthDiscountDraft) > 0 && (
-                <span className="text-xs font-mono tabular-nums text-[#1E563B] dark:text-[#E5E5E5]">
+                <span className="text-xs font-mono tabular-nums text-pine-deep dark:text-silver">
                   100 ₴ → {getProseEffectivePriceUah(100, Number(proseAuthDiscountDraft) || 0, true)} ₴
                 </span>
               )}
@@ -4352,11 +4352,11 @@ export function StudioWorksTab({
             className="pb-4 space-y-3"
           >
             <div>
-              <h4 className="text-sm font-semibold text-[#141413] dark:text-[#EDEAE1] flex items-center gap-2">
-                <Send className="w-4 h-4 text-[#2C5937] dark:text-[#E5E5E5]" />
+              <h4 className="text-sm font-semibold text-ink dark:text-cream-soft flex items-center gap-2">
+                <Send className="w-4 h-4 text-pine dark:text-silver" />
                 <span>Знижка на платну прозу для підписників Telegram</span>
               </h4>
-              <p className="text-xs text-[#5C5C58] dark:text-[#A6A196] mt-0.5">
+              <p className="text-xs text-ink-muted dark:text-sandstone mt-0.5">
                 Підписники Telegram-каналу отримують цю знижку на всі платні твори у розділі «Проза» (0–90%).
               </p>
             </div>
@@ -4373,7 +4373,7 @@ export function StudioWorksTab({
                   aria-label="Відсоток знижки у Прозі для підписників Telegram-каналу"
                   className={`${STUDIO_INPUT_SM_CLASS} pr-7 font-mono tabular-nums`}
                 />
-                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-mono text-[#5C5C58]">
+                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-mono text-ink-muted">
                   %
                 </span>
               </div>
@@ -4388,18 +4388,18 @@ export function StudioWorksTab({
               </button>
 
               {Number(proseTelegramDiscountDraft) > 0 && (
-                <span className="text-xs font-mono tabular-nums text-[#1E563B] dark:text-[#E5E5E5]">
+                <span className="text-xs font-mono tabular-nums text-pine-deep dark:text-silver">
                   100 ₴ → {getProseEffectivePriceUah(100, Number(proseTelegramDiscountDraft) || 0, true)} ₴
                 </span>
               )}
             </div>
 
             {tgHealth && (
-              <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#5C5C58] dark:text-[#A6A196] pt-1">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-ink-muted dark:text-sandstone pt-1">
                 <span className="inline-flex items-center gap-1.5 min-w-0">
-                  <Send className="w-3 h-3 text-[#2C5937] dark:text-[#E5E5E5] shrink-0" />
+                  <Send className="w-3 h-3 text-pine dark:text-silver shrink-0" />
                   {tgHealth.botConfigured && tgHealth.channelAccessible ? (
-                    <span className="text-[#1E563B] dark:text-[#E5E5E5]">
+                    <span className="text-pine-deep dark:text-silver">
                       Перевірка активна: @{tgHealth.botUsername} перевіряє підписку на {tgHealth.channelLabel}
                       {tgHealth.webhookActive ? ' · Webhook увімкнено' : ''}
                     </span>
@@ -4414,7 +4414,7 @@ export function StudioWorksTab({
                     <button
                       type="button"
                       onClick={onOpenTelegramSettings}
-                      className="font-medium text-[#2C5937] dark:text-[#E5E5E5] hover:underline underline-offset-4 cursor-pointer"
+                      className="font-medium text-pine dark:text-silver hover:underline underline-offset-4 cursor-pointer"
                     >
                       Налаштувати токен бота →
                     </button>
@@ -4424,7 +4424,7 @@ export function StudioWorksTab({
                       type="button"
                       onClick={() => void handleToggleWebhook(!tgHealth.webhookActive)}
                       disabled={configuringWebhook}
-                      className="font-medium text-[#2C5937] dark:text-[#E5E5E5] hover:underline underline-offset-4 cursor-pointer"
+                      className="font-medium text-pine dark:text-silver hover:underline underline-offset-4 cursor-pointer"
                     >
                       {configuringWebhook
                         ? 'Налаштування...'
@@ -4437,7 +4437,7 @@ export function StudioWorksTab({
                     type="button"
                     onClick={() => void loadTgHealth()}
                     disabled={checkingTgHealth}
-                    className="inline-flex items-center gap-1 font-medium text-[#2C5937] dark:text-[#E5E5E5] hover:underline underline-offset-4 cursor-pointer"
+                    className="inline-flex items-center gap-1 font-medium text-pine dark:text-silver hover:underline underline-offset-4 cursor-pointer"
                   >
                     <RefreshCw className={`w-3 h-3 ${checkingTgHealth ? 'animate-spin' : ''}`} />
                     <span>Оновити статус</span>
@@ -4450,11 +4450,11 @@ export function StudioWorksTab({
           {/* Prose Collection Tags */}
           <div className="space-y-4">
             <div>
-              <h4 className="text-sm font-semibold text-[#141413] dark:text-[#EDEAE1] flex items-center gap-2">
-                <BookMarked className="w-4 h-4 text-[#2C5937] dark:text-[#E5E5E5]" />
+              <h4 className="text-sm font-semibold text-ink dark:text-cream-soft flex items-center gap-2">
+                <BookMarked className="w-4 h-4 text-pine dark:text-silver" />
                 <span>Теги збірок і книг (Проза)</span>
               </h4>
-              <p className="text-xs text-[#5C5C58] dark:text-[#A6A196] mt-0.5">
+              <p className="text-xs text-ink-muted dark:text-sandstone mt-0.5">
                 Позначайте, до якої збірки або книги належить кожен прозовий твір.
               </p>
             </div>
@@ -4492,15 +4492,15 @@ export function StudioWorksTab({
 
                 <div className="flex items-center gap-1.5 pl-2">
                   <label
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium bg-[#EFECE6] dark:bg-[#262626] cursor-pointer ${
-                      isHexTagColor(newTagColor) ? 'bg-[#EAE7DF] dark:bg-[#323232] font-semibold' : ''
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium bg-paper-warm dark:bg-night-card cursor-pointer ${
+                      isHexTagColor(newTagColor) ? 'bg-paper-sand dark:bg-night-elevated font-semibold' : ''
                     }`}
                   >
                     <span
                       className="w-3.5 h-3.5 rounded-full shrink-0"
                       style={{ backgroundColor: getProseTagPreset(newTagColor).hex }}
                     />
-                    <Palette className="w-3 h-3 text-[#5C5C58]" />
+                    <Palette className="w-3 h-3 text-ink-muted" />
                     <span>Свій</span>
                     <input
                       type="color"
@@ -4524,13 +4524,13 @@ export function StudioWorksTab({
                       }
                     }}
                     maxLength={7}
-                    className="w-[74px] px-2 py-1 text-[11px] font-mono bg-[#EFECE6] dark:bg-[#1B1B1B] rounded-lg uppercase tabular-nums focus:outline-none focus:bg-[#FAF9F5] dark:focus:bg-[#323232]"
+                    className="w-[74px] px-2 py-1 text-[11px] font-mono bg-paper-warm dark:bg-night-deep rounded-lg uppercase tabular-nums focus:outline-none focus:bg-paper dark:focus:bg-night-elevated"
                   />
                 </div>
               </div>
 
               <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-                <div className="flex items-center gap-2 text-xs text-[#5C5C58] dark:text-[#A6A196]">
+                <div className="flex items-center gap-2 text-xs text-ink-muted dark:text-sandstone">
                   <span>Вигляд:</span>
                   <span
                     style={getProseTagPreset(newTagColor).badgeStyle}
@@ -4594,4 +4594,4 @@ export function StudioWorksTab({
       )}
     </div>
   );
-}
+});

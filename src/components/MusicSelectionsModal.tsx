@@ -1,6 +1,6 @@
 import { Headphones, X } from 'lucide-react';
 import { AnimatePresence, m } from 'motion/react';
-import { useEffect, useRef } from 'react';
+import { memo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { WeeklyMusicSelection, WeeklyPeriodInfo } from '../types.ts';
 import { WeeklyMusicBox } from './WeeklyMusicBox.tsx';
@@ -16,7 +16,7 @@ interface MusicSelectionsModalProps {
   onBeforePlay?: () => void;
 }
 
-export function MusicSelectionsModal({
+export const MusicSelectionsModal = memo(function MusicSelectionsModal({
   isOpen,
   onClose,
   selections,
@@ -69,7 +69,7 @@ export function MusicSelectionsModal({
             exit={{ opacity: 0, y: 8, scale: 0.98 }}
             transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-xl max-h-[88vh] overflow-y-auto bg-[#F9F8F5] dark:bg-[#1E1E1E] rounded-3xl p-5 sm:p-7 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.55)] text-[#141413] dark:text-[#F4F1EA] flex flex-col gap-4"
+            className="w-full max-w-xl max-h-[88vh] overflow-y-auto bg-paper dark:bg-night-panel rounded-3xl p-5 sm:p-7 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.55)] text-ink dark:text-cream flex flex-col gap-4"
           >
             {/* Modal Top Header Bar */}
             <div className="flex items-center justify-between gap-3 pb-2 border-b border-black/5 dark:border-white/8 shrink-0">
@@ -83,11 +83,11 @@ export function MusicSelectionsModal({
                 <div className="min-w-0">
                   <h3
                     id="music-selections-modal-title"
-                    className="text-base sm:text-lg font-semibold tracking-[-0.01em] text-[#141413] dark:text-[#F4F1EA] truncate"
+                    className="text-base sm:text-lg font-semibold tracking-[-0.01em] text-ink dark:text-cream truncate"
                   >
                     Щомісячні підбірки
                   </h3>
-                  <p className="text-[11px] text-[#7A7870] dark:text-[#A6A196] truncate">
+                  <p className="text-[11px] text-ink-subtle dark:text-sandstone truncate">
                     Музика, світлини та думки
                   </p>
                 </div>
@@ -108,7 +108,7 @@ export function MusicSelectionsModal({
             <div className="min-w-0 flex-1">
               {selections.length === 0 && !isAdmin ? (
                 <div className="py-12 px-4 text-center space-y-2">
-                  <p className="text-sm text-[#7A7870] dark:text-[#A6A196]">
+                  <p className="text-sm text-ink-subtle dark:text-sandstone">
                     Підбірка незабаром з’явиться тут.
                   </p>
                 </div>
@@ -129,4 +129,4 @@ export function MusicSelectionsModal({
     </AnimatePresence>,
     document.body
   );
-}
+});

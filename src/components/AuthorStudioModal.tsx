@@ -13,7 +13,7 @@ import {
   Send,
   X,
 } from 'lucide-react';
-import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
+import { lazy, memo, Suspense, useCallback, useEffect, useState } from 'react';
 import type {
   BlogPost,
   ContactMessageRecord,
@@ -123,7 +123,7 @@ const SECTION_TITLES: Record<StudioSection, string> = {
   analytics: 'Аналітика поведінки',
 };
 
-export function AuthorStudioModal({
+export const AuthorStudioModal = memo(function AuthorStudioModal({
   isOpen,
   isAdmin,
   getAdminToken,
@@ -348,25 +348,25 @@ export function AuthorStudioModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-[#141413]/55 dark:bg-black/75 backdrop-blur-xs flex items-center justify-center p-0 sm:p-4 md:p-6"
+      className="fixed inset-0 z-50 bg-ink/70 dark:bg-black/82 flex items-center justify-center p-0 sm:p-4 md:p-6"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-label="Кабінет автора — Адміністратор"
     >
       <div
-        className="relative bg-white dark:bg-[#222222] sm:rounded-2xl w-full max-w-6xl h-full sm:h-[90vh] flex flex-col md:flex-row overflow-hidden shadow-2xl text-[#141413] dark:text-[#EDEAE1]"
+        className="relative bg-white dark:bg-night-panel sm:rounded-2xl w-full max-w-6xl h-full sm:h-[90vh] flex flex-col md:flex-row overflow-hidden shadow-2xl text-ink dark:text-cream-soft"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Left Navigation Sidebar (Desktop) & Top Segmented Bar (Mobile) */}
-        <aside className="md:w-60 shrink-0 bg-[#F5F4EE] dark:bg-[#181818] flex flex-col">
+        <aside className="md:w-60 shrink-0 bg-paper-oat dark:bg-night flex flex-col">
           {/* Sidebar Header */}
           <div className="px-4 sm:px-5 py-3.5 md:py-5 flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-[11px] font-medium uppercase tracking-[0.06em] text-[#5C5C58] dark:text-[#A6A196]">
+              <p className="text-[11px] font-medium uppercase tracking-[0.06em] text-ink-muted dark:text-sandstone">
                 Адмін-панель
               </p>
-              <h3 className="text-base font-semibold text-[#141413] dark:text-[#EDEAE1] truncate">
+              <h3 className="text-base font-semibold text-ink dark:text-cream-soft truncate">
                 Кабінет автора
               </h3>
             </div>
@@ -374,7 +374,7 @@ export function AuthorStudioModal({
             <button
               type="button"
               onClick={onClose}
-              className="md:hidden p-2 rounded-lg text-[#5C5C58] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-[#EDEAE1] hover:bg-[#EAE7DF] dark:hover:bg-[#323232] cursor-pointer"
+              className="md:hidden p-2 rounded-lg text-ink-muted dark:text-sandstone hover:text-ink dark:hover:text-cream-soft hover:bg-paper-sand dark:hover:bg-night-elevated cursor-pointer"
               aria-label="Закрити кабінет"
             >
               <X className="w-5 h-5" />
@@ -396,14 +396,14 @@ export function AuthorStudioModal({
                   onClick={() => handleSelectSection(item.id)}
                   className={`flex items-center justify-between gap-2.5 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
                     isActive
-                      ? 'bg-white dark:bg-[#323232] text-[#1E3A29] dark:text-[#E5E5E5] font-semibold shadow-2xs'
-                      : 'text-[#5C5C58] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-[#EDEAE1] hover:bg-[#EAE7DF]/70 dark:hover:bg-[#323232]'
+                      ? 'bg-white dark:bg-night-elevated text-pine-dark dark:text-silver font-semibold shadow-2xs'
+                      : 'text-ink-muted dark:text-sandstone hover:text-ink dark:hover:text-cream-soft hover:bg-paper-sand/70 dark:hover:bg-night-elevated'
                   }`}
                 >
                   <span className="flex items-center gap-2.5 min-w-0">
                     <Icon
                       className={`w-4 h-4 shrink-0 ${
-                        isActive ? 'text-[#2C5937] dark:text-[#E5E5E5]' : ''
+                        isActive ? 'text-pine dark:text-silver' : ''
                       }`}
                       strokeWidth={1.85}
                     />
@@ -416,7 +416,7 @@ export function AuthorStudioModal({
                         item.id === 'works' && item.highlight
                           ? 'px-1.5 py-0.5 rounded-full bg-red-600 text-white font-semibold shadow-2xs'
                           : item.highlight
-                            ? 'text-[#2C5937] dark:text-[#E5E5E5] font-semibold'
+                            ? 'text-pine dark:text-silver font-semibold'
                             : 'opacity-70'
                       }`}
                     >
@@ -430,11 +430,11 @@ export function AuthorStudioModal({
         </aside>
 
         {/* Main Workspace Viewport */}
-        <div className="flex-1 min-w-0 flex flex-col overflow-hidden bg-white dark:bg-[#222222]">
+        <div className="flex-1 min-w-0 flex flex-col overflow-hidden bg-white dark:bg-night-panel">
           {/* Sticky Top Bar */}
           <header className="px-5 sm:px-7 py-3.5 flex items-center justify-between gap-3 shrink-0">
             <div className="min-w-0">
-              <h4 className="text-lg sm:text-xl font-semibold text-[#141413] dark:text-[#EDEAE1] truncate">
+              <h4 className="text-lg sm:text-xl font-semibold text-ink dark:text-cream-soft truncate">
                 {SECTION_TITLES[section]}
               </h4>
             </div>
@@ -462,7 +462,7 @@ export function AuthorStudioModal({
                     setSection('home');
                     setRequestedHomeSubTab('messages');
                   }}
-                  className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[#F2F6EE] dark:bg-[#323232] text-[#2C5937] dark:text-[#E5E5E5] hover:opacity-90 cursor-pointer whitespace-nowrap"
+                  className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[#F2F6EE] dark:bg-night-elevated text-pine dark:text-silver hover:opacity-90 cursor-pointer whitespace-nowrap"
                 >
                   <Mail className="w-3.5 h-3.5" />
                   <span className="tabular-nums">Звернення ({unreadMessagesCount})</span>
@@ -473,7 +473,7 @@ export function AuthorStudioModal({
                 <button
                   type="button"
                   onClick={() => handleSelectSection('feedback')}
-                  className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[#F2F6EE] dark:bg-[#323232] text-[#2C5937] dark:text-[#E5E5E5] hover:opacity-90 cursor-pointer whitespace-nowrap"
+                  className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-[#F2F6EE] dark:bg-night-elevated text-pine dark:text-silver hover:opacity-90 cursor-pointer whitespace-nowrap"
                 >
                   <MessageSquare className="w-3.5 h-3.5" />
                   <span className="tabular-nums">Відгуки ({unreadSiteFeedbackCount})</span>
@@ -508,7 +508,7 @@ export function AuthorStudioModal({
                 disabled={loading}
                 title="Оновити дані"
                 aria-label="Оновити дані"
-                className="p-2 rounded-lg text-[#5C5C58] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-[#EDEAE1] hover:bg-[#F5F4EE] dark:hover:bg-[#323232] cursor-pointer disabled:opacity-50"
+                className="p-2 rounded-lg text-ink-muted dark:text-sandstone hover:text-ink dark:hover:text-cream-soft hover:bg-paper-oat dark:hover:bg-night-elevated cursor-pointer disabled:opacity-50"
               >
                 <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
               </button>
@@ -516,7 +516,7 @@ export function AuthorStudioModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="hidden md:inline-flex p-2 rounded-lg text-[#5C5C58] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-[#EDEAE1] hover:bg-[#F5F4EE] dark:hover:bg-[#323232] cursor-pointer"
+                className="hidden md:inline-flex p-2 rounded-lg text-ink-muted dark:text-sandstone hover:text-ink dark:hover:text-cream-soft hover:bg-paper-oat dark:hover:bg-night-elevated cursor-pointer"
                 aria-label="Закрити кабінет"
               >
                 <X className="w-4 h-4" />
@@ -528,7 +528,7 @@ export function AuthorStudioModal({
           {feedback && (
             <div
               role="status"
-              className="mx-5 sm:mx-7 mt-4 px-4 py-2.5 rounded-xl bg-[#F2F6EE] dark:bg-[#323232] flex items-center justify-between gap-3 text-xs font-medium text-[#1E3A29] dark:text-[#F4F1EA] shrink-0"
+              className="mx-5 sm:mx-7 mt-4 px-4 py-2.5 rounded-xl bg-[#F2F6EE] dark:bg-night-elevated flex items-center justify-between gap-3 text-xs font-medium text-pine-dark dark:text-cream shrink-0"
             >
               <span>{feedback}</span>
               <button
@@ -707,7 +707,7 @@ export function AuthorStudioModal({
             {section === 'analytics' && (
               <Suspense
                 fallback={
-                  <div className="py-12 text-center text-sm text-[#5C5C58] dark:text-[#A6A196]">
+                  <div className="py-12 text-center text-sm text-ink-muted dark:text-sandstone">
                     Завантаження графіків аналітики...
                   </div>
                 }
@@ -723,4 +723,4 @@ export function AuthorStudioModal({
       </div>
     </div>
   );
-}
+});

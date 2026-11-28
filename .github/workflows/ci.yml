@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Test, Typecheck, Audit & Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Run dependency security audit (npm audit)
+        run: |
+          npm audit --omit=dev --audit-level=critical
+          npm audit --omit=dev --audit-level=high || echo "::warning::High-severity transitive npm audit advisories detected; review Dependabot PRs."
+
+      - name: Run server unit & integration tests
+        run: node --import tsx --test server/*.test.ts
+
+      - name: TypeScript typecheck
+        run: npm run lint
+
+      - name: ESLint Firestore security rules
+        run: npx eslint firestore.rules
+
+      - name: Build production client bundle
+        run: npm run build

@@ -209,18 +209,18 @@ export function SiteFeedbackModal({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-lg max-h-[88vh] flex flex-col bg-[#202020] rounded-2xl shadow-2xl overflow-hidden"
+        className="relative w-full max-w-lg max-h-[88vh] flex flex-col bg-night-panel rounded-2xl shadow-2xl overflow-hidden"
       >
         <div className="flex items-center justify-between px-6 pt-5 pb-3 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#323232] flex items-center justify-center text-[#E5E5E5]">
+            <div className="w-10 h-10 rounded-xl bg-night-elevated flex items-center justify-center text-silver">
               <MessageSquare className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-[#FAF9F5] tracking-tight">
+              <h2 className="text-base font-bold text-paper tracking-tight">
                 Відгук про сайт
               </h2>
-              <p className="text-[11px] text-[#A6A196]">
+              <p className="text-[11px] text-sandstone">
                 Пропозиції та відповіді автора
               </p>
             </div>
@@ -229,7 +229,7 @@ export function SiteFeedbackModal({
             type="button"
             onClick={onClose}
             aria-label="Закрити"
-            className="w-8 h-8 rounded-xl hover:bg-white/10 flex items-center justify-center text-[#FAF9F5]/70 transition-colors cursor-pointer"
+            className="w-8 h-8 rounded-xl hover:bg-white/10 flex items-center justify-center text-paper/70 transition-colors cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -244,7 +244,7 @@ export function SiteFeedbackModal({
             )}
 
             {successNotice && (
-              <div className="p-2.5 rounded-xl bg-[#2C5937]/25 text-[#D8F3DC] text-xs flex items-center gap-2">
+              <div className="p-2.5 rounded-xl bg-pine/25 text-[#D8F3DC] text-xs flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 shrink-0" />
                 <span>{successNotice}</span>
               </div>
@@ -259,17 +259,17 @@ export function SiteFeedbackModal({
                 maxLength={2000}
                 required
                 aria-label="Текст відгуку про сайт"
-                className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-[#2A2A2A] focus:bg-[#323232] text-[#FAF9F5] placeholder:text-[#7E7B73] focus:outline-none transition-colors resize-none"
+                className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-night-lift focus:bg-night-elevated text-paper placeholder:text-ink-subtle focus:outline-none transition-colors resize-none"
               />
             </div>
 
             <div className="flex items-center justify-between gap-2 pt-0.5">
               {!guestUser ? (
-                <p className="text-[11px] text-[#8A867E]">
+                <p className="text-[11px] text-stone-warm">
                   Увійдіть в акаунт, щоб отримувати відповіді автора тут.
                 </p>
               ) : (
-                <span className="text-[11px] text-[#8A867E] truncate">
+                <span className="text-[11px] text-stone-warm truncate">
                   Від імені: {guestUser.displayName}
                 </span>
               )}
@@ -277,7 +277,7 @@ export function SiteFeedbackModal({
               <button
                 type="submit"
                 disabled={submitting}
-                className="px-4 py-2 rounded-xl text-xs font-semibold bg-[#E5E5E5] text-[#181818] hover:opacity-95 transition-opacity flex items-center gap-1.5 cursor-pointer disabled:opacity-55 shrink-0"
+                className="px-4 py-2 rounded-xl text-xs font-semibold bg-silver text-night hover:opacity-95 transition-opacity flex items-center gap-1.5 cursor-pointer disabled:opacity-55 shrink-0"
               >
                 <Send className="w-3.5 h-3.5" />
                 <span>{submitting ? 'Надсилання...' : 'Надіслати'}</span>
@@ -288,11 +288,11 @@ export function SiteFeedbackModal({
           {(items.length > 0 || loadingHistory) && (
             <div className="pt-3 border-t border-white/10 space-y-3">
               <div className="flex items-center justify-between gap-2">
-                <h3 className="text-xs font-semibold text-[#FAF9F5]/85">
+                <h3 className="text-xs font-semibold text-paper/85">
                   Ваші відгуки та відповіді автора
                 </h3>
                 {loadingHistory && (
-                  <span className="text-[11px] text-[#8A867E]">Синхронізація...</span>
+                  <span className="text-[11px] text-stone-warm">Синхронізація...</span>
                 )}
               </div>
 
@@ -302,7 +302,7 @@ export function SiteFeedbackModal({
                   return (
                     <div
                       key={item.id}
-                      className="rounded-xl bg-[#282828] p-3.5 space-y-2.5"
+                      className="rounded-xl bg-night-card p-3.5 space-y-2.5"
                     >
                       <div className="flex items-center justify-between gap-2 text-[11px] text-[#9E9A90]">
                         <span className="font-mono tabular-nums">
@@ -311,7 +311,7 @@ export function SiteFeedbackModal({
                         <span
                           className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
                             hasReply
-                              ? 'bg-[#2C5937]/30 text-[#B7E4C7]'
+                              ? 'bg-pine/30 text-[#B7E4C7]'
                               : 'bg-white/8 text-[#B5B1A8]'
                           }`}
                         >
@@ -319,19 +319,19 @@ export function SiteFeedbackModal({
                         </span>
                       </div>
 
-                      <p className="text-xs text-[#FAF9F5]/90 leading-relaxed whitespace-pre-wrap">
+                      <p className="text-xs text-paper/90 leading-relaxed whitespace-pre-wrap">
                         {item.message}
                       </p>
 
                       {hasReply && (
-                        <div className="pl-3 py-2 pr-2.5 rounded-lg bg-[#1C1C1C] border-l-2 border-[#6B9E78] space-y-1">
+                        <div className="pl-3 py-2 pr-2.5 rounded-lg bg-night-deep border-l-2 border-[#6B9E78] space-y-1">
                           <div className="flex items-center justify-between gap-2 text-[11px]">
                             <span className="inline-flex items-center gap-1 font-semibold text-[#D8F3DC]">
                               <Reply className="w-3 h-3" />
                               <span>{item.adminReplyAuthorName || 'Андрій Даньків'}</span>
                             </span>
                             {item.adminReplyAt && (
-                              <span className="font-mono text-[10px] text-[#8A867E] tabular-nums">
+                              <span className="font-mono text-[10px] text-stone-warm tabular-nums">
                                 {formatDateTime(item.adminReplyAt)}
                               </span>
                             )}

@@ -52,8 +52,8 @@ export const PromoCountdown = memo(function PromoCountdown({
 
   if (variant === 'modal') {
     return (
-      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-[#141413] dark:bg-black/75 text-white font-mono text-[11px] font-semibold tabular-nums">
-        <Clock className="w-3 h-3 shrink-0 text-[#BCD369] dark:text-[#E5E5E5]" strokeWidth={2} />
+      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-ink dark:bg-black/75 text-white font-mono text-[11px] font-semibold tabular-nums">
+        <Clock className="w-3 h-3 shrink-0 text-[#BCD369] dark:text-silver" strokeWidth={2} />
         <span>До кінця акції: {countdownText}</span>
       </span>
     );
@@ -66,7 +66,7 @@ export const PromoCountdown = memo(function PromoCountdown({
       }`}
     >
       <Clock
-        className="w-2.5 h-2.5 shrink-0 text-[#BCD369] dark:text-[#E5E5E5]"
+        className="w-2.5 h-2.5 shrink-0 text-[#BCD369] dark:text-silver"
         strokeWidth={2.2}
       />
       <span>{countdownText}</span>

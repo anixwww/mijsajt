@@ -19,7 +19,7 @@ import {
   X,
 } from 'lucide-react';
 import { AnimatePresence, m } from 'motion/react';
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import {
   getEffectivePriceUah,
   isPhysicalProduct,
@@ -101,7 +101,7 @@ function getUnlockedTypeLabel(item: PurchasedAccess): string {
   }
 }
 
-export function CartLibraryDrawer({
+export const CartLibraryDrawer = memo(function CartLibraryDrawer({
   isOpen,
   activeTab,
   onTabChange,
@@ -503,7 +503,7 @@ export function CartLibraryDrawer({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.18 }}
-          className="fixed inset-0 z-50 bg-[#141413]/45 dark:bg-black/70 backdrop-blur-xs flex justify-end"
+          className="fixed inset-0 z-50 bg-ink/60 dark:bg-black/78 flex justify-end"
           onClick={onClose}
           role="dialog"
           aria-modal="true"
@@ -514,13 +514,13 @@ export function CartLibraryDrawer({
             animate={{ x: 0 }}
             exit={{ x:'100%'}}
             transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
-            className="bg-[#F7F6F2] dark:bg-[#181818] w-full sm:max-w-[500px] h-full flex flex-col shadow-2xl will-change-transform text-[#141413] dark:text-[#F4F1EA]"
+            className="bg-paper dark:bg-night w-full sm:max-w-[500px] h-full flex flex-col shadow-2xl will-change-transform text-ink dark:text-cream"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Pinned Drawer Header */}
-            <header className="px-5 sm:px-6 pt-4 pb-3.5 bg-white dark:bg-[#202020] shrink-0 space-y-3">
+            <header className="px-5 sm:px-6 pt-4 pb-3.5 bg-white dark:bg-night-panel shrink-0 space-y-3">
               <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-1 p-1 bg-[#ECE9E1] dark:bg-[#262626] rounded-xl min-w-0">
+                <div className="flex items-center gap-1 p-1 bg-paper-warm dark:bg-night-card rounded-xl min-w-0">
                   <button
                     type="button"
                     onClick={() => {
@@ -529,8 +529,8 @@ export function CartLibraryDrawer({
                     }}
                     className={`min-h-[40px] px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all duration-150 whitespace-nowrap cursor-pointer tabular-nums ${
                       activeTab ==='cart'
-                        ?'bg-white dark:bg-[#323232] text-[#141413] dark:text-[#F4F1EA] shadow-xs'
-                        :'text-[#5C5C58] dark:text-[#A8A49B] hover:text-[#141413] dark:hover:text-[#F4F1EA]'
+                        ?'bg-white dark:bg-night-elevated text-ink dark:text-cream shadow-xs'
+                        :'text-ink-muted dark:text-sandstone-light hover:text-ink dark:hover:text-cream'
                     }`}
                   >
                     Кошик ({cartProducts.length})
@@ -543,8 +543,8 @@ export function CartLibraryDrawer({
                     }}
                     className={`min-h-[40px] px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all duration-150 whitespace-nowrap cursor-pointer tabular-nums ${
                       activeTab ==='library'
-                        ?'bg-white dark:bg-[#323232] text-[#141413] dark:text-[#F4F1EA] shadow-xs'
-                        :'text-[#5C5C58] dark:text-[#A8A49B] hover:text-[#141413] dark:hover:text-[#F4F1EA]'
+                        ?'bg-white dark:bg-night-elevated text-ink dark:text-cream shadow-xs'
+                        :'text-ink-muted dark:text-sandstone-light hover:text-ink dark:hover:text-cream'
                     }`}
                   >
                     Придбання ({unlockedItems.length})
@@ -554,7 +554,7 @@ export function CartLibraryDrawer({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="w-11 h-11 sm:w-10 sm:h-10 -mr-1.5 inline-flex items-center justify-center text-[#5C5C58] dark:text-[#A8A49B] hover:text-[#141413] dark:hover:text-[#F4F1EA] hover:bg-[#EFECE6] dark:hover:bg-[#323232] active:scale-[0.95] rounded-xl transition-all duration-150 cursor-pointer shrink-0"
+                  className="w-11 h-11 sm:w-10 sm:h-10 -mr-1.5 inline-flex items-center justify-center text-ink-muted dark:text-sandstone-light hover:text-ink dark:hover:text-cream hover:bg-paper-warm dark:hover:bg-night-elevated active:scale-[0.95] rounded-xl transition-all duration-150 cursor-pointer shrink-0"
                   aria-label="Закрити панель кошика"
                 >
                   <X className="w-5 h-5"/>
@@ -572,7 +572,7 @@ export function CartLibraryDrawer({
                         setPendingStoreInvoice(null);
                         setErrorMsg(null);
                       }}
-                      className="inline-flex items-center gap-1.5 min-h-[32px] -ml-1.5 px-1.5 text-[#5C5C58] dark:text-[#A8A49B] hover:text-[#2C5937] dark:hover:text-white font-medium rounded-lg transition-colors cursor-pointer whitespace-nowrap"
+                      className="inline-flex items-center gap-1.5 min-h-[32px] -ml-1.5 px-1.5 text-ink-muted dark:text-sandstone-light hover:text-pine dark:hover:text-white font-medium rounded-lg transition-colors cursor-pointer whitespace-nowrap"
                     >
                       <ArrowLeft className="w-3.5 h-3.5 shrink-0" strokeWidth={1.85} />
                       <span>Змінити дані замовлення</span>
@@ -584,22 +584,22 @@ export function CartLibraryDrawer({
                         setCheckoutStep('review');
                         setErrorMsg(null);
                       }}
-                      className="inline-flex items-center gap-1.5 min-h-[32px] -ml-1.5 px-1.5 text-[#5C5C58] dark:text-[#A8A49B] hover:text-[#2C5937] dark:hover:text-white font-medium rounded-lg transition-colors cursor-pointer whitespace-nowrap"
+                      className="inline-flex items-center gap-1.5 min-h-[32px] -ml-1.5 px-1.5 text-ink-muted dark:text-sandstone-light hover:text-pine dark:hover:text-white font-medium rounded-lg transition-colors cursor-pointer whitespace-nowrap"
                     >
                       <ArrowLeft className="w-3.5 h-3.5 shrink-0"strokeWidth={1.85} />
                       <span>Назад до кошика</span>
                     </button>
                   ) : (
-                    <span className="text-[#5C5C58] dark:text-[#A8A49B] font-medium">
+                    <span className="text-ink-muted dark:text-sandstone-light font-medium">
                       Крок 1 з 2 · Перевірка замовлення
                     </span>
                   )}
 
-                  <div className="flex items-center gap-1.5 font-mono text-[11px] tabular-nums text-[#5C5C58] dark:text-[#A8A49B] shrink-0">
+                  <div className="flex items-center gap-1.5 font-mono text-[11px] tabular-nums text-ink-muted dark:text-sandstone-light shrink-0">
                     <span
                       className={
                         checkoutStep ==='review'
-                          ?'text-[#141413] dark:text-[#F4F1EA] font-semibold'
+                          ?'text-ink dark:text-cream font-semibold'
                           :''
                       }
                     >
@@ -609,7 +609,7 @@ export function CartLibraryDrawer({
                     <span
                       className={
                         checkoutStep !=='review'
-                          ?'text-[#2C5937] dark:text-[#E5E5E5] font-semibold'
+                          ?'text-pine dark:text-silver font-semibold'
                           :''
                       }
                     >
@@ -626,13 +626,13 @@ export function CartLibraryDrawer({
                 cartProducts.length === 0 ? (
                   /* Empty Cart State */
                   <div className="py-12 sm:py-16 flex flex-col items-center text-center">
-                    <div className="w-12 h-12 rounded-2xl bg-[#EFECE6] dark:bg-[#262626] flex items-center justify-center text-[#5C5C58] dark:text-[#A8A49B] mb-4">
+                    <div className="w-12 h-12 rounded-2xl bg-paper-warm dark:bg-night-card flex items-center justify-center text-ink-muted dark:text-sandstone-light mb-4">
                       <ShoppingBag className="w-5 h-5"strokeWidth={1.65} />
                     </div>
-                    <h3 className="font-serif text-2xl font-semibold text-[#141413] dark:text-[#F4F1EA] mb-2">
+                    <h3 className="font-serif text-2xl font-semibold text-ink dark:text-cream mb-2">
                       Ваш кошик порожній
                     </h3>
-                    <p className="text-sm text-[#5C5C58] dark:text-[#A8A49B] max-w-xs leading-relaxed mb-6">
+                    <p className="text-sm text-ink-muted dark:text-sandstone-light max-w-xs leading-relaxed mb-6">
                       Оберіть електронну чи паперову книгу, «Тіло вірша» в антирамці або гостьовий доступ до роману.
                     </p>
 
@@ -673,7 +673,7 @@ export function CartLibraryDrawer({
                               animate={{ opacity: 1, y: 0 }}
                               exit={{ opacity: 0, x: 24, transition: { duration: 0.16 } }}
                               transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-                              className="p-3.5 bg-white dark:bg-[#262626] rounded-xl flex items-start gap-3.5"
+                              className="p-3.5 bg-white dark:bg-night-card rounded-xl flex items-start gap-3.5"
                             >
                               <div className="w-16 shrink-0 rounded-lg overflow-hidden">
                                 <EditorialImage
@@ -685,23 +685,23 @@ export function CartLibraryDrawer({
                               </div>
 
                               <div className="flex-1 min-w-0 pt-0.5">
-                                <p className="text-[11px] text-[#5C5C58] dark:text-[#A8A49B] truncate mb-0.5">
+                                <p className="text-[11px] text-ink-muted dark:text-sandstone-light truncate mb-0.5">
                                   {getCartItemTypeLabel(item)}
                                 </p>
-                                <h4 className="font-serif text-lg font-semibold text-[#141413] dark:text-[#F4F1EA] leading-snug line-clamp-2">
+                                <h4 className="font-serif text-lg font-semibold text-ink dark:text-cream leading-snug line-clamp-2">
                                   {item.title}
                                 </h4>
 
                                 <div className="flex flex-wrap items-baseline gap-2 font-mono tabular-nums mt-2">
-                                  <span className="text-sm font-semibold text-[#141413] dark:text-[#F4F1EA]">
+                                  <span className="text-sm font-semibold text-ink dark:text-cream">
                                     {finalPrice} ₴
                                   </span>
                                   {hasDiscount && (
                                     <>
-                                      <span className="text-xs text-[#5C5C58] dark:text-[#8D8980] line-through">
+                                      <span className="text-xs text-ink-muted dark:text-stone-warm line-through">
                                         {basePrice} ₴
                                       </span>
-                                      <span className="text-[11px] font-medium text-[#2C5937] dark:text-[#E5E5E5]">
+                                      <span className="text-[11px] font-medium text-pine dark:text-silver">
                                         −{itemSavings} ₴
                                       </span>
                                     </>
@@ -712,7 +712,7 @@ export function CartLibraryDrawer({
                               <button
                                 type="button"
                                 onClick={() => onRemoveFromCart(item.id)}
-                                className="w-11 h-11 sm:w-10 sm:h-10 -mr-1.5 inline-flex items-center justify-center text-[#5C5C58] dark:text-[#A8A49B] hover:text-rose-700 dark:hover:text-rose-400 hover:bg-[#EFECE6] dark:hover:bg-[#323232] active:scale-[0.94] rounded-lg transition-all duration-150 cursor-pointer shrink-0"
+                                className="w-11 h-11 sm:w-10 sm:h-10 -mr-1.5 inline-flex items-center justify-center text-ink-muted dark:text-sandstone-light hover:text-rose-700 dark:hover:text-rose-400 hover:bg-paper-warm dark:hover:bg-night-elevated active:scale-[0.94] rounded-lg transition-all duration-150 cursor-pointer shrink-0"
                                 aria-label={`Видалити ${item.title} з кошика`}
                                 title="Видалити позицію"
                               >
@@ -725,20 +725,20 @@ export function CartLibraryDrawer({
                     </div>
 
                     {/* Transparent Delivery & Order Expectation Note */}
-                    <div className="pt-4 space-y-2.5 text-xs text-[#5C5C58] dark:text-[#A8A49B]">
+                    <div className="pt-4 space-y-2.5 text-xs text-ink-muted dark:text-sandstone-light">
                       <div className="flex items-start gap-2.5">
                         {hasPhysicalItems ? (
-                          <Truck className="w-4 h-4 text-[#2C5937] dark:text-[#E5E5E5] shrink-0 mt-0.5" strokeWidth={1.75} />
+                          <Truck className="w-4 h-4 text-pine dark:text-silver shrink-0 mt-0.5" strokeWidth={1.75} />
                         ) : (
-                          <Sparkles className="w-4 h-4 text-[#2C5937] dark:text-[#E5E5E5] shrink-0 mt-0.5" strokeWidth={1.75} />
+                          <Sparkles className="w-4 h-4 text-pine dark:text-silver shrink-0 mt-0.5" strokeWidth={1.75} />
                         )}
                         <p className="leading-relaxed">{deliveryExpectationText}</p>
                       </div>
 
                       {catalogSavingsUah > 0 && (
-                        <div className="flex items-center justify-between pt-1 font-mono tabular-nums text-[#141413] dark:text-[#F4F1EA]">
-                          <span className="font-sans text-[#5C5C58] dark:text-[#A8A49B]">Знижка на акційні товари</span>
-                          <span className="text-[#2C5937] dark:text-[#E5E5E5] font-medium">−{catalogSavingsUah} ₴</span>
+                        <div className="flex items-center justify-between pt-1 font-mono tabular-nums text-ink dark:text-cream">
+                          <span className="font-sans text-ink-muted dark:text-sandstone-light">Знижка на акційні товари</span>
+                          <span className="text-pine dark:text-silver font-medium">−{catalogSavingsUah} ₴</span>
                         </div>
                       )}
                     </div>
@@ -746,26 +746,26 @@ export function CartLibraryDrawer({
                 ) : checkoutStep === 'acquiring' && pendingStoreInvoice ? (
                   /* STEP 2B: Verified Monobank Acquiring Invoice Status */
                   <div className="space-y-5">
-                    <div className="p-4 sm:p-5 rounded-xl bg-white dark:bg-[#262626] space-y-4">
+                    <div className="p-4 sm:p-5 rounded-xl bg-white dark:bg-night-card space-y-4">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-sm font-semibold text-[#141413] dark:text-[#F4F1EA]">
+                        <span className="text-sm font-semibold text-ink dark:text-cream">
                           Рахунок Монобанк створено
                         </span>
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#141413] text-white text-[11px] font-semibold font-mono tabular-nums">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-ink text-white text-[11px] font-semibold font-mono tabular-nums">
                           {pendingStoreInvoice.totalUah} ₴
                         </span>
                       </div>
 
-                      <p className="text-xs text-[#5C5C58] dark:text-[#A8A49B] leading-relaxed">
+                      <p className="text-xs text-ink-muted dark:text-sandstone-light leading-relaxed">
                         Перейдіть на сторінку оплати Монобанк для підтвердження платежу на суму{' '}
-                        <strong className="font-mono text-[#141413] dark:text-[#F4F1EA]">
+                        <strong className="font-mono text-ink dark:text-cream">
                           {pendingStoreInvoice.totalUah} ₴
                         </strong>{' '}
                         (замовлення #{pendingStoreInvoice.orderCode}). Доступ і підтвердження відкриються автоматично одразу після оплати.
                       </p>
 
                       {pendingStoreInvoice.statusText && (
-                        <p className="text-xs font-medium text-[#2C5937] dark:text-[#E5E5E5]" role="status">
+                        <p className="text-xs font-medium text-pine dark:text-silver" role="status">
                           {pendingStoreInvoice.statusText}
                         </p>
                       )}
@@ -774,7 +774,7 @@ export function CartLibraryDrawer({
                         href={pendingStoreInvoice.pageUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="w-full inline-flex items-center justify-center gap-2 min-h-[46px] px-5 py-2.5 rounded-xl bg-[#141413] dark:bg-white text-white dark:text-[#141413] text-xs sm:text-sm font-semibold hover:opacity-92 transition-opacity"
+                        className="w-full inline-flex items-center justify-center gap-2 min-h-[46px] px-5 py-2.5 rounded-xl bg-ink dark:bg-white text-white dark:text-ink text-xs sm:text-sm font-semibold hover:opacity-92 transition-opacity"
                       >
                         <span>Відкрити оплату Монобанк · {pendingStoreInvoice.totalUah} ₴</span>
                         <ExternalLink className="w-4 h-4 shrink-0" />
@@ -787,27 +787,27 @@ export function CartLibraryDrawer({
                     {/* Compact Itemized Context Strip (non-boxed) */}
                     <div className="pb-4 flex items-center justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="text-xs font-semibold text-[#141413] dark:text-[#F4F1EA] truncate">
+                        <p className="text-xs font-semibold text-ink dark:text-cream truncate">
                           {cartProducts.map((p) => p.title).join(', ')}
                         </p>
-                        <p className="text-[11px] text-[#5C5C58] dark:text-[#A8A49B] mt-0.5 tabular-nums">
+                        <p className="text-[11px] text-ink-muted dark:text-sandstone-light mt-0.5 tabular-nums">
                           {formatUkCount(cartProducts.length,'позиція','позиції','позицій')}
                           {hasPhysicalItems ?' · Нова Пошта':' · Цифровий доступ'}
                         </p>
                       </div>
-                      <span className="font-mono text-base font-semibold text-[#141413] dark:text-[#F4F1EA] tabular-nums shrink-0">
+                      <span className="font-mono text-base font-semibold text-ink dark:text-cream tabular-nums shrink-0">
                         {totalUah} ₴
                       </span>
                     </div>
 
                     {/* Section 01: Recipient Contact */}
                     <fieldset className="space-y-3.5">
-                      <legend className="text-xs font-semibold text-[#141413] dark:text-[#F4F1EA] tracking-[0.01em] mb-1">
+                      <legend className="text-xs font-semibold text-ink dark:text-cream tracking-[0.01em] mb-1">
                         01. Дані отримувача
                       </legend>
 
                       <div>
-                        <label htmlFor="buyer-name"className="block text-xs font-medium text-[#5C5C58] dark:text-[#A8A49B] mb-1.5">
+                        <label htmlFor="buyer-name"className="block text-xs font-medium text-ink-muted dark:text-sandstone-light mb-1.5">
                           Ім’я та прізвище
                         </label>
                         <input
@@ -823,7 +823,7 @@ export function CartLibraryDrawer({
                       </div>
 
                       <div>
-                        <label htmlFor="buyer-email"className="block text-xs font-medium text-[#5C5C58] dark:text-[#A8A49B] mb-1.5">
+                        <label htmlFor="buyer-email"className="block text-xs font-medium text-ink-muted dark:text-sandstone-light mb-1.5">
                           Email для квитанції та доступу
                         </label>
                         <input
@@ -842,22 +842,22 @@ export function CartLibraryDrawer({
                     {/* Section 02: Physical Shipping (Nova Poshta Only) */}
                     {hasPhysicalItems && (
                       <fieldset className="pt-5 space-y-3.5">
-                        <legend className="flex items-center gap-2 text-xs font-semibold text-[#141413] dark:text-[#F4F1EA] tracking-[0.01em]">
+                        <legend className="flex items-center gap-2 text-xs font-semibold text-ink dark:text-cream tracking-[0.01em]">
                           <span>02. Доставка Новою Поштою</span>
                         </legend>
 
-                        <div className="px-3.5 py-2.5 rounded-xl bg-[#EFECE6] dark:bg-[#262626] flex items-center justify-between gap-2 text-xs">
-                          <span className="inline-flex items-center gap-2 font-semibold text-[#141413] dark:text-[#F4F1EA]">
-                            <Truck className="w-4 h-4 text-[#2C5937] dark:text-[#E5E5E5] shrink-0" strokeWidth={1.75} />
+                        <div className="px-3.5 py-2.5 rounded-xl bg-paper-warm dark:bg-night-card flex items-center justify-between gap-2 text-xs">
+                          <span className="inline-flex items-center gap-2 font-semibold text-ink dark:text-cream">
+                            <Truck className="w-4 h-4 text-pine dark:text-silver shrink-0" strokeWidth={1.75} />
                             <span>Нова Пошта</span>
                           </span>
-                          <span className="text-[11px] text-[#5C5C58] dark:text-[#A8A49B]">
+                          <span className="text-[11px] text-ink-muted dark:text-sandstone-light">
                             Відділення або поштомат
                           </span>
                         </div>
 
                         <div>
-                          <label htmlFor="ship-phone"className="block text-xs font-medium text-[#5C5C58] dark:text-[#A8A49B] mb-1.5">
+                          <label htmlFor="ship-phone"className="block text-xs font-medium text-ink-muted dark:text-sandstone-light mb-1.5">
                             Контактний телефон
                           </label>
                           <input
@@ -873,7 +873,7 @@ export function CartLibraryDrawer({
                         </div>
 
                         <div>
-                          <label htmlFor="ship-city"className="block text-xs font-medium text-[#5C5C58] dark:text-[#A8A49B] mb-1.5">
+                          <label htmlFor="ship-city"className="block text-xs font-medium text-ink-muted dark:text-sandstone-light mb-1.5">
                             Місто / населений пункт
                           </label>
                           <input
@@ -889,7 +889,7 @@ export function CartLibraryDrawer({
                         </div>
 
                         <div>
-                          <label htmlFor="ship-address"className="block text-xs font-medium text-[#5C5C58] dark:text-[#A8A49B] mb-1.5">
+                          <label htmlFor="ship-address"className="block text-xs font-medium text-ink-muted dark:text-sandstone-light mb-1.5">
                             Номер відділення або поштомату Нової Пошти
                           </label>
                           <input
@@ -905,7 +905,7 @@ export function CartLibraryDrawer({
                         </div>
 
                         <div>
-                          <label htmlFor="ship-comment"className="block text-xs font-medium text-[#5C5C58] dark:text-[#A8A49B] mb-1.5">
+                          <label htmlFor="ship-comment"className="block text-xs font-medium text-ink-muted dark:text-sandstone-light mb-1.5">
                             Автограф або побажання (необов’язково)
                           </label>
                           <input
@@ -923,16 +923,16 @@ export function CartLibraryDrawer({
                     {/* Section 02/03: Monobank-Only Payment */}
                     <fieldset className="pt-5 space-y-3.5">
                       <div className="flex items-center justify-between gap-2">
-                        <legend className="text-xs font-semibold text-[#141413] dark:text-[#F4F1EA] tracking-[0.01em]">
+                        <legend className="text-xs font-semibold text-ink dark:text-cream tracking-[0.01em]">
                           {hasPhysicalItems ? '03. Оплата через Монобанк' : '02. Оплата через Монобанк'}
                         </legend>
-                        <span className="inline-flex items-center gap-1 text-[11px] font-mono text-emerald-800 dark:text-[#E5E5E5]">
+                        <span className="inline-flex items-center gap-1 text-[11px] font-mono text-emerald-800 dark:text-silver">
                           <Lock className="w-3 h-3" />
                           <span>Монобанк · E2EE</span>
                         </span>
                       </div>
 
-                      <div className="p-3.5 sm:p-4 rounded-xl bg-[#141413] dark:bg-[#262626] text-white flex items-center justify-between gap-3">
+                      <div className="p-3.5 sm:p-4 rounded-xl bg-ink dark:bg-night-card text-white flex items-center justify-between gap-3">
                         <div className="min-w-0">
                           <p className="text-sm font-semibold tracking-tight">
                             Оплата тільки через Монобанк
@@ -947,13 +947,13 @@ export function CartLibraryDrawer({
                               {originalTotalUah} ₴
                             </span>
                           )}
-                          <span className="text-base sm:text-lg font-bold text-[#E5E5E5]">
+                          <span className="text-base sm:text-lg font-bold text-silver">
                             {totalUah} ₴
                           </span>
                         </div>
                       </div>
 
-                      <p className="text-[11px] text-[#5C5C58] dark:text-[#A8A49B] leading-relaxed">
+                      <p className="text-[11px] text-ink-muted dark:text-sandstone-light leading-relaxed">
                         Дані замовлення шифруються на вашому пристрої (ECDH P-256 + AES-256-GCM). Оплата приймається виключно через Монобанк.
                       </p>
                     </fieldset>
@@ -963,8 +963,8 @@ export function CartLibraryDrawer({
                 /* LIBRARY TAB: Unlocked & Purchased Materials */
                 <div className="space-y-6">
                   {lastOrderCode && (
-                    <div className="p-4 bg-emerald-50 dark:bg-[#262626] rounded-xl flex items-start justify-between gap-3">
-                      <div className="text-xs text-emerald-900 dark:text-[#F4F1EA] space-y-1">
+                    <div className="p-4 bg-emerald-50 dark:bg-night-card rounded-xl flex items-start justify-between gap-3">
+                      <div className="text-xs text-emerald-900 dark:text-cream space-y-1">
                         <p className="font-semibold flex items-center gap-1.5">
                           <ShieldCheck className="w-4 h-4 shrink-0"/>
                           <span className="tabular-nums">Замовлення #{lastOrderCode} підтверджено</span>
@@ -976,7 +976,7 @@ export function CartLibraryDrawer({
                       <button
                         type="button"
                         onClick={() => setLastOrderCode(null)}
-                        className="w-8 h-8 inline-flex items-center justify-center text-emerald-800 dark:text-[#E5E5E5] hover:bg-emerald-100 dark:hover:bg-[#323232] rounded-lg transition-colors cursor-pointer shrink-0"
+                        className="w-8 h-8 inline-flex items-center justify-center text-emerald-800 dark:text-silver hover:bg-emerald-100 dark:hover:bg-night-elevated rounded-lg transition-colors cursor-pointer shrink-0"
                         aria-label="Приховати сповіщення"
                       >
                         <X className="w-4 h-4"/>
@@ -986,13 +986,13 @@ export function CartLibraryDrawer({
 
                   {unlockedItems.length === 0 ? (
                     <div className="py-10 flex flex-col items-center text-center">
-                      <div className="w-12 h-12 rounded-2xl bg-[#EFECE6] dark:bg-[#262626] flex items-center justify-center text-[#5C5C58] dark:text-[#A8A49B] mb-4">
+                      <div className="w-12 h-12 rounded-2xl bg-paper-warm dark:bg-night-card flex items-center justify-center text-ink-muted dark:text-sandstone-light mb-4">
                         <Package className="w-5 h-5"strokeWidth={1.65} />
                       </div>
-                      <h3 className="font-serif text-2xl font-semibold text-[#141413] dark:text-[#F4F1EA] mb-2">
+                      <h3 className="font-serif text-2xl font-semibold text-ink dark:text-cream mb-2">
                         Тут будуть ваші видання
                       </h3>
-                      <p className="text-sm text-[#5C5C58] dark:text-[#A8A49B] max-w-xs leading-relaxed">
+                      <p className="text-sm text-ink-muted dark:text-sandstone-light max-w-xs leading-relaxed">
                         Після оформлення замовлення тут з’являться посилання на завантаження електронних книг, Google Документи та статуси доставки.
                       </p>
                     </div>
@@ -1001,28 +1001,28 @@ export function CartLibraryDrawer({
                       {unlockedItems.map((item) => (
                         <article
                           key={`${item.orderCode}-${item.productId}`}
-                          className="p-4 bg-white dark:bg-[#262626] rounded-xl space-y-3"
+                          className="p-4 bg-white dark:bg-night-card rounded-xl space-y-3"
                         >
-                          <div className="flex items-center justify-between gap-2 text-xs text-[#5C5C58] dark:text-[#A8A49B]">
+                          <div className="flex items-center justify-between gap-2 text-xs text-ink-muted dark:text-sandstone-light">
                             <span>{getUnlockedTypeLabel(item)}</span>
                             <span className="font-mono tabular-nums">#{item.orderCode}</span>
                           </div>
 
-                          <h4 className="font-serif text-2xl font-semibold text-[#141413] dark:text-[#F4F1EA] leading-snug">
+                          <h4 className="font-serif text-2xl font-semibold text-ink dark:text-cream leading-snug">
                             {item.title}
                           </h4>
 
                           {item.type ==='wip_gdoc'&& item.gdocGuestUrl ? (
                             <div className="space-y-3 pt-1">
                               {item.progressLabel && (
-                                <p className="text-xs text-[#5C5C58] dark:text-[#A8A49B]">
+                                <p className="text-xs text-ink-muted dark:text-sandstone-light">
                                   Актуальний обсяг: {item.progressLabel}
                                 </p>
                               )}
 
-                              <div className="px-3 py-2.5 bg-white dark:bg-[#202020] rounded-lg flex items-center gap-2">
-                                <FileText className="w-4 h-4 text-[#2C5937] dark:text-[#E5E5E5] shrink-0"/>
-                                <span className="font-mono text-xs text-[#141413] dark:text-[#F4F1EA] truncate flex-1">
+                              <div className="px-3 py-2.5 bg-white dark:bg-night-panel rounded-lg flex items-center gap-2">
+                                <FileText className="w-4 h-4 text-pine dark:text-silver shrink-0"/>
+                                <span className="font-mono text-xs text-ink dark:text-cream truncate flex-1">
                                   {item.gdocGuestUrl}
                                 </span>
                               </div>
@@ -1045,7 +1045,7 @@ export function CartLibraryDrawer({
                                 >
                                   {copiedUrlId === item.productId ? (
                                     <>
-                                      <Check className="w-3.5 h-3.5 text-emerald-700 dark:text-[#E5E5E5]"/>
+                                      <Check className="w-3.5 h-3.5 text-emerald-700 dark:text-silver"/>
                                       <span>Скопійовано</span>
                                     </>
                                   ) : (
@@ -1059,7 +1059,7 @@ export function CartLibraryDrawer({
                             </div>
                           ) : item.type ==='prose_access'? (
                             <div className="space-y-3 pt-1">
-                              <p className="text-xs font-medium text-emerald-800 dark:text-[#E5E5E5] inline-flex items-center gap-1.5">
+                              <p className="text-xs font-medium text-emerald-800 dark:text-silver inline-flex items-center gap-1.5">
                                 <ShieldCheck className="w-3.5 h-3.5"/>
                                 <span>
                                   {item.hasPdf
@@ -1068,10 +1068,10 @@ export function CartLibraryDrawer({
                                 </span>
                               </p>
                               {item.hasPdf && item.pdfFileName && (
-                                <p className="text-xs font-mono text-[#141413] dark:text-[#F4F1EA] bg-white dark:bg-[#202020] rounded-lg px-3 py-2 flex items-center justify-between gap-2">
+                                <p className="text-xs font-mono text-ink dark:text-cream bg-white dark:bg-night-panel rounded-lg px-3 py-2 flex items-center justify-between gap-2">
                                   <span className="truncate">{item.pdfFileName}</span>
                                   {item.pdfFileSize && (
-                                    <span className="text-[#5C5C58] dark:text-[#A8A49B] shrink-0 tabular-nums">
+                                    <span className="text-ink-muted dark:text-sandstone-light shrink-0 tabular-nums">
                                       {item.pdfFileSize < 1024 * 1024
                                         ?`${Math.max(1, Math.round(item.pdfFileSize / 1024))} КБ`
                                         :`${(item.pdfFileSize / (1024 * 1024)).toFixed(1)} МБ`}
@@ -1106,13 +1106,13 @@ export function CartLibraryDrawer({
                               </div>
                             </div>
                           ) : isPhysicalProduct(item.type) ? (
-                            <div className="space-y-2 pt-1 text-xs text-[#444440] dark:text-[#C5C1B8]">
-                              <p className="font-medium text-emerald-800 dark:text-[#E5E5E5] inline-flex items-center gap-1.5">
+                            <div className="space-y-2 pt-1 text-xs text-[#444440] dark:text-parchment">
+                              <p className="font-medium text-emerald-800 dark:text-silver inline-flex items-center gap-1.5">
                                 <ShieldCheck className="w-3.5 h-3.5"/>
                                 <span>Оплачено ({item.paymentTransactionId ||'Підтверджено'})</span>
                               </p>
                               {item.shippingSummary && (
-                                <p className="p-3 bg-white dark:bg-[#202020] rounded-lg leading-relaxed">
+                                <p className="p-3 bg-white dark:bg-night-panel rounded-lg leading-relaxed">
                                   Доставка: {item.shippingSummary}
                                 </p>
                               )}
@@ -1120,15 +1120,15 @@ export function CartLibraryDrawer({
                           ) : (
                             <div className="space-y-3 pt-1">
                               {item.formats && (
-                                <p className="text-xs text-[#5C5C58] dark:text-[#A8A49B]">
+                                <p className="text-xs text-ink-muted dark:text-sandstone-light">
                                   Формати: {item.formats}
                                 </p>
                               )}
                               {item.ebookFileName && (
-                                <p className="text-xs font-mono text-[#141413] dark:text-[#F4F1EA] bg-white dark:bg-[#202020] rounded-lg px-3 py-2 flex items-center justify-between gap-2">
+                                <p className="text-xs font-mono text-ink dark:text-cream bg-white dark:bg-night-panel rounded-lg px-3 py-2 flex items-center justify-between gap-2">
                                   <span className="truncate">{item.ebookFileName}</span>
                                   {item.ebookFileSize && (
-                                    <span className="text-[#5C5C58] dark:text-[#A8A49B] shrink-0 tabular-nums">
+                                    <span className="text-ink-muted dark:text-sandstone-light shrink-0 tabular-nums">
                                       {item.ebookFileSize < 1024 * 1024
                                         ?`${Math.max(1, Math.round(item.ebookFileSize / 1024))} КБ`
                                         :`${(item.ebookFileSize / (1024 * 1024)).toFixed(1)} МБ`}
@@ -1160,10 +1160,10 @@ export function CartLibraryDrawer({
 
                   {/* Restore Orders Utility */}
                   <div className="pt-5">
-                    <p className="text-xs font-semibold text-[#141413] dark:text-[#F4F1EA] mb-1">
+                    <p className="text-xs font-semibold text-ink dark:text-cream mb-1">
                       Відновити попередні замовлення
                     </p>
-                    <p className="text-[11px] text-[#5C5C58] dark:text-[#A8A49B] mb-3">
+                    <p className="text-[11px] text-ink-muted dark:text-sandstone-light mb-3">
                       Введіть email, вказаний при покупці, або номер замовлення (наприклад, AD-1042).
                     </p>
                     <form onSubmit={handleRestore} className="flex gap-2">
@@ -1187,7 +1187,7 @@ export function CartLibraryDrawer({
                       <p
                         className={`text-xs mt-2.5 ${
                           restoreStatus.ok
-                            ? 'text-emerald-700 dark:text-[#E5E5E5] font-medium'
+                            ? 'text-emerald-700 dark:text-silver font-medium'
                             : 'text-rose-700 dark:text-rose-400'
                         }`}
                         role="status"
@@ -1199,14 +1199,14 @@ export function CartLibraryDrawer({
 
                   {/* Guest Device Privacy Wipe Control */}
                   {onClearDeviceLibrary && (
-                    <div className="p-4 bg-white dark:bg-[#262626] rounded-xl space-y-2.5">
+                    <div className="p-4 bg-white dark:bg-night-card rounded-xl space-y-2.5">
                       <div className="flex items-start gap-2.5">
-                        <ShieldCheck className="w-4 h-4 text-[#2C5937] dark:text-[#E5E5E5] shrink-0 mt-0.5" />
+                        <ShieldCheck className="w-4 h-4 text-pine dark:text-silver shrink-0 mt-0.5" />
                         <div className="space-y-1">
-                          <p className="text-xs font-semibold text-[#141413] dark:text-[#F4F1EA]">
+                          <p className="text-xs font-semibold text-ink dark:text-cream">
                             Приватність на цьому пристрої
                           </p>
-                          <p className="text-[11px] text-[#5C5C58] dark:text-[#A8A49B] leading-relaxed">
+                          <p className="text-[11px] text-ink-muted dark:text-sandstone-light leading-relaxed">
                             Адреса доставки, телефон і платіжні реквізити не зберігаються в пам’яті браузера. Якщо ви користуєтеся спільним пристроєм, ви можете очистити локальний список придбань — покупки легко відновити за email або кодом замовлення.
                           </p>
                         </div>
@@ -1253,7 +1253,7 @@ export function CartLibraryDrawer({
                       )}
 
                       {deviceClearedNotice && (
-                        <p className="text-xs text-emerald-700 dark:text-[#E5E5E5] font-medium" role="status">
+                        <p className="text-xs text-emerald-700 dark:text-silver font-medium" role="status">
                           Локальні дані доступу на цьому пристрої очищено.
                         </p>
                       )}
@@ -1265,7 +1265,7 @@ export function CartLibraryDrawer({
 
             {/* Pinned Bottom Summary & Thumb-Zone Action Dock (Cart Tab Only when non-empty) */}
             {activeTab ==='cart'&& cartProducts.length > 0 && (
-              <footer className="px-5 sm:px-6 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-white dark:bg-[#202020] shrink-0 space-y-3">
+              <footer className="px-5 sm:px-6 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-white dark:bg-night-panel shrink-0 space-y-3">
                 {errorMsg && checkoutStep !=='review'&& (
                   <p className="text-xs text-rose-700 dark:text-rose-400 font-medium leading-snug"role="alert">
                     {errorMsg}
@@ -1274,17 +1274,17 @@ export function CartLibraryDrawer({
 
                 <div className="flex items-baseline justify-between gap-4">
                   <div>
-                    <p className="text-xs text-[#5C5C58] dark:text-[#A8A49B] tabular-nums">
+                    <p className="text-xs text-ink-muted dark:text-sandstone-light tabular-nums">
                       До сплати · {formatUkCount(cartProducts.length,'видання','видання','видань')}
                     </p>
                   </div>
                   <div className="flex items-baseline gap-2 font-mono tabular-nums">
                     {savingsUah > 0 && (
-                      <span className="text-xs text-[#5C5C58] dark:text-[#8D8980] line-through">
+                      <span className="text-xs text-ink-muted dark:text-stone-warm line-through">
                         {originalTotalUah} ₴
                       </span>
                     )}
-                    <span className="text-2xl font-semibold text-[#141413] dark:text-[#F4F1EA]">
+                    <span className="text-2xl font-semibold text-ink dark:text-cream">
                       {totalUah} ₴
                     </span>
                   </div>
@@ -1348,4 +1348,4 @@ export function CartLibraryDrawer({
       )}
     </AnimatePresence>
   );
-}
+});

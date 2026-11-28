@@ -10,7 +10,7 @@ export function SignatureLogo({ className = '' }: SignatureLogoProps) {
       fill="none"
       role="img"
       aria-label="Андрій Даньків"
-      className={`block w-[260px] sm:w-[330px] md:w-[384px] h-auto select-none text-[#111E16] dark:text-[#F4F1EA] transition-colors duration-200 ${className}`}
+      className={`block w-[260px] sm:w-[330px] md:w-[384px] h-auto select-none text-pine-night dark:text-cream transition-colors duration-200 ${className}`}
     >
       <g
         stroke="currentColor"

@@ -14,7 +14,7 @@ interface SectionSkeletonProps {
 function SkeletonBlock({ className = '' }: { className?: string }) {
   return (
     <div
-      className={`animate-pulse rounded-lg bg-[#E6E2D8]/85 dark:bg-[#323232]/90 ${className}`}
+      className={`animate-pulse rounded-lg bg-paper-sand/85 dark:bg-night-elevated/90 ${className}`}
       aria-hidden="true"
     />
   );
@@ -29,7 +29,7 @@ function SkeletonCard({
 }) {
   return (
     <div
-      className={`rounded-2xl bg-[#FAFBF8]/88 dark:bg-[#262626] ${className}`}
+      className={`rounded-2xl bg-paper/88 dark:bg-night-card ${className}`}
       aria-hidden="true"
     >
       {children}
@@ -60,7 +60,7 @@ export function SectionSkeleton({ section, embedded = false }: SectionSkeletonPr
         {/* Author Signature + 3:4 Portrait Skeleton */}
         <div className="w-full max-w-4xl mx-auto pt-5 sm:pt-7 flex flex-col items-center">
           <SkeletonBlock className="h-10 w-44 mb-7 rounded-xl" />
-          <div className="w-full max-w-[230px] sm:max-w-[260px] aspect-[3/4] rounded-2xl overflow-hidden bg-[#E6E2D8]/85 dark:bg-[#323232]/90 animate-pulse shadow-[0_20px_44px_-20px_rgba(17,30,22,0.2)] dark:shadow-[0_20px_44px_-20px_rgba(0,0,0,0.6)]" />
+          <div className="w-full max-w-[230px] sm:max-w-[260px] aspect-[3/4] rounded-2xl overflow-hidden bg-paper-sand/85 dark:bg-night-elevated/90 animate-pulse shadow-[0_20px_44px_-20px_rgba(17,30,22,0.2)] dark:shadow-[0_20px_44px_-20px_rgba(0,0,0,0.6)]" />
 
           {/* 4 Quick Action Cards Skeleton */}
           <div className="w-full max-w-2xl mt-6 grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">

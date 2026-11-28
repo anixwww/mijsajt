@@ -355,10 +355,10 @@ export function StudioStoreTab({
       <form onSubmit={handleCreateProduct} className="max-w-3xl space-y-5">
         <div className="flex items-center justify-between gap-3 pb-2">
           <div>
-            <h4 className="text-base font-semibold text-[#141413] dark:text-[#EDEAE1]">
+            <h4 className="text-base font-semibold text-ink dark:text-cream-soft">
               Нова позиція у крамниці
             </h4>
-            <p className="text-xs text-[#5C5C58] dark:text-[#A6A196]">
+            <p className="text-xs text-ink-muted dark:text-sandstone">
               Оберіть формат видання, завантажте обкладинку та вкажіть ціну.
             </p>
           </div>
@@ -452,8 +452,8 @@ export function StudioStoreTab({
                   onClick={() => setNewProdCover(preset.url)}
                   className={`px-2 py-1 text-[11px] rounded-md cursor-pointer transition-colors ${
                     newProdCover === preset.url
-                      ? 'bg-[#EAE7DF] dark:bg-[#323232] text-[#2C5937] dark:text-[#E5E5E5] font-medium'
-                      : 'text-[#5C5C58] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-[#EDEAE1]'
+                      ? 'bg-paper-sand dark:bg-night-elevated text-pine dark:text-silver font-medium'
+                      : 'text-ink-muted dark:text-sandstone hover:text-ink dark:hover:text-cream-soft'
                   }`}
                 >
                   {preset.label}
@@ -500,21 +500,21 @@ export function StudioStoreTab({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
           <div className="flex flex-wrap items-center gap-4">
-            <label className="inline-flex items-center gap-2 text-xs text-[#141413] dark:text-[#EDEAE1] cursor-pointer">
+            <label className="inline-flex items-center gap-2 text-xs text-ink dark:text-cream-soft cursor-pointer">
               <input
                 type="checkbox"
                 checked={newProdPromoActive}
                 onChange={(e) => setNewProdPromoActive(e.target.checked)}
-                className="accent-[#315E3C] dark:accent-[#E5E5E5] w-4 h-4"
+                className="accent-pine dark:accent-silver w-4 h-4"
               />
               <span>Увімкнути акцію одразу після додавання</span>
             </label>
-            <label className="inline-flex items-center gap-2 text-xs text-[#141413] dark:text-[#EDEAE1] cursor-pointer">
+            <label className="inline-flex items-center gap-2 text-xs text-ink dark:text-cream-soft cursor-pointer">
               <input
                 type="checkbox"
                 checked={newProdIsBestseller}
                 onChange={(e) => setNewProdIsBestseller(e.target.checked)}
-                className="accent-[#315E3C] dark:accent-[#E5E5E5] w-4 h-4"
+                className="accent-pine dark:accent-silver w-4 h-4"
               />
               <span>Бестселлер</span>
             </label>
@@ -578,12 +578,12 @@ export function StudioStoreTab({
               </div>
             </div>
 
-            <div className="p-3.5 bg-[#FAF9F5] dark:bg-[#262626] rounded-xl flex flex-wrap items-center justify-between gap-3">
+            <div className="p-3.5 bg-paper dark:bg-night-card rounded-xl flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="text-xs font-semibold text-[#141413] dark:text-[#EDEAE1]">
+                <p className="text-xs font-semibold text-ink dark:text-cream-soft">
                   Файл електронної книги
                 </p>
-                <p className="text-[11px] text-[#5C5C58] dark:text-[#A6A196]">
+                <p className="text-[11px] text-ink-muted dark:text-sandstone">
                   {newProdEbookMeta
                     ? `${newProdEbookMeta.fileName} (${formatFileSize(newProdEbookMeta.fileSize)})`
                     : 'EPUB, PDF, FB2, MOBI або TXT — до 40 МБ'}
@@ -614,7 +614,7 @@ export function StudioStoreTab({
                   <button
                     type="button"
                     onClick={() => setNewProdEbookMeta(null)}
-                    className="p-1.5 text-[#5C5C58] dark:text-[#A6A196] hover:text-rose-700 dark:hover:text-rose-400 cursor-pointer"
+                    className="p-1.5 text-ink-muted dark:text-sandstone hover:text-rose-700 dark:hover:text-rose-400 cursor-pointer"
                     aria-label="Прибрати файл"
                   >
                     <X className="w-4 h-4" />
@@ -712,10 +712,10 @@ export function StudioStoreTab({
   if (loading) {
     return (
       <div className="space-y-4">
-        <div className="h-12 rounded-xl bg-[#F5F4EE] dark:bg-[#262626] animate-pulse" />
+        <div className="h-12 rounded-xl bg-paper-oat dark:bg-night-card animate-pulse" />
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <div className="lg:col-span-4 h-64 rounded-xl bg-[#F5F4EE] dark:bg-[#262626] animate-pulse" />
-          <div className="lg:col-span-8 h-96 rounded-xl bg-[#F5F4EE] dark:bg-[#262626] animate-pulse" />
+          <div className="lg:col-span-4 h-64 rounded-xl bg-paper-oat dark:bg-night-card animate-pulse" />
+          <div className="lg:col-span-8 h-96 rounded-xl bg-paper-oat dark:bg-night-card animate-pulse" />
         </div>
       </div>
     );
@@ -728,7 +728,7 @@ export function StudioStoreTab({
         {/* Left: Product List */}
         <div className="lg:col-span-4 rounded-xl space-y-1.5">
           {products.length === 0 ? (
-            <div className="p-6 text-center text-xs text-[#5C5C58] dark:text-[#A6A196] rounded-xl bg-[#FAF9F5] dark:bg-[#262626]">
+            <div className="p-6 text-center text-xs text-ink-muted dark:text-sandstone rounded-xl bg-paper dark:bg-night-card">
               У крамниці ще немає товарів.
             </div>
           ) : (
@@ -742,19 +742,19 @@ export function StudioStoreTab({
                   onClick={() => setSelectedProductId(prod.id)}
                   className={`w-full px-3.5 py-3 rounded-xl text-left flex items-center justify-between gap-2.5 transition-colors cursor-pointer ${
                     isActive
-                      ? 'bg-[#F2F6EE] dark:bg-[#323232] text-[#1E3A29] dark:text-[#E5E5E5]'
-                      : 'bg-[#FAF9F5] dark:bg-[#262626] hover:bg-[#EFECE6] dark:hover:bg-[#2E2E2E] text-[#141413] dark:text-[#EDEAE1]'
+                      ? 'bg-[#F2F6EE] dark:bg-night-elevated text-pine-dark dark:text-silver'
+                      : 'bg-paper dark:bg-night-card hover:bg-paper-warm dark:hover:bg-night-hover text-ink dark:text-cream-soft'
                   }`}
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <span className={isActive ? 'text-[#2C5937] dark:text-[#E5E5E5]' : 'text-[#5C5C58] dark:text-[#A6A196]'}>
+                    <span className={isActive ? 'text-pine dark:text-silver' : 'text-ink-muted dark:text-sandstone'}>
                       {renderTypeIcon(prod.type)}
                     </span>
                     <span className={`text-xs truncate ${isActive ? 'font-semibold' : 'font-medium'}`}>
                       {prod.title}
                     </span>
                   </div>
-                  <span className="font-mono text-xs tabular-nums text-[#5C5C58] dark:text-[#A6A196] shrink-0">
+                  <span className="font-mono text-xs tabular-nums text-ink-muted dark:text-sandstone shrink-0">
                     {price} ₴
                   </span>
                 </button>
@@ -768,16 +768,16 @@ export function StudioStoreTab({
           <div className="lg:col-span-8 space-y-5">
             <div className="flex flex-wrap items-center justify-between gap-3 pb-1">
               <div className="min-w-0">
-                <h4 className="text-lg font-semibold text-[#141413] dark:text-[#EDEAE1] truncate">
+                <h4 className="text-lg font-semibold text-ink dark:text-cream-soft truncate">
                   {selectedProduct.title}
                 </h4>
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
-                <span className="font-mono text-sm font-semibold text-[#141413] dark:text-[#EDEAE1] tabular-nums">
+                <span className="font-mono text-sm font-semibold text-ink dark:text-cream-soft tabular-nums">
                   {getEffectivePriceUah(selectedProduct)} ₴
                   {(selectedProduct.discountPercent || 0) > 0 && (
-                    <span className="ml-1.5 text-xs text-[#5C5C58] line-through">
+                    <span className="ml-1.5 text-xs text-ink-muted line-through">
                       {selectedProduct.priceUah} ₴
                     </span>
                   )}
@@ -785,7 +785,7 @@ export function StudioStoreTab({
                 <button
                   type="button"
                   onClick={() => handleDeleteProduct(selectedProduct.id)}
-                  className="p-2 text-[#5C5C58] dark:text-[#A6A196] hover:text-rose-700 dark:hover:text-rose-400 rounded-lg hover:bg-rose-700/10 transition-colors cursor-pointer"
+                  className="p-2 text-ink-muted dark:text-sandstone hover:text-rose-700 dark:hover:text-rose-400 rounded-lg hover:bg-rose-700/10 transition-colors cursor-pointer"
                   title="Видалити позицію"
                   aria-label={`Видалити ${selectedProduct.title}`}
                 >
@@ -846,8 +846,8 @@ export function StudioStoreTab({
                         onClick={() => updateProductField(selectedProduct.id, 'coverImage', preset.url)}
                         className={`px-2 py-1 text-[11px] rounded-md cursor-pointer transition-colors ${
                           selectedProduct.coverImage === preset.url
-                            ? 'bg-[#EAE7DF] dark:bg-[#323232] text-[#2C5937] dark:text-[#E5E5E5] font-medium'
-                            : 'text-[#5C5C58] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-[#EDEAE1]'
+                            ? 'bg-paper-sand dark:bg-night-elevated text-pine dark:text-silver font-medium'
+                            : 'text-ink-muted dark:text-sandstone hover:text-ink dark:hover:text-cream-soft'
                         }`}
                       >
                         {preset.label}
@@ -954,17 +954,17 @@ export function StudioStoreTab({
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
                     <div className="flex flex-wrap items-center gap-4">
-                      <label className="inline-flex items-center gap-2 text-xs text-[#141413] dark:text-[#EDEAE1] cursor-pointer">
+                      <label className="inline-flex items-center gap-2 text-xs text-ink dark:text-cream-soft cursor-pointer">
                         <input
                           type="checkbox"
                           checked={Boolean(selectedProduct.promoActive)}
                           onChange={(e) => updateProductField(selectedProduct.id, 'promoActive', e.target.checked)}
-                          className="accent-[#315E3C] dark:accent-[#E5E5E5] w-4 h-4"
+                          className="accent-pine dark:accent-silver w-4 h-4"
                         />
                         <span>Акція активна на вітрині</span>
                       </label>
 
-                      <label className="inline-flex items-center gap-2 text-xs text-[#141413] dark:text-[#EDEAE1] cursor-pointer">
+                      <label className="inline-flex items-center gap-2 text-xs text-ink dark:text-cream-soft cursor-pointer">
                         <input
                           type="checkbox"
                           checked={parsedPromo.isBestseller}
@@ -979,7 +979,7 @@ export function StudioStoreTab({
                               })
                             )
                           }
-                          className="accent-[#315E3C] dark:accent-[#E5E5E5] w-4 h-4"
+                          className="accent-pine dark:accent-silver w-4 h-4"
                         />
                         <span>Бестселлер</span>
                       </label>
@@ -1002,7 +1002,7 @@ export function StudioStoreTab({
                                 })
                               )
                             }
-                            className="text-[11px] text-[#5C5C58] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-[#EDEAE1] cursor-pointer"
+                            className="text-[11px] text-ink-muted dark:text-sandstone hover:text-ink dark:hover:text-cream-soft cursor-pointer"
                           >
                             Скинути
                           </button>
@@ -1027,10 +1027,10 @@ export function StudioStoreTab({
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap items-center justify-end gap-3 text-xs font-mono text-[#5C5C58] dark:text-[#A6A196] tabular-nums">
+                  <div className="flex flex-wrap items-center justify-end gap-3 text-xs font-mono text-ink-muted dark:text-sandstone tabular-nums">
                     <span>
                       На вітрині:{' '}
-                      <strong className="text-[#141413] dark:text-[#EDEAE4]">
+                      <strong className="text-ink dark:text-[#EDEAE4]">
                         {getEffectivePriceUah(selectedProduct)} ₴
                       </strong>
                     </span>
@@ -1095,13 +1095,13 @@ export function StudioStoreTab({
                   </div>
                 </div>
 
-                <div className="p-3.5 bg-[#FAF9F5] dark:bg-[#262626] rounded-xl space-y-2.5">
+                <div className="p-3.5 bg-paper dark:bg-night-card rounded-xl space-y-2.5">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
-                      <p className="text-xs font-semibold text-[#141413] dark:text-[#EDEAE1]">
+                      <p className="text-xs font-semibold text-ink dark:text-cream-soft">
                         Файл електронної книги
                       </p>
-                      <p className="text-[11px] text-[#5C5C58] dark:text-[#A6A196]">
+                      <p className="text-[11px] text-ink-muted dark:text-sandstone">
                         EPUB, PDF, FB2, MOBI, TXT — передається покупцю після оплати.
                       </p>
                     </div>
@@ -1130,12 +1130,12 @@ export function StudioStoreTab({
                   {selectedProduct.ebookFileName ? (
                     <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
                       <div className="flex items-center gap-2 min-w-0">
-                        <FileText className="w-4 h-4 text-[#2C5937] dark:text-[#E5E5E5] shrink-0" />
-                        <span className="text-xs font-mono text-[#141413] dark:text-[#EDEAE1] truncate">
+                        <FileText className="w-4 h-4 text-pine dark:text-silver shrink-0" />
+                        <span className="text-xs font-mono text-ink dark:text-cream-soft truncate">
                           {selectedProduct.ebookFileName}
                         </span>
                         {selectedProduct.ebookFileSize && (
-                          <span className="text-[11px] font-mono text-[#5C5C58] tabular-nums shrink-0">
+                          <span className="text-[11px] font-mono text-ink-muted tabular-nums shrink-0">
                             ({formatFileSize(selectedProduct.ebookFileSize)})
                           </span>
                         )}
@@ -1152,7 +1152,7 @@ export function StudioStoreTab({
                         <button
                           type="button"
                           onClick={() => handleClearExistingEbook(selectedProduct.id)}
-                          className="p-1.5 text-[#5C5C58] hover:text-rose-700 dark:hover:text-rose-400 cursor-pointer"
+                          className="p-1.5 text-ink-muted hover:text-rose-700 dark:hover:text-rose-400 cursor-pointer"
                           title="Видалити файл"
                           aria-label="Видалити прикріплений файл"
                         >
@@ -1161,7 +1161,7 @@ export function StudioStoreTab({
                       </div>
                     </div>
                   ) : (
-                    <p className="text-[11px] text-[#5C5C58] dark:text-[#A6A196]">
+                    <p className="text-[11px] text-ink-muted dark:text-sandstone">
                       Файл не завантажено — передається резервний .txt.
                     </p>
                   )}

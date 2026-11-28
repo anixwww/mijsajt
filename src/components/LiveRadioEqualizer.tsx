@@ -160,11 +160,11 @@ export const LiveRadioEqualizer = memo(function LiveRadioEqualizer({
         : 'bg-white/90'
       : tone === 'accent'
         ? isPlaying
-          ? 'bg-[#E5E5E5]'
-          : 'bg-[#E5E5E5]/85'
+          ? 'bg-silver'
+          : 'bg-silver/85'
         : isPlaying && isMuted
-          ? 'bg-[#2C5937]/40 dark:bg-[#E5E5E5]/40'
-          : 'bg-[#2C5937] dark:bg-[#E5E5E5] opacity-90 group-hover:opacity-100';
+          ? 'bg-pine/40 dark:bg-silver/40'
+          : 'bg-pine dark:bg-silver opacity-90 group-hover:opacity-100';
 
   return (
     <span

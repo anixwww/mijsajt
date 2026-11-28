@@ -350,8 +350,8 @@ export function StudioProseSubmissionsPanel({
               onClick={() => setStatusFilter(f.id)}
               className={`px-2.5 py-1 rounded-lg text-xs font-medium whitespace-nowrap cursor-pointer transition-colors ${
                 statusFilter === f.id
-                  ? 'bg-[#EAE7DF] dark:bg-[#323232] text-[#141413] dark:text-[#EDEAE1] font-semibold'
-                  : 'text-[#5C5C58] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-[#EDEAE1]'
+                  ? 'bg-paper-sand dark:bg-night-elevated text-ink dark:text-cream-soft font-semibold'
+                  : 'text-ink-muted dark:text-sandstone hover:text-ink dark:hover:text-cream-soft'
               }`}
             >
               {f.label}{' '}
@@ -370,8 +370,8 @@ export function StudioProseSubmissionsPanel({
       </div>
 
       {filteredSubmissions.length === 0 ? (
-        <div className="py-12 text-center space-y-2 bg-[#FAF9F5] dark:bg-[#262626] rounded-xl px-4">
-          <p className="text-sm font-medium text-[#141413] dark:text-[#EDEAE1]">
+        <div className="py-12 text-center space-y-2 bg-paper dark:bg-night-card rounded-xl px-4">
+          <p className="text-sm font-medium text-ink dark:text-cream-soft">
             {statusFilter === 'pending'
               ? 'Нових заявок прози на розгляді немає'
               : 'Заявок у цій категорії поки немає'}
@@ -397,7 +397,7 @@ export function StudioProseSubmissionsPanel({
             return (
               <div
                 key={sub.id}
-                className="p-4 rounded-xl bg-[#FAF9F5] dark:bg-[#262626] space-y-3 text-xs"
+                className="p-4 rounded-xl bg-paper dark:bg-night-card space-y-3 text-xs"
               >
                 {/* Header */}
                 <div className="flex flex-wrap items-start justify-between gap-2.5">
@@ -416,21 +416,21 @@ export function StudioProseSubmissionsPanel({
                     )}
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                        <span className="text-sm font-semibold text-[#141413] dark:text-[#EDEAE1]">
+                        <span className="text-sm font-semibold text-ink dark:text-cream-soft">
                           {sub.title}
                         </span>
                         {sub.genre && (
-                          <span className="text-[11px] text-[#5C5C58] dark:text-[#A6A196]">
+                          <span className="text-[11px] text-ink-muted dark:text-sandstone">
                             · {sub.genre}
                           </span>
                         )}
-                        <span className="font-mono text-[11px] text-[#5C5C58] dark:text-[#A6A196] tabular-nums">
+                        <span className="font-mono text-[11px] text-ink-muted dark:text-sandstone tabular-nums">
                           · {sub.pages} стор. ({words.toLocaleString('uk-UA')} слів)
                         </span>
                       </div>
-                      <p className="text-[11px] text-[#5C5C58] dark:text-[#A6A196]">
+                      <p className="text-[11px] text-ink-muted dark:text-sandstone">
                         Автор:{' '}
-                        <strong className="font-medium text-[#141413] dark:text-[#EDEAE1]">
+                        <strong className="font-medium text-ink dark:text-cream-soft">
                           {sub.authorName}
                         </strong>
                         {' · '}
@@ -447,7 +447,7 @@ export function StudioProseSubmissionsPanel({
                       className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium ${
                         sub.workStatus === 'in_progress'
                           ? 'bg-amber-50 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300'
-                          : 'bg-[#EFECE6] text-[#5C5C58] dark:bg-[#202020] dark:text-[#A6A196]'
+                          : 'bg-paper-warm text-ink-muted dark:bg-night-panel dark:text-sandstone'
                       }`}
                     >
                       {sub.workStatus === 'in_progress' ? 'У процесі' : 'Закінчено'}
@@ -484,15 +484,15 @@ export function StudioProseSubmissionsPanel({
 
                 {/* Inline Editor OR Preview */}
                 {isEditing && draft ? (
-                  <div className="p-3.5 rounded-xl bg-white dark:bg-[#202020] space-y-3.5">
+                  <div className="p-3.5 rounded-xl bg-white dark:bg-night-panel space-y-3.5">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-xs font-semibold text-[#141413] dark:text-[#EDEAE1]">
+                      <span className="text-xs font-semibold text-ink dark:text-cream-soft">
                         Редагування прози перед публікацією
                       </span>
                       <button
                         type="button"
                         onClick={cancelEditing}
-                        className="text-[11px] font-medium text-[#5C5C58] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-[#EDEAE1] cursor-pointer"
+                        className="text-[11px] font-medium text-ink-muted dark:text-sandstone hover:text-ink dark:hover:text-cream-soft cursor-pointer"
                       >
                         Скасувати
                       </button>
@@ -567,7 +567,7 @@ export function StudioProseSubmissionsPanel({
                             className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold cursor-pointer transition-colors ${
                               draft.workStatus === opt.id
                                 ? 'bg-pear-pine-gradient text-white'
-                                : 'bg-[#FAF9F5] dark:bg-[#262626] text-[#5C5C58] dark:text-[#A6A196]'
+                                : 'bg-paper dark:bg-night-card text-ink-muted dark:text-sandstone'
                             }`}
                           >
                             {opt.id === 'completed' ? (
@@ -594,10 +594,10 @@ export function StudioProseSubmissionsPanel({
 
                     <div>
                       <div className="flex items-center justify-between gap-2 mb-1">
-                        <label className="text-xs font-medium text-[#5C5C58] dark:text-[#A6A196]">
+                        <label className="text-xs font-medium text-ink-muted dark:text-sandstone">
                           Текст твору * (пробіли, стовпчики й переноси рядків зберігаються)
                         </label>
-                        <span className="font-mono text-[11px] text-[#5C5C58] dark:text-[#A6A196] tabular-nums">
+                        <span className="font-mono text-[11px] text-ink-muted dark:text-sandstone tabular-nums">
                           {countProseWords(draft.content).toLocaleString('uk-UA')} слів ·{' '}
                           {countPagesForText(draft.content)} стор.
                         </span>
@@ -611,10 +611,10 @@ export function StudioProseSubmissionsPanel({
                     </div>
 
                     {/* Moodboard Editing */}
-                    <div className="p-3 rounded-xl bg-[#FAF9F5] dark:bg-[#262626] space-y-2.5">
+                    <div className="p-3 rounded-xl bg-paper dark:bg-night-card space-y-2.5">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="inline-flex items-center gap-1.5 font-semibold text-[#141413] dark:text-[#EDEAE1]">
-                          <ImagePlus className="w-3.5 h-3.5 text-[#2C5937] dark:text-[#E5E5E5]" />
+                        <span className="inline-flex items-center gap-1.5 font-semibold text-ink dark:text-cream-soft">
+                          <ImagePlus className="w-3.5 h-3.5 text-pine dark:text-silver" />
                           <span>Фото / муд-борд ({draft.moodboardUrls.length}/8)</span>
                         </span>
                       </div>
@@ -624,7 +624,7 @@ export function StudioProseSubmissionsPanel({
                           {draft.moodboardUrls.map((url, idx) => (
                             <div
                               key={`${url}-${idx}`}
-                              className="relative rounded-lg overflow-hidden aspect-[4/3] bg-[#EFECE6] dark:bg-[#1B1B1B]"
+                              className="relative rounded-lg overflow-hidden aspect-[4/3] bg-paper-warm dark:bg-night-deep"
                             >
                               <img
                                 src={url}
@@ -717,16 +717,16 @@ export function StudioProseSubmissionsPanel({
                   <>
                     <div className="space-y-1.5">
                       {sub.slogan && (
-                        <p className="italic text-[11px] text-[#5C5C58] dark:text-[#A6A196]">
+                        <p className="italic text-[11px] text-ink-muted dark:text-sandstone">
                           «{sub.slogan}»
                         </p>
                       )}
                       {sub.excerpt && (
-                        <p className="text-[11px] font-medium text-[#5C5C58] dark:text-[#A6A196]">
+                        <p className="text-[11px] font-medium text-ink-muted dark:text-sandstone">
                           Опис: {sub.excerpt}
                         </p>
                       )}
-                      <p className="text-xs text-[#141413]/90 dark:text-[#EDEAE1]/90 whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto">
+                      <p className="text-xs text-ink/90 dark:text-cream-soft/90 whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto">
                         {sub.content}
                       </p>
                     </div>
@@ -742,23 +742,23 @@ export function StudioProseSubmissionsPanel({
                             height={56}
                             loading="lazy"
                             decoding="async"
-                            className="w-20 h-14 rounded-lg object-cover bg-[#EFECE6] dark:bg-[#1B1B1B]"
+                            className="w-20 h-14 rounded-lg object-cover bg-paper-warm dark:bg-night-deep"
                           />
                         ))}
                       </div>
                     )}
 
                     {sub.moderationNote && (
-                      <div className="px-3 py-2 rounded-lg bg-white dark:bg-[#202020] text-[11px]">
+                      <div className="px-3 py-2 rounded-lg bg-white dark:bg-night-panel text-[11px]">
                         <span className="font-semibold">Коментар модератора: </span>
-                        <span className="text-[#5C5C58] dark:text-[#A6A196]">
+                        <span className="text-ink-muted dark:text-sandstone">
                           {sub.moderationNote}
                         </span>
                       </div>
                     )}
 
                     {isRejecting && (
-                      <div className="p-3 rounded-xl bg-white dark:bg-[#202020] space-y-2">
+                      <div className="p-3 rounded-xl bg-white dark:bg-night-panel space-y-2">
                         <label className={STUDIO_LABEL_CLASS}>
                           Причина відхилення (необов’язково, побачить автор твору)
                         </label>
@@ -785,7 +785,7 @@ export function StudioProseSubmissionsPanel({
                               setRejectingId(null);
                               setRejectNoteDraft('');
                             }}
-                            className="p-1.5 text-[#5C5C58] hover:text-[#141413] dark:hover:text-[#EDEAE1] cursor-pointer"
+                            className="p-1.5 text-ink-muted hover:text-ink dark:hover:text-cream-soft cursor-pointer"
                             aria-label="Скасувати"
                           >
                             <X className="w-4 h-4" />
@@ -826,7 +826,7 @@ export function StudioProseSubmissionsPanel({
                               setRejectingId(sub.id);
                               setRejectNoteDraft(sub.moderationNote || '');
                             }}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#EFECE6] dark:bg-[#202020] hover:bg-rose-50 dark:hover:bg-rose-950/40 text-[#5C5C58] dark:text-[#A6A196] hover:text-rose-700 dark:hover:text-rose-300 text-xs font-medium cursor-pointer transition-colors"
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-paper-warm dark:bg-night-panel hover:bg-rose-50 dark:hover:bg-rose-950/40 text-ink-muted dark:text-sandstone hover:text-rose-700 dark:hover:text-rose-300 text-xs font-medium cursor-pointer transition-colors"
                           >
                             <XCircle className="w-3.5 h-3.5" />
                             <span>Відхилити</span>
@@ -840,7 +840,7 @@ export function StudioProseSubmissionsPanel({
                         onClick={() => void handleDelete(sub)}
                         aria-label={`Видалити заявку ${sub.title}`}
                         title="Видалити заявку"
-                        className="p-1.5 text-[#5C5C58] dark:text-[#A6A196] hover:text-rose-700 dark:hover:text-rose-400 rounded-lg hover:bg-rose-700/10 cursor-pointer"
+                        className="p-1.5 text-ink-muted dark:text-sandstone hover:text-rose-700 dark:hover:text-rose-400 rounded-lg hover:bg-rose-700/10 cursor-pointer"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>

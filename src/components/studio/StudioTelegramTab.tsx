@@ -249,23 +249,23 @@ export function StudioTelegramTab({
   return (
     <div className="max-w-3xl space-y-6">
       {/* Live Status Overview */}
-      <div className="p-4 sm:p-5 rounded-xl bg-[#FAF9F5] dark:bg-[#262626] space-y-3.5">
+      <div className="p-4 sm:p-5 rounded-xl bg-paper dark:bg-night-card space-y-3.5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 min-w-0">
             <div
               className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
                 isFullyReady
-                  ? 'bg-[#E6F2EA] dark:bg-[#323232] text-[#1E563B] dark:text-[#E5E5E5]'
-                  : 'bg-[#EFECE4] dark:bg-[#323232] text-[#5C5C58] dark:text-[#A6A196]'
+                  ? 'bg-[#E6F2EA] dark:bg-night-elevated text-pine-deep dark:text-silver'
+                  : 'bg-paper-warm dark:bg-night-elevated text-ink-muted dark:text-sandstone'
               }`}
             >
               <Send className="w-4 h-4" />
             </div>
             <div className="min-w-0">
-              <h5 className="text-sm font-semibold text-[#141413] dark:text-[#EDEAE1]">
+              <h5 className="text-sm font-semibold text-ink dark:text-cream-soft">
                 Стан підключення Telegram-бота
               </h5>
-              <p className="text-xs text-[#5C5C58] dark:text-[#A6A196] truncate">
+              <p className="text-xs text-ink-muted dark:text-sandstone truncate">
                 {health?.botConfigured && health.botUsername
                   ? `Бот @${health.botUsername} підключений`
                   : 'Бот ще не підключений'}
@@ -286,12 +286,12 @@ export function StudioTelegramTab({
 
         {health && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
-            <div className="px-3 py-2.5 rounded-lg bg-white dark:bg-[#202020]">
-              <p className="text-[11px] text-[#5C5C58] dark:text-[#A6A196]">Бот</p>
-              <p className="mt-0.5 text-xs font-medium text-[#141413] dark:text-[#EDEAE1] flex items-center gap-1.5">
+            <div className="px-3 py-2.5 rounded-lg bg-white dark:bg-night-panel">
+              <p className="text-[11px] text-ink-muted dark:text-sandstone">Бот</p>
+              <p className="mt-0.5 text-xs font-medium text-ink dark:text-cream-soft flex items-center gap-1.5">
                 {health.botConfigured ? (
                   <>
-                    <CheckCircle2 className="w-3.5 h-3.5 text-[#2C5937] dark:text-[#E5E5E5] shrink-0" />
+                    <CheckCircle2 className="w-3.5 h-3.5 text-pine dark:text-silver shrink-0" />
                     <span className="truncate">@{health.botUsername}</span>
                   </>
                 ) : (
@@ -303,12 +303,12 @@ export function StudioTelegramTab({
               </p>
             </div>
 
-            <div className="px-3 py-2.5 rounded-lg bg-white dark:bg-[#202020]">
-              <p className="text-[11px] text-[#5C5C58] dark:text-[#A6A196]">Канал</p>
-              <p className="mt-0.5 text-xs font-medium text-[#141413] dark:text-[#EDEAE1] flex items-center gap-1.5">
+            <div className="px-3 py-2.5 rounded-lg bg-white dark:bg-night-panel">
+              <p className="text-[11px] text-ink-muted dark:text-sandstone">Канал</p>
+              <p className="mt-0.5 text-xs font-medium text-ink dark:text-cream-soft flex items-center gap-1.5">
                 {health.channelAccessible ? (
                   <>
-                    <CheckCircle2 className="w-3.5 h-3.5 text-[#2C5937] dark:text-[#E5E5E5] shrink-0" />
+                    <CheckCircle2 className="w-3.5 h-3.5 text-pine dark:text-silver shrink-0" />
                     <span className="truncate">{health.channelLabel}</span>
                   </>
                 ) : (
@@ -322,10 +322,10 @@ export function StudioTelegramTab({
               </p>
             </div>
 
-            <div className="px-3 py-2.5 rounded-lg bg-white dark:bg-[#202020]">
-              <p className="text-[11px] text-[#5C5C58] dark:text-[#A6A196]">Режим оновлень</p>
-              <p className="mt-0.5 text-xs font-medium text-[#141413] dark:text-[#EDEAE1] flex items-center gap-1.5">
-                <Webhook className="w-3.5 h-3.5 text-[#2C5937] dark:text-[#E5E5E5] shrink-0" />
+            <div className="px-3 py-2.5 rounded-lg bg-white dark:bg-night-panel">
+              <p className="text-[11px] text-ink-muted dark:text-sandstone">Режим оновлень</p>
+              <p className="mt-0.5 text-xs font-medium text-ink dark:text-cream-soft flex items-center gap-1.5">
+                <Webhook className="w-3.5 h-3.5 text-pine dark:text-silver shrink-0" />
                 <span>{health.webhookActive ? 'Webhook активний' : 'Опитування API'}</span>
               </p>
             </div>
@@ -343,21 +343,21 @@ export function StudioTelegramTab({
       {/* Bot Token Form */}
       <form
         onSubmit={handleSaveToken}
-        className="p-4 sm:p-5 rounded-xl bg-[#FAF9F5] dark:bg-[#262626] space-y-4"
+        className="p-4 sm:p-5 rounded-xl bg-paper dark:bg-night-card space-y-4"
       >
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
-            <h5 className="text-sm font-semibold text-[#141413] dark:text-[#EDEAE1] flex items-center gap-2">
-              <KeyRound className="w-4 h-4 text-[#2C5937] dark:text-[#E5E5E5]" />
+            <h5 className="text-sm font-semibold text-ink dark:text-cream-soft flex items-center gap-2">
+              <KeyRound className="w-4 h-4 text-pine dark:text-silver" />
               <span>Токен Telegram-бота (від @BotFather)</span>
             </h5>
-            <p className="text-xs text-[#5C5C58] dark:text-[#A6A196] mt-0.5">
+            <p className="text-xs text-ink-muted dark:text-sandstone mt-0.5">
               Токен зберігається виключно на сервері та у захищеній адмін-конфігурації — читачам він недоступний.
             </p>
           </div>
 
           {health?.maskedToken && (
-            <span className="px-2.5 py-1 rounded-md text-[11px] font-mono bg-[#EFECE6] dark:bg-[#323232] text-[#3E4C42] dark:text-[#D4D4D4]">
+            <span className="px-2.5 py-1 rounded-md text-[11px] font-mono bg-paper-warm dark:bg-night-elevated text-[#3E4C42] dark:text-[#D4D4D4]">
               {health.tokenSource === 'admin' ? 'У кабінеті: ' : 'Із сервера: '}
               {health.maskedToken}
             </span>
@@ -383,7 +383,7 @@ export function StudioTelegramTab({
               type="button"
               onClick={() => setShowToken((prev) => !prev)}
               aria-label={showToken ? 'Приховати токен' : 'Показати токен'}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded text-[#5C5C58] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-[#EDEAE1] cursor-pointer"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded text-ink-muted dark:text-sandstone hover:text-ink dark:hover:text-cream-soft cursor-pointer"
             >
               {showToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
@@ -417,13 +417,13 @@ export function StudioTelegramTab({
       {/* Channel & Discount Settings */}
       <form
         onSubmit={handleSaveChannelAndDiscount}
-        className="p-4 sm:p-5 rounded-xl bg-[#FAF9F5] dark:bg-[#262626] space-y-4"
+        className="p-4 sm:p-5 rounded-xl bg-paper dark:bg-night-card space-y-4"
       >
         <div>
-          <h5 className="text-sm font-semibold text-[#141413] dark:text-[#EDEAE1]">
+          <h5 className="text-sm font-semibold text-ink dark:text-cream-soft">
             Канал для перевірки підписки та знижка у «Прозі»
           </h5>
-          <p className="text-xs text-[#5C5C58] dark:text-[#A6A196] mt-0.5">
+          <p className="text-xs text-ink-muted dark:text-sandstone mt-0.5">
             За замовчуванням використовується Telegram із розділу «Контакти»
             {health?.socialTelegramUrl ? ` (${health.socialTelegramUrl})` : ''}. Тут можна вказати інший канал або числовий ID.
           </p>
@@ -461,12 +461,12 @@ export function StudioTelegramTab({
                   onChange={(e) => setProseTelegramDiscountDraft(e.target.value)}
                   className={`${STUDIO_INPUT_SM_CLASS} py-2 pr-7 font-mono tabular-nums`}
                 />
-                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-mono text-[#5C5C58]">
+                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-mono text-ink-muted">
                   %
                 </span>
               </div>
               {Number(proseTelegramDiscountDraft) > 0 && (
-                <span className="text-xs font-mono tabular-nums text-[#1E563B] dark:text-[#E5E5E5] whitespace-nowrap">
+                <span className="text-xs font-mono tabular-nums text-pine-deep dark:text-silver whitespace-nowrap">
                   100 ₴ →{' '}
                   {getProseEffectivePriceUah(100, Number(proseTelegramDiscountDraft) || 0, true)} ₴
                 </span>
@@ -505,15 +505,15 @@ export function StudioTelegramTab({
         </div>
 
         {health?.webhookActive && health.webhookUrl && (
-          <p className="text-[11px] font-mono text-[#5C5C58] dark:text-[#A6A196] break-all">
+          <p className="text-[11px] font-mono text-ink-muted dark:text-sandstone break-all">
             Webhook URL: {health.webhookUrl}
           </p>
         )}
       </form>
 
       {/* Short Setup Steps */}
-      <div className="p-4 rounded-xl bg-[#F5F4EE]/70 dark:bg-[#262626] text-xs text-[#5C5C58] dark:text-[#A6A196] space-y-1.5">
-        <p className="font-semibold text-[#141413] dark:text-[#EDEAE1]">Як швидко підключити:</p>
+      <div className="p-4 rounded-xl bg-paper-oat/70 dark:bg-night-card text-xs text-ink-muted dark:text-sandstone space-y-1.5">
+        <p className="font-semibold text-ink dark:text-cream-soft">Як швидко підключити:</p>
         <p>1. Відкрийте @BotFather у Telegram, створіть бота командою /newbot та скопіюйте токен.</p>
         <p>2. Вставте токен вище й натисніть «Перевірити й зберегти токен».</p>
         <p>

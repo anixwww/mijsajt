@@ -26,7 +26,8 @@ import {
   XCircle,
 } from 'lucide-react';
 import { m } from 'motion/react';
-import { useCallback, useEffect, useRef, useState, useMemo, type FormEvent } from 'react';
+import { memo, useCallback, useEffect, useRef, useState, useMemo, type FormEvent, type ReactElement } from 'react';
+import { List, useDynamicRowHeight, type RowComponentProps } from 'react-window';
 import {
   DEFAULT_GOOGLE_AUTH_BRIDGE_URL,
   FIREBASE_PROJECT_ID,
@@ -123,7 +124,210 @@ function maskEmailForHint(email: string): string {
   return `${visible}***@${domain}`;
 }
 
-export function GuestAuthModal({
+type UserWorkEntry =
+  | { kind: 'poem'; sortTs: number; item: PoemSubmission }
+  | { kind: 'prose'; sortTs: number; item: ProseSubmission };
+
+const LikedPoemRow = memo(function LikedPoemRow({
+  poem,
+  onSelectPoem,
+}: {
+  poem: Poem;
+  onSelectPoem: (poemId: string) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onSelectPoem(poem.id)}
+      className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-white dark:bg-night-card hover:bg-paper-warm dark:hover:bg-night-elevated text-left transition-colors cursor-pointer group"
+    >
+      <div className="min-w-0">
+        <p className="text-xs font-medium text-ink dark:text-cream truncate">
+          {poem.title}
+        </p>
+        <p className="text-[10px] text-ink-muted dark:text-parchment truncate">
+          {poem.cycle}
+        </p>
+      </div>
+      <ArrowUpRight className="w-3.5 h-3.5 text-ink-muted dark:text-parchment group-hover:text-ink dark:group-hover:text-cream shrink-0" />
+    </button>
+  );
+});
+
+interface VirtualLikedPoemRowData {
+  poems: Poem[];
+  onSelectPoem: (poemId: string) => void;
+}
+
+function VirtualLikedPoemRow({
+  ariaAttributes,
+  index,
+  style,
+  poems,
+  onSelectPoem,
+}: RowComponentProps<VirtualLikedPoemRowData>): ReactElement | null {
+  const poem = poems[index];
+  if (!poem) return null;
+  return (
+    <div {...ariaAttributes} style={style}>
+      <div className="pb-1.5 pr-1">
+        <LikedPoemRow poem={poem} onSelectPoem={onSelectPoem} />
+      </div>
+    </div>
+  );
+}
+
+const UserWorkSummaryCard = memo(function UserWorkSummaryCard({
+  entry,
+  onStartEditPoem,
+  onStartEditProse,
+  onOpenPublished,
+}: {
+  entry: UserWorkEntry;
+  onStartEditPoem: (sub: PoemSubmission) => void;
+  onStartEditProse: (sub: ProseSubmission) => void;
+  onOpenPublished: (kind: 'poem' | 'prose', publishedId: string) => void;
+}) {
+  const sub = entry.item;
+  const isApproved = sub.status === 'approved';
+  const isRejected = sub.status === 'rejected';
+  const workStatusValue: ProseStatus = sub.workStatus || 'completed';
+  const publishedId =
+    entry.kind === 'poem'
+      ? (sub as PoemSubmission).publishedPoemId
+      : (sub as ProseSubmission).publishedProseId;
+
+  return (
+    <div className="p-3.5 rounded-xl bg-white dark:bg-night-card space-y-2.5 text-xs">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-1.5 mb-1">
+            <span className="px-1.5 py-0.5 rounded bg-paper-warm dark:bg-night-elevated text-[10px] font-semibold text-ink-muted dark:text-parchment">
+              {entry.kind === 'poem' ? 'Вірш' : 'Проза'}
+            </span>
+            <span
+              className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                workStatusValue === 'completed'
+                  ? 'bg-emerald-50 text-emerald-800 dark:bg-night-elevated dark:text-silver'
+                  : 'bg-amber-50 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300'
+              }`}
+            >
+              {workStatusValue === 'completed' ? 'Закінчено' : 'У процесі'}
+            </span>
+          </div>
+          <p className="text-sm font-semibold text-ink dark:text-cream">
+            {sub.title}
+          </p>
+          <p className="text-[11px] text-ink-muted dark:text-parchment">
+            {entry.kind === 'poem'
+              ? (sub as PoemSubmission).cycle || 'Стрічка віршів'
+              : (sub as ProseSubmission).genre || 'Оповідання'}
+            {' · '}
+            {new Date(sub.updatedAt || sub.createdAt).toLocaleDateString('uk-UA')}
+          </p>
+        </div>
+
+        <span
+          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-semibold shrink-0 ${
+            isApproved
+              ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300'
+              : isRejected
+                ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300'
+                : 'bg-amber-50 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300'
+          }`}
+        >
+          {isApproved ? (
+            <>
+              <CheckCircle2 className="w-3 h-3" />
+              <span>Опубліковано</span>
+            </>
+          ) : isRejected ? (
+            <>
+              <XCircle className="w-3 h-3" />
+              <span>Відхилено</span>
+            </>
+          ) : (
+            <>
+              <Clock className="w-3 h-3" />
+              <span>На розгляді</span>
+            </>
+          )}
+        </span>
+      </div>
+
+      <p className="text-xs text-ink-muted dark:text-parchment whitespace-pre-wrap line-clamp-4 leading-relaxed">
+        {sub.content}
+      </p>
+
+      {sub.moderationNote && (
+        <div className="px-2.5 py-1.5 rounded-lg bg-paper dark:bg-night-panel text-[11px]">
+          <span className="font-semibold">Коментар адміністратора: </span>
+          <span className="text-ink-muted dark:text-parchment">{sub.moderationNote}</span>
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-center justify-between gap-2 pt-0.5">
+        <button
+          type="button"
+          onClick={() =>
+            entry.kind === 'poem'
+              ? onStartEditPoem(sub as PoemSubmission)
+              : onStartEditProse(sub as ProseSubmission)
+          }
+          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-paper-warm dark:bg-night-elevated hover:bg-paper-sand dark:hover:bg-night-muted text-[11px] font-medium text-ink dark:text-cream cursor-pointer transition-colors"
+        >
+          <Pencil className="w-3 h-3" />
+          <span>Редагувати / доповнити</span>
+        </button>
+
+        {isApproved && publishedId && (
+          <button
+            type="button"
+            onClick={() => onOpenPublished(entry.kind, publishedId)}
+            className="inline-flex items-center gap-1 text-[11px] font-semibold text-pine dark:text-silver hover:underline cursor-pointer"
+          >
+            <span>Відкрити</span>
+            <ArrowUpRight className="w-3 h-3" />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+});
+
+interface VirtualUserWorkRowData {
+  works: UserWorkEntry[];
+  onStartEditPoem: (sub: PoemSubmission) => void;
+  onStartEditProse: (sub: ProseSubmission) => void;
+  onOpenPublished: (kind: 'poem' | 'prose', publishedId: string) => void;
+}
+
+function VirtualUserWorkRow({
+  ariaAttributes,
+  index,
+  style,
+  works,
+  onStartEditPoem,
+  onStartEditProse,
+  onOpenPublished,
+}: RowComponentProps<VirtualUserWorkRowData>): ReactElement | null {
+  const entry = works[index];
+  if (!entry) return null;
+  return (
+    <div {...ariaAttributes} style={style}>
+      <div className="pb-2.5 pr-1">
+        <UserWorkSummaryCard
+          entry={entry}
+          onStartEditPoem={onStartEditPoem}
+          onStartEditProse={onStartEditProse}
+          onOpenPublished={onOpenPublished}
+        />
+      </div>
+    </div>
+  );
+}
+
+export const GuestAuthModal = memo(function GuestAuthModal({
   isOpen,
   onClose,
   guestUser,
@@ -310,6 +514,102 @@ export function GuestAuthModal({
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [isOpen, onClose]);
+
+  const myWorksList = useMemo<UserWorkEntry[]>(() => {
+    const combined: UserWorkEntry[] = [
+      ...myPoemSubmissions.map((item) => ({
+        kind: 'poem' as const,
+        sortTs: Date.parse(item.updatedAt || item.createdAt) || 0,
+        item,
+      })),
+      ...myProseSubmissions.map((item) => ({
+        kind: 'prose' as const,
+        sortTs: Date.parse(item.updatedAt || item.createdAt) || 0,
+        item,
+      })),
+    ];
+    combined.sort((a, b) => b.sortTs - a.sortTs);
+    return combined;
+  }, [myPoemSubmissions, myProseSubmissions]);
+
+  const likedPoems = useMemo(() => {
+    if (!guestUser) return [];
+    if (Array.isArray(guestUser.likedPoemIds)) {
+      const likedSet = new Set(guestUser.likedPoemIds);
+      return poems.filter((poem: Poem) => likedSet.has(poem.id));
+    }
+    return poems.filter((poem: Poem) => Boolean(poem.isLiked));
+  }, [poems, guestUser]);
+
+  const worksRowHeight = useDynamicRowHeight({
+    defaultRowHeight: 168,
+    key: `${isOpen ? 'open' : 'closed'}-${cabinetTab}-${myWorksList.length}`,
+  });
+
+  const handleStartEditPoem = useCallback((sub: PoemSubmission) => {
+    setWorksFeedback(null);
+    setEditingWorkKey(`poem:${sub.id}`);
+    setEditDraft({
+      kind: 'poem',
+      id: sub.id,
+      title: sub.title,
+      subtitle: sub.cycle || '',
+      noteOrSlogan: sub.note || '',
+      excerpt: '',
+      content: sub.content,
+      workStatus: sub.workStatus || 'completed',
+    });
+  }, []);
+
+  const handleStartEditProse = useCallback((sub: ProseSubmission) => {
+    setWorksFeedback(null);
+    setEditingWorkKey(`prose:${sub.id}`);
+    setEditDraft({
+      kind: 'prose',
+      id: sub.id,
+      title: sub.title,
+      subtitle: sub.genre || 'Оповідання',
+      noteOrSlogan: sub.slogan || '',
+      excerpt: sub.excerpt || '',
+      content: sub.content,
+      workStatus: sub.workStatus || 'completed',
+    });
+  }, []);
+
+  const handleSelectLikedPoem = useCallback(
+    (poemId: string) => {
+      onOpenPoem?.(poemId);
+      onClose();
+    },
+    [onOpenPoem, onClose]
+  );
+
+  const handleOpenPublishedWork = useCallback(
+    (kind: 'poem' | 'prose', publishedId: string) => {
+      if (kind === 'poem') {
+        onOpenPoem?.(publishedId);
+      } else {
+        onOpenProse?.(publishedId);
+      }
+      onClose();
+    },
+    [onOpenPoem, onOpenProse, onClose]
+  );
+
+  const likedPoemRowProps = useMemo<VirtualLikedPoemRowData>(
+    () => ({ poems: likedPoems, onSelectPoem: handleSelectLikedPoem }),
+    [likedPoems, handleSelectLikedPoem]
+  );
+
+  const userWorkRowProps = useMemo<VirtualUserWorkRowData>(
+    () => ({
+      works: myWorksList,
+      onStartEditPoem: handleStartEditPoem,
+      onStartEditProse: handleStartEditProse,
+      onOpenPublished: handleOpenPublishedWork,
+    }),
+    [myWorksList, handleStartEditPoem, handleStartEditProse, handleOpenPublishedWork]
+  );
 
   if (!isOpen) return null;
 
@@ -856,35 +1156,7 @@ export function GuestAuthModal({
     }
   };
 
-  const handleStartEditPoem = (sub: PoemSubmission) => {
-    setWorksFeedback(null);
-    setEditingWorkKey(`poem:${sub.id}`);
-    setEditDraft({
-      kind: 'poem',
-      id: sub.id,
-      title: sub.title,
-      subtitle: sub.cycle || '',
-      noteOrSlogan: sub.note || '',
-      excerpt: '',
-      content: sub.content,
-      workStatus: sub.workStatus || 'completed',
-    });
-  };
 
-  const handleStartEditProse = (sub: ProseSubmission) => {
-    setWorksFeedback(null);
-    setEditingWorkKey(`prose:${sub.id}`);
-    setEditDraft({
-      kind: 'prose',
-      id: sub.id,
-      title: sub.title,
-      subtitle: sub.genre || 'Оповідання',
-      noteOrSlogan: sub.slogan || '',
-      excerpt: sub.excerpt || '',
-      content: sub.content,
-      workStatus: sub.workStatus || 'completed',
-    });
-  };
 
   const handleSaveWorkEdit = async (e: FormEvent) => {
     e.preventDefault();
@@ -991,35 +1263,6 @@ export function GuestAuthModal({
     }
   };
 
-  const myWorksList = useMemo(() => {
-    const combined: Array<
-      | { kind: 'poem'; sortTs: number; item: PoemSubmission }
-      | { kind: 'prose'; sortTs: number; item: ProseSubmission }
-    > = [
-      ...myPoemSubmissions.map((item) => ({
-        kind: 'poem' as const,
-        sortTs: Date.parse(item.updatedAt || item.createdAt) || 0,
-        item,
-      })),
-      ...myProseSubmissions.map((item) => ({
-        kind: 'prose' as const,
-        sortTs: Date.parse(item.updatedAt || item.createdAt) || 0,
-        item,
-      })),
-    ];
-    combined.sort((a, b) => b.sortTs - a.sortTs);
-    return combined;
-  }, [myPoemSubmissions, myProseSubmissions]);
-
-  const likedPoems = useMemo(() => {
-    if (!guestUser) return [];
-    if (Array.isArray(guestUser.likedPoemIds)) {
-      const likedSet = new Set(guestUser.likedPoemIds);
-      return poems.filter((poem: Poem) => likedSet.has(poem.id));
-    }
-    return poems.filter((poem: Poem) => Boolean(poem.isLiked));
-  }, [poems, guestUser]);
-
   const showRememberedPinLogin =
     !guestUser && Boolean(rememberedGuest && rememberedGuest.hasPin && !forceGoogleView);
   const showRememberedGoogleResume =
@@ -1038,7 +1281,7 @@ export function GuestAuthModal({
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.98, y: 8 }}
         transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-        className={`bg-[#FAF9F5] dark:bg-[#202020] rounded-2xl w-full p-6 shadow-2xl text-[#141413] dark:text-[#F4F1EA] max-h-[92vh] overflow-y-auto transition-[max-width] duration-200 ${
+        className={`bg-paper dark:bg-night-panel rounded-2xl w-full p-6 shadow-2xl text-ink dark:text-cream max-h-[92vh] overflow-y-auto transition-[max-width] duration-200 ${
           guestUser && cabinetTab === 'works' ? 'max-w-xl' : 'max-w-sm'
         }`}
         onClick={(e) => e.stopPropagation()}
@@ -1046,7 +1289,7 @@ export function GuestAuthModal({
         {/* Header */}
         <div className="flex items-center justify-between pb-3 mb-4">
           <div className="space-y-0.5">
-            <span className="text-[11px] font-medium uppercase tracking-wider text-[#5C5C58] dark:text-[#C4BFB4]">
+            <span className="text-[11px] font-medium uppercase tracking-wider text-ink-muted dark:text-parchment">
               {guestUser
                 ? 'Кабінет читача'
                 : showRememberedPinLogin
@@ -1055,7 +1298,7 @@ export function GuestAuthModal({
             </span>
             <h3
               id="guest-auth-title"
-              className="font-serif text-xl font-semibold text-[#141413] dark:text-[#F4F1EA]"
+              className="font-serif text-xl font-semibold text-ink dark:text-cream"
             >
               {guestUser
                 ? 'Профіль'
@@ -1067,7 +1310,7 @@ export function GuestAuthModal({
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 inline-flex items-center justify-center text-[#5C5C58] dark:text-[#C4BFB4] hover:text-[#141413] dark:hover:text-[#F4F1EA] hover:bg-[#EFECE6] dark:hover:bg-[#323232] rounded-lg transition-colors cursor-pointer"
+            className="w-8 h-8 inline-flex items-center justify-center text-ink-muted dark:text-parchment hover:text-ink dark:hover:text-cream hover:bg-paper-warm dark:hover:bg-night-elevated rounded-lg transition-colors cursor-pointer"
             aria-label="Закрити"
           >
             <X className="w-4 h-4" />
@@ -1116,7 +1359,7 @@ export function GuestAuthModal({
                     href={standaloneAuthUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#141413] text-[#FAF9F5] dark:bg-[#F4F1EA] dark:text-[#141413] text-xs font-medium hover:opacity-90"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-ink text-paper dark:bg-cream dark:text-ink text-xs font-medium hover:opacity-90"
                   >
                     <span>Відкрити у новій вкладці</span>
                     <ExternalLink className="w-3 h-3" />
@@ -1127,7 +1370,7 @@ export function GuestAuthModal({
                     type="button"
                     disabled={loadingAction !== null}
                     onClick={handleGoogleRedirectLogin}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#141413] text-[#FAF9F5] dark:bg-[#F4F1EA] dark:text-[#141413] text-xs font-medium hover:opacity-90"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-ink text-paper dark:bg-cream dark:text-ink text-xs font-medium hover:opacity-90"
                   >
                     <span>Увійти через перенаправлення</span>
                   </button>
@@ -1141,7 +1384,7 @@ export function GuestAuthModal({
         {guestUser ? (
           <div className="space-y-4">
             {/* User Info Bar */}
-            <div className="flex items-center gap-3.5 p-3.5 bg-white dark:bg-[#262626] rounded-2xl shadow-2xs">
+            <div className="flex items-center gap-3.5 p-3.5 bg-white dark:bg-night-card rounded-2xl shadow-2xs">
               {guestUser.photoUrl ? (
                 <img
                   src={guestUser.photoUrl}
@@ -1154,7 +1397,7 @@ export function GuestAuthModal({
                   className="w-11 h-11 rounded-full object-cover shrink-0 ring-1 ring-black/8 dark:ring-white/12"
                 />
               ) : (
-                <span className="w-11 h-11 rounded-full bg-[#EFECE6] dark:bg-[#323232] inline-flex items-center justify-center text-[#5C5C58] dark:text-[#C4BFB4] shrink-0">
+                <span className="w-11 h-11 rounded-full bg-paper-warm dark:bg-night-elevated inline-flex items-center justify-center text-ink-muted dark:text-parchment shrink-0">
                   <User className="w-5 h-5" />
                 </span>
               )}
@@ -1178,7 +1421,7 @@ export function GuestAuthModal({
                           }
                         }}
                         aria-label="Нове ім’я або псевдонім"
-                        className="flex-1 min-w-0 bg-transparent border-b border-[#2C5937] dark:border-[#F4F1EA] px-0.5 py-0.5 text-sm font-semibold text-[#141413] dark:text-[#F4F1EA] focus:outline-none"
+                        className="flex-1 min-w-0 bg-transparent border-b border-pine dark:border-cream px-0.5 py-0.5 text-sm font-semibold text-ink dark:text-cream focus:outline-none"
                       />
                       <button
                         type="button"
@@ -1186,7 +1429,7 @@ export function GuestAuthModal({
                         onClick={() => void saveProfileData()}
                         aria-label="Зберегти нікнейм"
                         title="Зберегти"
-                        className="p-0.5 text-[#2C5937] dark:text-emerald-400 hover:opacity-80 cursor-pointer disabled:opacity-40"
+                        className="p-0.5 text-pine dark:text-emerald-400 hover:opacity-80 cursor-pointer disabled:opacity-40"
                       >
                         <Check className="w-4 h-4" strokeWidth={2.2} />
                       </button>
@@ -1199,14 +1442,14 @@ export function GuestAuthModal({
                         }}
                         aria-label="Скасувати редагування нікнейма"
                         title="Скасувати"
-                        className="p-0.5 text-[#7A7870] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-[#F4F1EA] cursor-pointer"
+                        className="p-0.5 text-ink-subtle dark:text-sandstone hover:text-ink dark:hover:text-cream cursor-pointer"
                       >
                         <X className="w-3.5 h-3.5" strokeWidth={2} />
                       </button>
                     </div>
                   ) : (
                     <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
-                      <p className="text-sm font-semibold text-[#141413] dark:text-[#F4F1EA] truncate max-w-full">
+                      <p className="text-sm font-semibold text-ink dark:text-cream truncate max-w-full">
                         {guestUser.displayName}
                       </p>
                       <button
@@ -1219,7 +1462,7 @@ export function GuestAuthModal({
                         }}
                         aria-label="Змінити нікнейм"
                         title="Змінити нікнейм"
-                        className="p-0.5 bg-transparent border-0 text-[#7A7870] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-[#F4F1EA] transition-colors cursor-pointer shrink-0"
+                        className="p-0.5 bg-transparent border-0 text-ink-subtle dark:text-sandstone hover:text-ink dark:hover:text-cream transition-colors cursor-pointer shrink-0"
                       >
                         <Pencil className="w-3.5 h-3.5" strokeWidth={1.85} />
                       </button>
@@ -1228,7 +1471,7 @@ export function GuestAuthModal({
                   )}
 
                   {guestUser.createdAt && !editingDisplayName && (
-                    <span className="text-[11px] text-[#7A7870] dark:text-[#A6A196] font-normal tabular-nums shrink-0">
+                    <span className="text-[11px] text-ink-subtle dark:text-sandstone font-normal tabular-nums shrink-0">
                       Зареєстрований{' '}
                       {new Date(guestUser.createdAt).toLocaleDateString('uk-UA', {
                         day: 'numeric',
@@ -1240,7 +1483,7 @@ export function GuestAuthModal({
                 </div>
 
                 {guestUser.email && (
-                  <p className="text-[11px] text-[#5C5C58] dark:text-[#A6A196] truncate">
+                  <p className="text-[11px] text-ink-muted dark:text-sandstone truncate">
                     {guestUser.email}
                   </p>
                 )}
@@ -1248,8 +1491,8 @@ export function GuestAuthModal({
             </div>
 
             {(liveBadges?.activityRank || liveBadges?.donorRank) && (
-              <div className="px-3.5 py-2.5 bg-white/80 dark:bg-[#262626] rounded-xl space-y-2">
-                <p className="text-[11px] text-[#5C5C58] dark:text-[#C4BFB4]">
+              <div className="px-3.5 py-2.5 bg-white/80 dark:bg-night-card rounded-xl space-y-2">
+                <p className="text-[11px] text-ink-muted dark:text-parchment">
                   Відзнаки рейтингу:
                 </p>
                 <UserRankBadges badges={liveBadges} size="md" />
@@ -1279,7 +1522,7 @@ export function GuestAuthModal({
                   type="button"
                   disabled={loadingAction !== null}
                   onClick={handleGoogleLogin}
-                  className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-white dark:bg-[#2A2A2A] hover:bg-[#F3F2EC] dark:hover:bg-[#323232] text-xs font-medium text-[#141413] dark:text-[#F4F1EA] shadow-2xs transition-colors cursor-pointer disabled:opacity-55"
+                  className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-white dark:bg-night-lift hover:bg-paper-warm dark:hover:bg-night-elevated text-xs font-medium text-ink dark:text-cream shadow-2xs transition-colors cursor-pointer disabled:opacity-55"
                 >
                   <GoogleLogoIcon />
                   <span>{loadingAction === 'google' ? 'Підключення...' : 'Підтвердити через Google'}</span>
@@ -1288,14 +1531,14 @@ export function GuestAuthModal({
             )}
 
             {/* Simple Tab Switcher */}
-            <div className="flex gap-1 p-1 rounded-xl bg-[#EFECE6] dark:bg-[#262626]">
+            <div className="flex gap-1 p-1 rounded-xl bg-paper-warm dark:bg-night-card">
               <button
                 type="button"
                 onClick={() => setCabinetTab('profile')}
                 className={`flex-1 py-2 px-2 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
                   cabinetTab === 'profile'
-                    ? 'bg-white dark:bg-[#323232] text-[#141413] dark:text-[#F4F1EA] shadow-2xs'
-                    : 'text-[#5C5C58] dark:text-[#C4BFB4] hover:text-[#141413] dark:hover:text-[#F4F1EA]'
+                    ? 'bg-white dark:bg-night-elevated text-ink dark:text-cream shadow-2xs'
+                    : 'text-ink-muted dark:text-parchment hover:text-ink dark:hover:text-cream'
                 }`}
               >
                 Профіль
@@ -1308,12 +1551,12 @@ export function GuestAuthModal({
                 }}
                 className={`flex-1 py-2 px-2 rounded-lg text-xs font-medium transition-colors cursor-pointer inline-flex items-center justify-center gap-1 ${
                   cabinetTab === 'works'
-                    ? 'bg-white dark:bg-[#323232] text-[#141413] dark:text-[#F4F1EA] shadow-2xs'
-                    : 'text-[#5C5C58] dark:text-[#C4BFB4] hover:text-[#141413] dark:hover:text-[#F4F1EA]'
+                    ? 'bg-white dark:bg-night-elevated text-ink dark:text-cream shadow-2xs'
+                    : 'text-ink-muted dark:text-parchment hover:text-ink dark:hover:text-cream'
                 }`}
               >
                 <span>Мої твори</span>
-                <span className="font-mono text-[10px] px-1.5 py-0.2 rounded-full bg-[#EFECE6] dark:bg-[#262626] text-[#5C5C58] dark:text-[#C4BFB4]">
+                <span className="font-mono text-[10px] px-1.5 py-0.2 rounded-full bg-paper-warm dark:bg-night-card text-ink-muted dark:text-parchment">
                   {myWorksList.length}
                 </span>
               </button>
@@ -1322,12 +1565,12 @@ export function GuestAuthModal({
                 onClick={() => setCabinetTab('likes')}
                 className={`flex-1 py-2 px-2 rounded-lg text-xs font-medium transition-colors cursor-pointer inline-flex items-center justify-center gap-1 ${
                   cabinetTab === 'likes'
-                    ? 'bg-white dark:bg-[#323232] text-[#141413] dark:text-[#F4F1EA] shadow-2xs'
-                    : 'text-[#5C5C58] dark:text-[#C4BFB4] hover:text-[#141413] dark:hover:text-[#F4F1EA]'
+                    ? 'bg-white dark:bg-night-elevated text-ink dark:text-cream shadow-2xs'
+                    : 'text-ink-muted dark:text-parchment hover:text-ink dark:hover:text-cream'
                 }`}
               >
                 <span>Вподобано</span>
-                <span className="font-mono text-[10px] px-1.5 py-0.2 rounded-full bg-[#EFECE6] dark:bg-[#262626] text-[#5C5C58] dark:text-[#C4BFB4]">
+                <span className="font-mono text-[10px] px-1.5 py-0.2 rounded-full bg-paper-warm dark:bg-night-card text-ink-muted dark:text-parchment">
                   {likedPoems.length}
                 </span>
               </button>
@@ -1345,12 +1588,12 @@ export function GuestAuthModal({
                         setPinSetupInput('');
                         setErrorMsg(null);
                       }}
-                      className="inline-flex items-center gap-1 text-xs text-[#5C5C58] dark:text-[#C4BFB4] hover:text-[#141413] dark:hover:text-[#F4F1EA] cursor-pointer"
+                      className="inline-flex items-center gap-1 text-xs text-ink-muted dark:text-parchment hover:text-ink dark:hover:text-cream cursor-pointer"
                     >
                       <ArrowLeft className="w-3.5 h-3.5" />
                       <span>Назад</span>
                     </button>
-                    <span className="text-[11px] font-medium text-[#5C5C58] dark:text-[#C4BFB4]">
+                    <span className="text-[11px] font-medium text-ink-muted dark:text-parchment">
                       {pinSetupStep === 'current'
                         ? 'Поточний ПІН'
                         : pinSetupStep === 'new'
@@ -1359,7 +1602,7 @@ export function GuestAuthModal({
                     </span>
                   </div>
 
-                  <p className="text-center text-xs font-medium text-[#141413] dark:text-[#F4F1EA]">
+                  <p className="text-center text-xs font-medium text-ink dark:text-cream">
                     {pinSetupStep === 'current'
                       ? 'Введіть поточний 4-значний ПІН-код'
                       : pinSetupStep === 'new'
@@ -1380,7 +1623,7 @@ export function GuestAuthModal({
                 <form onSubmit={handleSaveProfile} className="space-y-3.5 pt-1">
                   {liveBadges?.donorRank && liveBadges.donorRank <= 3 && (
                     <div className="space-y-1.5">
-                      <label className="block text-[11px] font-medium text-[#5C5C58] dark:text-[#C4BFB4]">
+                      <label className="block text-[11px] font-medium text-ink-muted dark:text-parchment">
                         Текст у глобальному чаті (Топ-{liveBadges.donorRank} донат)
                       </label>
                       <input
@@ -1389,23 +1632,23 @@ export function GuestAuthModal({
                         value={donorChatTextInput}
                         onChange={(e) => setDonorChatTextInput(e.target.value.slice(0, 80))}
                         placeholder="Ваш підпис або статус на вибір..."
-                        className="w-full bg-[#EFECE6] dark:bg-[#2A2A2A] rounded-xl px-3 py-2 text-xs text-[#141413] dark:text-[#F4F1EA] focus:outline-none focus:bg-white dark:focus:bg-[#323232] transition-colors"
+                        className="w-full bg-paper-warm dark:bg-night-lift rounded-xl px-3 py-2 text-xs text-ink dark:text-cream focus:outline-none focus:bg-white dark:focus:bg-night-elevated transition-colors"
                       />
                     </div>
                   )}
 
                   {/* Quick 4-digit PIN management */}
-                  <div className="p-3.5 rounded-xl bg-white/85 dark:bg-[#262626] space-y-2.5">
+                  <div className="p-3.5 rounded-xl bg-white/85 dark:bg-night-card space-y-2.5">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-start gap-2.5 min-w-0">
-                        <span className="w-7 h-7 rounded-lg bg-[#EFECE6] dark:bg-[#323232] text-[#141413] dark:text-[#F4F1EA] inline-flex items-center justify-center shrink-0 mt-0.5">
+                        <span className="w-7 h-7 rounded-lg bg-paper-warm dark:bg-night-elevated text-ink dark:text-cream inline-flex items-center justify-center shrink-0 mt-0.5">
                           <KeyRound className="w-3.5 h-3.5" strokeWidth={1.9} />
                         </span>
                         <div className="min-w-0">
-                          <p className="text-xs font-medium text-[#141413] dark:text-[#F4F1EA]">
+                          <p className="text-xs font-medium text-ink dark:text-cream">
                             Швидкий ПІН-вхід (4 цифри)
                           </p>
-                          <p className="text-[11px] text-[#5C5C58] dark:text-[#C4BFB4] leading-snug">
+                          <p className="text-[11px] text-ink-muted dark:text-parchment leading-snug">
                             {guestUser.hasPin
                               ? 'Увімкнено · вхід без повторного логування через Google'
                               : 'Входьте за 4 цифрами без вибору акаунту'}
@@ -1419,7 +1662,7 @@ export function GuestAuthModal({
                         type="button"
                         disabled={pinSetupSaving}
                         onClick={startPinSetup}
-                        className="px-3 py-1.5 rounded-lg bg-[#EFECE6] dark:bg-[#323232] hover:bg-[#E4DFD4] dark:hover:bg-[#3C3C3C] text-[11px] font-medium text-[#141413] dark:text-[#F4F1EA] transition-colors cursor-pointer disabled:opacity-50"
+                        className="px-3 py-1.5 rounded-lg bg-paper-warm dark:bg-night-elevated hover:bg-paper-sand dark:hover:bg-night-muted text-[11px] font-medium text-ink dark:text-cream transition-colors cursor-pointer disabled:opacity-50"
                       >
                         {guestUser.hasPin ? 'Змінити ПІН' : 'Встановити ПІН-код'}
                       </button>
@@ -1465,7 +1708,7 @@ export function GuestAuthModal({
                             onClose();
                           }}
                           title="Вийти та не запам’ятовувати акаунт на цьому пристрої"
-                          className="text-[11px] text-[#5C5C58] dark:text-[#C4BFB4] hover:text-[#141413] dark:hover:text-[#F4F1EA] px-1.5 py-1.5 cursor-pointer"
+                          className="text-[11px] text-ink-muted dark:text-parchment hover:text-ink dark:hover:text-cream px-1.5 py-1.5 cursor-pointer"
                         >
                           Забути пристрій
                         </button>
@@ -1476,7 +1719,7 @@ export function GuestAuthModal({
                       <button
                         type="submit"
                         disabled={profileSaving}
-                        className="px-4 py-2 bg-[#141413] text-[#FAF9F5] dark:bg-[#F4F1EA] dark:text-[#141413] rounded-xl text-xs font-medium hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-50"
+                        className="px-4 py-2 bg-ink text-paper dark:bg-cream dark:text-ink rounded-xl text-xs font-medium hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-50"
                       >
                         {profileSaving ? 'Збереження...' : 'Зберегти'}
                       </button>
@@ -1487,7 +1730,7 @@ export function GuestAuthModal({
             ) : cabinetTab === 'works' ? (
               <div className="space-y-3 pt-1">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs font-medium text-[#5C5C58] dark:text-[#C4BFB4]">
+                  <p className="text-xs font-medium text-ink-muted dark:text-parchment">
                     Ваші запропоновані вірші та проза
                   </p>
                   <button
@@ -1495,7 +1738,7 @@ export function GuestAuthModal({
                     disabled={loadingMyWorks}
                     onClick={() => void loadMyWorks()}
                     aria-label="Оновити мої твори"
-                    className="p-1.5 rounded-lg text-[#5C5C58] dark:text-[#C4BFB4] hover:text-[#141413] dark:hover:text-[#F4F1EA] hover:bg-[#EFECE6] dark:hover:bg-[#323232] cursor-pointer disabled:opacity-50"
+                    className="p-1.5 rounded-lg text-ink-muted dark:text-parchment hover:text-ink dark:hover:text-cream hover:bg-paper-warm dark:hover:bg-night-elevated cursor-pointer disabled:opacity-50"
                   >
                     <RefreshCw className={`w-3.5 h-3.5 ${loadingMyWorks ? 'animate-spin' : ''}`} />
                   </button>
@@ -1507,7 +1750,7 @@ export function GuestAuthModal({
                     className={`px-3 py-2 rounded-xl text-xs leading-relaxed flex items-start justify-between gap-2 ${
                       worksFeedback.isError
                         ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300'
-                        : 'bg-[#F2F6EE] dark:bg-[#2B332C] text-[#1E3A29] dark:text-[#E5F2E6]'
+                        : 'bg-[#F2F6EE] dark:bg-[#2B332C] text-pine-dark dark:text-[#E5F2E6]'
                     }`}
                   >
                     <span>{worksFeedback.text}</span>
@@ -1523,15 +1766,26 @@ export function GuestAuthModal({
                 )}
 
                 {loadingMyWorks && myWorksList.length === 0 ? (
-                  <div className="py-8 text-center text-xs text-[#5C5C58] dark:text-[#C4BFB4]">
+                  <div className="py-8 text-center text-xs text-ink-muted dark:text-parchment">
                     Завантаження ваших творів...
                   </div>
                 ) : myWorksList.length === 0 ? (
-                  <div className="py-8 text-center space-y-2 rounded-xl bg-white dark:bg-[#262626] p-5 text-[#5C5C58] dark:text-[#C4BFB4]">
+                  <div className="py-8 text-center space-y-2 rounded-xl bg-white dark:bg-night-card p-5 text-ink-muted dark:text-parchment">
                     <BookOpen className="w-5 h-5 mx-auto opacity-45" strokeWidth={1.6} />
                     <p className="text-xs">
                       Ви ще не пропонували власних віршів або прози.
                     </p>
+                  </div>
+                ) : myWorksList.length > 8 && !editingWorkKey ? (
+                  <div className="h-[min(54vh,420px)] w-full overflow-hidden">
+                    <List
+                      rowCount={myWorksList.length}
+                      rowHeight={worksRowHeight}
+                      rowComponent={VirtualUserWorkRow}
+                      rowProps={userWorkRowProps}
+                      overscanCount={3}
+                      className="h-full w-full overflow-x-hidden"
+                    />
                   </div>
                 ) : (
                   <div className="space-y-2.5 max-h-[54vh] overflow-y-auto pr-1">
@@ -1542,36 +1796,44 @@ export function GuestAuthModal({
                       const isApproved = sub.status === 'approved';
                       const isRejected = sub.status === 'rejected';
                       const workStatusValue: ProseStatus = sub.workStatus || 'completed';
-                      const publishedId =
-                        entry.kind === 'poem'
-                          ? (sub as PoemSubmission).publishedPoemId
-                          : (sub as ProseSubmission).publishedProseId;
+
+                      if (!isEditing) {
+                        return (
+                          <UserWorkSummaryCard
+                            key={workKey}
+                            entry={entry}
+                            onStartEditPoem={handleStartEditPoem}
+                            onStartEditProse={handleStartEditProse}
+                            onOpenPublished={handleOpenPublishedWork}
+                          />
+                        );
+                      }
 
                       return (
                         <div
                           key={workKey}
-                          className="p-3.5 rounded-xl bg-white dark:bg-[#262626] space-y-2.5 text-xs"
+                          className="p-3.5 rounded-xl bg-white dark:bg-night-card space-y-2.5 text-xs"
                         >
                           <div className="flex flex-wrap items-start justify-between gap-2">
                             <div className="min-w-0 flex-1">
                               <div className="flex flex-wrap items-center gap-1.5 mb-1">
-                                <span className="px-1.5 py-0.5 rounded bg-[#EFECE6] dark:bg-[#323232] text-[10px] font-semibold text-[#5C5C58] dark:text-[#C4BFB4]">
+                                <span className="px-1.5 py-0.5 rounded bg-paper-warm dark:bg-night-elevated text-[10px] font-semibold text-ink-muted dark:text-parchment">
                                   {entry.kind === 'poem' ? 'Вірш' : 'Проза'}
                                 </span>
                                 <span
                                   className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
                                     workStatusValue === 'completed'
-                                      ? 'bg-emerald-50 text-emerald-800 dark:bg-[#323232] dark:text-[#E5E5E5]'
+                                      ? 'bg-emerald-50 text-emerald-800 dark:bg-night-elevated dark:text-silver'
                                       : 'bg-amber-50 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300'
                                   }`}
                                 >
                                   {workStatusValue === 'completed' ? 'Закінчено' : 'У процесі'}
                                 </span>
                               </div>
-                              <p className="text-sm font-semibold text-[#141413] dark:text-[#F4F1EA]">
+                              <p className="text-sm font-semibold text-ink dark:text-cream">
                                 {sub.title}
                               </p>
-                              <p className="text-[11px] text-[#5C5C58] dark:text-[#C4BFB4]">
+                              <p className="text-[11px] text-ink-muted dark:text-parchment">
                                 {entry.kind === 'poem'
                                   ? (sub as PoemSubmission).cycle || 'Стрічка віршів'
                                   : (sub as ProseSubmission).genre || 'Оповідання'}
@@ -1608,206 +1870,156 @@ export function GuestAuthModal({
                             </span>
                           </div>
 
-                          {isEditing && editDraft ? (
-                            <form
-                              onSubmit={handleSaveWorkEdit}
-                              className="p-3 rounded-xl bg-[#FAF9F5] dark:bg-[#202020] space-y-2.5"
-                            >
-                              <p className="text-[11px] text-amber-800 dark:text-amber-300 bg-amber-50/90 dark:bg-amber-950/40 px-2.5 py-2 rounded-lg leading-relaxed">
-                                Після збереження правок твір знову надійде на підтвердження адміністратору (і тимчасово не показуватиметься на сайті до схвалення).
-                              </p>
+                          <form
+                            onSubmit={handleSaveWorkEdit}
+                            className="p-3 rounded-xl bg-paper dark:bg-night-panel space-y-2.5"
+                          >
+                            <p className="text-[11px] text-amber-800 dark:text-amber-300 bg-amber-50/90 dark:bg-amber-950/40 px-2.5 py-2 rounded-lg leading-relaxed">
+                              Після збереження правок твір знову надійде на підтвердження адміністратору (і тимчасово не показуватиметься на сайті до схвалення).
+                            </p>
 
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                <div>
-                                  <label className="block text-[11px] font-medium text-[#5C5C58] dark:text-[#C4BFB4] mb-1">
-                                    Назва *
-                                  </label>
-                                  <input
-                                    type="text"
-                                    required
-                                    maxLength={240}
-                                    value={editDraft.title}
-                                    onChange={(e) =>
-                                      setEditDraft({ ...editDraft, title: e.target.value })
-                                    }
-                                    className="w-full bg-[#EFECE6] dark:bg-[#2A2A2A] rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:bg-white dark:focus:bg-[#323232]"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="block text-[11px] font-medium text-[#5C5C58] dark:text-[#C4BFB4] mb-1">
-                                    {editDraft.kind === 'poem' ? 'Цикл / тема' : 'Жанр'}
-                                  </label>
-                                  <input
-                                    type="text"
-                                    maxLength={160}
-                                    value={editDraft.subtitle}
-                                    onChange={(e) =>
-                                      setEditDraft({ ...editDraft, subtitle: e.target.value })
-                                    }
-                                    className="w-full bg-[#EFECE6] dark:bg-[#2A2A2A] rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:bg-white dark:focus:bg-[#323232]"
-                                  />
-                                </div>
-                              </div>
-
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                               <div>
-                                <label className="block text-[11px] font-medium text-[#5C5C58] dark:text-[#C4BFB4] mb-1">
-                                  Статус твору
-                                </label>
-                                <div className="flex flex-wrap gap-1.5">
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      setEditDraft({ ...editDraft, workStatus: 'completed' })
-                                    }
-                                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium cursor-pointer ${
-                                      editDraft.workStatus === 'completed'
-                                        ? 'bg-emerald-50 text-emerald-800 dark:bg-[#323232] dark:text-[#E5E5E5] font-semibold'
-                                        : 'bg-[#EFECE6] dark:bg-[#2A2A2A] text-[#5C5C58] dark:text-[#C4BFB4]'
-                                    }`}
-                                  >
-                                    <CheckCircle2 className="w-3 h-3" />
-                                    <span>Закінчено</span>
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      setEditDraft({ ...editDraft, workStatus: 'in_progress' })
-                                    }
-                                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium cursor-pointer ${
-                                      editDraft.workStatus === 'in_progress'
-                                        ? 'bg-amber-50 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 font-semibold'
-                                        : 'bg-[#EFECE6] dark:bg-[#2A2A2A] text-[#5C5C58] dark:text-[#C4BFB4]'
-                                    }`}
-                                  >
-                                    <Clock className="w-3 h-3" />
-                                    <span>У процесі</span>
-                                  </button>
-                                </div>
-                              </div>
-
-                              <div>
-                                <label className="block text-[11px] font-medium text-[#5C5C58] dark:text-[#C4BFB4] mb-1">
-                                  {editDraft.kind === 'poem'
-                                    ? 'Примітка або епіграф'
-                                    : 'Слоган або епіграф'}
+                                <label className="block text-[11px] font-medium text-ink-muted dark:text-parchment mb-1">
+                                  Назва *
                                 </label>
                                 <input
                                   type="text"
-                                  maxLength={500}
-                                  value={editDraft.noteOrSlogan}
-                                  onChange={(e) =>
-                                    setEditDraft({ ...editDraft, noteOrSlogan: e.target.value })
-                                  }
-                                  className="w-full bg-[#EFECE6] dark:bg-[#2A2A2A] rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:bg-white dark:focus:bg-[#323232]"
-                                />
-                              </div>
-
-                              {editDraft.kind === 'prose' && (
-                                <div>
-                                  <label className="block text-[11px] font-medium text-[#5C5C58] dark:text-[#C4BFB4] mb-1">
-                                    Короткий опис для картки
-                                  </label>
-                                  <textarea
-                                    rows={2}
-                                    maxLength={2000}
-                                    value={editDraft.excerpt}
-                                    onChange={(e) =>
-                                      setEditDraft({ ...editDraft, excerpt: e.target.value })
-                                    }
-                                    className="w-full bg-[#EFECE6] dark:bg-[#2A2A2A] rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:bg-white dark:focus:bg-[#323232]"
-                                  />
-                                </div>
-                              )}
-
-                              <div>
-                                <label className="block text-[11px] font-medium text-[#5C5C58] dark:text-[#C4BFB4] mb-1">
-                                  Текст * (відступи й перенесення зберігаються)
-                                </label>
-                                <textarea
-                                  rows={7}
                                   required
-                                  maxLength={editDraft.kind === 'poem' ? 50000 : 250000}
-                                  value={editDraft.content}
+                                  maxLength={240}
+                                  value={editDraft.title}
                                   onChange={(e) =>
-                                    setEditDraft({ ...editDraft, content: e.target.value })
+                                    setEditDraft({ ...editDraft, title: e.target.value })
                                   }
-                                  className="w-full bg-[#EFECE6] dark:bg-[#2A2A2A] rounded-lg px-2.5 py-2 text-xs leading-relaxed focus:outline-none focus:bg-white dark:focus:bg-[#323232]"
+                                  className="w-full bg-paper-warm dark:bg-night-lift rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:bg-white dark:focus:bg-night-elevated"
                                 />
                               </div>
-
-                              <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
-                                <button
-                                  type="button"
-                                  disabled={savingEdit}
-                                  onClick={() => {
-                                    setEditingWorkKey(null);
-                                    setEditDraft(null);
-                                  }}
-                                  className="px-3 py-1.5 rounded-lg bg-[#EFECE6] dark:bg-[#2E2E2E] text-xs font-medium cursor-pointer"
-                                >
-                                  Скасувати
-                                </button>
-                                <button
-                                  type="submit"
-                                  disabled={savingEdit}
-                                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#141413] text-[#FAF9F5] dark:bg-[#F4F1EA] dark:text-[#141413] text-xs font-semibold hover:opacity-90 cursor-pointer disabled:opacity-50"
-                                >
-                                  <Save className="w-3.5 h-3.5" />
-                                  <span>
-                                    {savingEdit ? 'Збереження...' : 'Зберегти й на перевірку'}
-                                  </span>
-                                </button>
+                              <div>
+                                <label className="block text-[11px] font-medium text-ink-muted dark:text-parchment mb-1">
+                                  {editDraft.kind === 'poem' ? 'Цикл / тема' : 'Жанр'}
+                                </label>
+                                <input
+                                  type="text"
+                                  maxLength={160}
+                                  value={editDraft.subtitle}
+                                  onChange={(e) =>
+                                    setEditDraft({ ...editDraft, subtitle: e.target.value })
+                                  }
+                                  className="w-full bg-paper-warm dark:bg-night-lift rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:bg-white dark:focus:bg-night-elevated"
+                                />
                               </div>
-                            </form>
-                          ) : (
-                            <>
-                              <p className="text-xs text-[#5C5C58] dark:text-[#C4BFB4] whitespace-pre-wrap line-clamp-4 leading-relaxed">
-                                {sub.content}
-                              </p>
+                            </div>
 
-                              {sub.moderationNote && (
-                                <div className="px-2.5 py-1.5 rounded-lg bg-[#FAF9F5] dark:bg-[#202020] text-[11px]">
-                                  <span className="font-semibold">Коментар адміністратора: </span>
-                                  <span className="text-[#5C5C58] dark:text-[#C4BFB4]">
-                                    {sub.moderationNote}
-                                  </span>
-                                </div>
-                              )}
-
-                              <div className="flex flex-wrap items-center justify-between gap-2 pt-0.5">
+                            <div>
+                              <label className="block text-[11px] font-medium text-ink-muted dark:text-parchment mb-1">
+                                Статус твору
+                              </label>
+                              <div className="flex flex-wrap gap-1.5">
                                 <button
                                   type="button"
                                   onClick={() =>
-                                    entry.kind === 'poem'
-                                      ? handleStartEditPoem(sub as PoemSubmission)
-                                      : handleStartEditProse(sub as ProseSubmission)
+                                    setEditDraft({ ...editDraft, workStatus: 'completed' })
                                   }
-                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#EFECE6] dark:bg-[#323232] hover:bg-[#E5E0D5] dark:hover:bg-[#3C3C3C] text-[11px] font-medium text-[#141413] dark:text-[#F4F1EA] cursor-pointer transition-colors"
+                                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium cursor-pointer ${
+                                    editDraft.workStatus === 'completed'
+                                      ? 'bg-emerald-50 text-emerald-800 dark:bg-night-elevated dark:text-silver font-semibold'
+                                      : 'bg-paper-warm dark:bg-night-lift text-ink-muted dark:text-parchment'
+                                  }`}
                                 >
-                                  <Pencil className="w-3 h-3" />
-                                  <span>Редагувати / доповнити</span>
+                                  <CheckCircle2 className="w-3 h-3" />
+                                  <span>Закінчено</span>
                                 </button>
-
-                                {isApproved && publishedId && (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      if (entry.kind === 'poem') {
-                                        onOpenPoem?.(publishedId);
-                                      } else {
-                                        onOpenProse?.(publishedId);
-                                      }
-                                      onClose();
-                                    }}
-                                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#2C5937] dark:text-[#E5E5E5] hover:underline cursor-pointer"
-                                  >
-                                    <span>Відкрити</span>
-                                    <ArrowUpRight className="w-3 h-3" />
-                                  </button>
-                                )}
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setEditDraft({ ...editDraft, workStatus: 'in_progress' })
+                                  }
+                                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium cursor-pointer ${
+                                    editDraft.workStatus === 'in_progress'
+                                      ? 'bg-amber-50 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 font-semibold'
+                                      : 'bg-paper-warm dark:bg-night-lift text-ink-muted dark:text-parchment'
+                                  }`}
+                                >
+                                  <Clock className="w-3 h-3" />
+                                  <span>У процесі</span>
+                                </button>
                               </div>
-                            </>
-                          )}
+                            </div>
+
+                            <div>
+                              <label className="block text-[11px] font-medium text-ink-muted dark:text-parchment mb-1">
+                                {editDraft.kind === 'poem'
+                                  ? 'Примітка або епіграф'
+                                  : 'Слоган або епіграф'}
+                              </label>
+                              <input
+                                type="text"
+                                maxLength={500}
+                                value={editDraft.noteOrSlogan}
+                                onChange={(e) =>
+                                  setEditDraft({ ...editDraft, noteOrSlogan: e.target.value })
+                                }
+                                className="w-full bg-paper-warm dark:bg-night-lift rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:bg-white dark:focus:bg-night-elevated"
+                              />
+                            </div>
+
+                            {editDraft.kind === 'prose' && (
+                              <div>
+                                <label className="block text-[11px] font-medium text-ink-muted dark:text-parchment mb-1">
+                                  Короткий опис для картки
+                                </label>
+                                <textarea
+                                  rows={2}
+                                  maxLength={2000}
+                                  value={editDraft.excerpt}
+                                  onChange={(e) =>
+                                    setEditDraft({ ...editDraft, excerpt: e.target.value })
+                                  }
+                                  className="w-full bg-paper-warm dark:bg-night-lift rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:bg-white dark:focus:bg-night-elevated"
+                                />
+                              </div>
+                            )}
+
+                            <div>
+                              <label className="block text-[11px] font-medium text-ink-muted dark:text-parchment mb-1">
+                                Текст * (відступи й перенесення зберігаються)
+                              </label>
+                              <textarea
+                                rows={7}
+                                required
+                                maxLength={editDraft.kind === 'poem' ? 50000 : 250000}
+                                value={editDraft.content}
+                                onChange={(e) =>
+                                  setEditDraft({ ...editDraft, content: e.target.value })
+                                }
+                                className="w-full bg-paper-warm dark:bg-night-lift rounded-lg px-2.5 py-2 text-xs leading-relaxed focus:outline-none focus:bg-white dark:focus:bg-night-elevated"
+                              />
+                            </div>
+
+                            <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
+                              <button
+                                type="button"
+                                disabled={savingEdit}
+                                onClick={() => {
+                                  setEditingWorkKey(null);
+                                  setEditDraft(null);
+                                }}
+                                className="px-3 py-1.5 rounded-lg bg-paper-warm dark:bg-night-hover text-xs font-medium cursor-pointer"
+                              >
+                                Скасувати
+                              </button>
+                              <button
+                                type="submit"
+                                disabled={savingEdit}
+                                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-ink text-paper dark:bg-cream dark:text-ink text-xs font-semibold hover:opacity-90 cursor-pointer disabled:opacity-50"
+                              >
+                                <Save className="w-3.5 h-3.5" />
+                                <span>
+                                  {savingEdit ? 'Збереження...' : 'Зберегти й на перевірку'}
+                                </span>
+                              </button>
+                            </div>
+                          </form>
                         </div>
                       );
                     })}
@@ -1817,32 +2029,29 @@ export function GuestAuthModal({
             ) : (
               <div className="space-y-2.5 pt-1">
                 {likedPoems.length === 0 ? (
-                  <div className="py-8 text-center space-y-1.5 text-[#5C5C58] dark:text-[#C4BFB4]">
+                  <div className="py-8 text-center space-y-1.5 text-ink-muted dark:text-parchment">
                     <Heart className="w-5 h-5 mx-auto opacity-40" strokeWidth={1.5} />
                     <p className="text-xs">У вподобаному поки нічого немає</p>
+                  </div>
+                ) : likedPoems.length > 8 ? (
+                  <div className="h-52 w-full overflow-hidden">
+                    <List
+                      rowCount={likedPoems.length}
+                      rowHeight={56}
+                      rowComponent={VirtualLikedPoemRow}
+                      rowProps={likedPoemRowProps}
+                      overscanCount={4}
+                      className="h-full w-full overflow-x-hidden"
+                    />
                   </div>
                 ) : (
                   <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1">
                     {likedPoems.map((poem: Poem) => (
-                      <button
+                      <LikedPoemRow
                         key={poem.id}
-                        type="button"
-                        onClick={() => {
-                          onOpenPoem?.(poem.id);
-                          onClose();
-                        }}
-                        className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-white dark:bg-[#262626] hover:bg-[#EFECE6] dark:hover:bg-[#323232] text-left transition-colors cursor-pointer group"
-                      >
-                        <div className="min-w-0">
-                          <p className="text-xs font-medium text-[#141413] dark:text-[#F4F1EA] truncate">
-                            {poem.title}
-                          </p>
-                          <p className="text-[10px] text-[#5C5C58] dark:text-[#C4BFB4] truncate">
-                            {poem.cycle}
-                          </p>
-                        </div>
-                        <ArrowUpRight className="w-3.5 h-3.5 text-[#5C5C58] dark:text-[#C4BFB4] group-hover:text-[#141413] dark:group-hover:text-[#F4F1EA] shrink-0" />
-                      </button>
+                        poem={poem}
+                        onSelectPoem={handleSelectLikedPoem}
+                      />
                     ))}
                   </div>
                 )}
@@ -1865,21 +2074,21 @@ export function GuestAuthModal({
                   className="w-14 h-14 rounded-full object-cover shadow-xs"
                 />
               ) : (
-                <span className="w-14 h-14 rounded-full bg-[#EFECE6] dark:bg-[#2E2E2E] inline-flex items-center justify-center text-[#5C5C58] dark:text-[#C4BFB4]">
+                <span className="w-14 h-14 rounded-full bg-paper-warm dark:bg-night-hover inline-flex items-center justify-center text-ink-muted dark:text-parchment">
                   <User className="w-6 h-6" />
                 </span>
               )}
               <div className="space-y-0.5 max-w-full">
-                <p className="text-sm font-semibold text-[#141413] dark:text-[#F4F1EA] truncate">
+                <p className="text-sm font-semibold text-ink dark:text-cream truncate">
                   {rememberedGuest.displayName}
                 </p>
                 {rememberedGuest.email && (
-                  <p className="text-[11px] text-[#5C5C58] dark:text-[#C4BFB4] truncate">
+                  <p className="text-[11px] text-ink-muted dark:text-parchment truncate">
                     {maskEmailForHint(rememberedGuest.email)}
                   </p>
                 )}
               </div>
-              <p className="text-xs text-[#5C5C58] dark:text-[#C4BFB4] pt-1">
+              <p className="text-xs text-ink-muted dark:text-parchment pt-1">
                 {loadingAction === 'pin' ? 'Перевіряємо ПІН-код...' : 'Введіть 4 цифри для швидкого входу'}
               </p>
             </div>
@@ -1908,7 +2117,7 @@ export function GuestAuthModal({
                   setErrorMsg(null);
                   setForceGoogleView(true);
                 }}
-                className="text-[#5C5C58] dark:text-[#C4BFB4] hover:text-[#141413] dark:hover:text-[#F4F1EA] transition-colors cursor-pointer"
+                className="text-ink-muted dark:text-parchment hover:text-ink dark:hover:text-cream transition-colors cursor-pointer"
               >
                 Увійти через Google
               </button>
@@ -1921,7 +2130,7 @@ export function GuestAuthModal({
                     setLoginPin('');
                     onForgetRemembered();
                   }}
-                  className="inline-flex items-center gap-1 text-[#5C5C58] dark:text-[#C4BFB4] hover:text-rose-600 dark:hover:text-rose-400 transition-colors cursor-pointer"
+                  className="inline-flex items-center gap-1 text-ink-muted dark:text-parchment hover:text-rose-600 dark:hover:text-rose-400 transition-colors cursor-pointer"
                 >
                   <UserX className="w-3.5 h-3.5" />
                   <span>Інший акаунт</span>
@@ -1932,7 +2141,7 @@ export function GuestAuthModal({
         ) : showRememberedGoogleResume && rememberedGuest ? (
           /* SIGNED-OUT REMEMBERED ACCOUNT WITHOUT PIN YET */
           <div className="space-y-4 pt-1">
-            <div className="flex items-center gap-3 p-3 bg-white dark:bg-[#262626] rounded-xl">
+            <div className="flex items-center gap-3 p-3 bg-white dark:bg-night-card rounded-xl">
               {rememberedGuest.photoUrl ? (
                 <img
                   src={rememberedGuest.photoUrl}
@@ -1945,17 +2154,17 @@ export function GuestAuthModal({
                   className="w-10 h-10 rounded-full object-cover shrink-0"
                 />
               ) : (
-                <span className="w-10 h-10 rounded-full bg-[#EFECE6] dark:bg-[#323232] inline-flex items-center justify-center text-[#5C5C58] dark:text-[#C4BFB4] shrink-0">
+                <span className="w-10 h-10 rounded-full bg-paper-warm dark:bg-night-elevated inline-flex items-center justify-center text-ink-muted dark:text-parchment shrink-0">
                   <User className="w-4 h-4" />
                 </span>
               )}
               <div className="min-w-0 flex-1">
-                <p className="text-[11px] text-[#5C5C58] dark:text-[#C4BFB4]">З поверненням</p>
-                <p className="text-xs font-semibold text-[#141413] dark:text-[#F4F1EA] truncate">
+                <p className="text-[11px] text-ink-muted dark:text-parchment">З поверненням</p>
+                <p className="text-xs font-semibold text-ink dark:text-cream truncate">
                   {rememberedGuest.displayName}
                 </p>
                 {rememberedGuest.email && (
-                  <p className="text-[11px] text-[#5C5C58] dark:text-[#C4BFB4] truncate">
+                  <p className="text-[11px] text-ink-muted dark:text-parchment truncate">
                     {maskEmailForHint(rememberedGuest.email)}
                   </p>
                 )}
@@ -1966,7 +2175,7 @@ export function GuestAuthModal({
               type="button"
               disabled={loadingAction !== null}
               onClick={handleGoogleLogin}
-              className="w-full inline-flex items-center justify-center gap-2.5 px-4 py-3 rounded-xl bg-white dark:bg-[#262626] hover:bg-[#F3F2EC] dark:hover:bg-[#323232] shadow-xs text-xs font-medium text-[#141413] dark:text-[#F4F1EA] transition-colors cursor-pointer disabled:opacity-55"
+              className="w-full inline-flex items-center justify-center gap-2.5 px-4 py-3 rounded-xl bg-white dark:bg-night-card hover:bg-paper-warm dark:hover:bg-night-elevated shadow-xs text-xs font-medium text-ink dark:text-cream transition-colors cursor-pointer disabled:opacity-55"
             >
               <GoogleLogoIcon />
               <span>
@@ -1974,7 +2183,7 @@ export function GuestAuthModal({
               </span>
             </button>
 
-            <p className="text-[11px] text-[#5C5C58] dark:text-[#C4BFB4] leading-relaxed">
+            <p className="text-[11px] text-ink-muted dark:text-parchment leading-relaxed">
               Після входу сайт запам’ятає вас автоматично, а в профілі можна встановити 4-значний ПІН-код.
             </p>
 
@@ -1987,7 +2196,7 @@ export function GuestAuthModal({
                     setErrorMsg(null);
                     onForgetRemembered();
                   }}
-                  className="text-[11px] text-[#5C5C58] dark:text-[#C4BFB4] hover:text-[#141413] dark:hover:text-[#F4F1EA] cursor-pointer"
+                  className="text-[11px] text-ink-muted dark:text-parchment hover:text-ink dark:hover:text-cream cursor-pointer"
                 >
                   Увійти в інший акаунт
                 </button>
@@ -2004,14 +2213,14 @@ export function GuestAuthModal({
                   setErrorMsg(null);
                   setForceGoogleView(false);
                 }}
-                className="inline-flex items-center gap-1.5 text-xs text-[#5C5C58] dark:text-[#C4BFB4] hover:text-[#141413] dark:hover:text-[#F4F1EA] cursor-pointer"
+                className="inline-flex items-center gap-1.5 text-xs text-ink-muted dark:text-parchment hover:text-ink dark:hover:text-cream cursor-pointer"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
                 <span>Назад до швидкого входу ({rememberedGuest.displayName})</span>
               </button>
             )}
 
-            <p className="text-xs text-[#5C5C58] dark:text-[#C4BFB4] leading-relaxed">
+            <p className="text-xs text-ink-muted dark:text-parchment leading-relaxed">
               Увійдіть через Google — сайт запам’ятає вас для автоматичного входу, а в профілі можна налаштувати 4-значний ПІН-код.
             </p>
 
@@ -2019,7 +2228,7 @@ export function GuestAuthModal({
               type="button"
               disabled={loadingAction !== null}
               onClick={handleGoogleLogin}
-              className="w-full inline-flex items-center justify-center gap-2.5 px-4 py-3 rounded-xl bg-white dark:bg-[#262626] hover:bg-[#F3F2EC] dark:hover:bg-[#323232] shadow-xs text-xs font-medium text-[#141413] dark:text-[#F4F1EA] transition-colors cursor-pointer disabled:opacity-55"
+              className="w-full inline-flex items-center justify-center gap-2.5 px-4 py-3 rounded-xl bg-white dark:bg-night-card hover:bg-paper-warm dark:hover:bg-night-elevated shadow-xs text-xs font-medium text-ink dark:text-cream transition-colors cursor-pointer disabled:opacity-55"
             >
               <GoogleLogoIcon />
               <span>
@@ -2031,4 +2240,4 @@ export function GuestAuthModal({
       </m.div>
     </div>
   );
-}
+});

@@ -1,0 +1,46 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: dankiv-writer-site
+  labels:
+    cloud.googleapis.com/location: europe-central2
+  annotations:
+    run.googleapis.com/ingress: all
+    run.googleapis.com/launch-stage: GA
+spec:
+  template:
+    metadata:
+      annotations:
+        # Prevent cold starts for Express + SQLite + WebSocket chat
+        autoscaling.knative.dev/minScale: "1"
+        autoscaling.knative.dev/maxScale: "10"
+        run.googleapis.com/startup-cpu-boost: "true"
+        run.googleapis.com/sessionAffinity: "true"
+    spec:
+      containerConcurrency: 80
+      timeoutSeconds: 300
+      containers:
+        - image: europe-central2-docker.pkg.dev/PROJECT_ID/web/dankiv-writer-site:latest
+          ports:
+            - name: http1
+              containerPort: 3000
+          env:
+            - name: NODE_ENV
+              value: production
+          resources:
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          startupProbe:
+            httpGet:
+              path: /api/home
+              port: 3000
+            initialDelaySeconds: 2
+            periodSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /api/home
+              port: 3000
+            periodSeconds: 30
+            timeoutSeconds: 5

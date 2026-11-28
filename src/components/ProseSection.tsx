@@ -1296,8 +1296,8 @@ export const ProseSection = memo(function ProseSection({
           data-touch-active={isTouchActive(work.id) ?'true': undefined}
           className={`touch-card group w-full h-full rounded-2xl p-4 sm:p-6 flex flex-col justify-between text-left transition-all duration-150 ${
             isHomeSurfaceTab
-              ? 'bg-white dark:bg-[#2B2B2B] hover:bg-[#FAF9F5] dark:hover:bg-[#323232] shadow-[0_18px_42px_-22px_rgba(24,48,33,0.28)] hover:shadow-[0_22px_48px_-20px_rgba(24,48,33,0.36)] dark:shadow-[0_20px_46px_-20px_rgba(0,0,0,0.82)] dark:hover:shadow-[0_24px_52px_-18px_rgba(0,0,0,0.9)]'
-              : 'bg-white dark:bg-[#262626]'
+              ? 'bg-white dark:bg-night-lift hover:bg-paper dark:hover:bg-night-elevated shadow-[0_18px_42px_-22px_rgba(24,48,33,0.28)] hover:shadow-[0_22px_48px_-20px_rgba(24,48,33,0.36)] dark:shadow-[0_20px_46px_-20px_rgba(0,0,0,0.82)] dark:hover:shadow-[0_24px_52px_-18px_rgba(0,0,0,0.9)]'
+              : 'bg-white dark:bg-night-card'
           }`}
         >
           <div>
@@ -1309,7 +1309,7 @@ export const ProseSection = memo(function ProseSection({
             >
               {/* Quiet unboxed metadata row with genre, pages & rating */}
               <div className="flex items-start justify-between gap-2.5 text-xs">
-                <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[#5C5C58] dark:text-[#C4BFB4] min-w-0">
+                <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-ink-muted dark:text-parchment min-w-0">
                   <span>{work.genre}</span>
                   <span aria-hidden="true">·</span>
                   <span className="tabular-nums">{work.pages} стор.</span>
@@ -1329,8 +1329,8 @@ export const ProseSection = memo(function ProseSection({
                       <span
                         className={`inline-flex items-center gap-1 font-medium ${
                           unlocked
-                            ? 'text-[#1E563B] dark:text-[#E5E5E5]'
-                            : 'text-[#2C5937] dark:text-[#E5E5E5]'
+                            ? 'text-pine-deep dark:text-silver'
+                            : 'text-pine dark:text-silver'
                         }`}
                       >
                         <UserCheck className="w-3 h-3 shrink-0" strokeWidth={2} />
@@ -1342,18 +1342,18 @@ export const ProseSection = memo(function ProseSection({
 
                 {work.ratingCount > 0 && (
                   <span
-                    className="inline-flex items-center gap-1 font-mono text-xs text-[#141413] dark:text-[#F4F1EA] tabular-nums whitespace-nowrap shrink-0"
+                    className="inline-flex items-center gap-1 font-mono text-xs text-ink dark:text-cream tabular-nums whitespace-nowrap shrink-0"
                     title={`Рейтинг ${work.ratingAverage.toFixed(1)} з 5 (${work.ratingCount} оцінок)`}
                   >
                     <Star className="w-3 h-3 fill-[#FACC15] text-[#EAB308]" strokeWidth={1.75} />
                     <span className="font-semibold">{work.ratingAverage.toFixed(1)}</span>
-                    <span className="text-[#5C5C58] dark:text-[#C4BFB4]">({work.ratingCount})</span>
+                    <span className="text-ink-muted dark:text-parchment">({work.ratingCount})</span>
                   </span>
                 )}
               </div>
 
               {work.isCommunity && (
-                <div className="mt-2.5 inline-flex items-center gap-2 text-xs font-medium text-[#5C5C58] dark:text-[#A8A49B]">
+                <div className="mt-2.5 inline-flex items-center gap-2 text-xs font-medium text-ink-muted dark:text-sandstone-light">
                   {work.authorPhotoUrl && (
                     <img
                       src={work.authorPhotoUrl}
@@ -1370,17 +1370,17 @@ export const ProseSection = memo(function ProseSection({
                 </div>
               )}
 
-              <h3 className="mt-2.5 sm:mt-3 text-lg sm:text-[22px] font-semibold tracking-[-0.015em] text-[#141413] dark:text-[#F4F1EA] group-hover:text-[#2C5937] dark:group-hover:text-white leading-snug transition-colors duration-150">
+              <h3 className="mt-2.5 sm:mt-3 text-lg sm:text-[22px] font-semibold tracking-[-0.015em] text-ink dark:text-cream group-hover:text-pine dark:group-hover:text-white leading-snug transition-colors duration-150">
                 <span className="prose-book-marker">{work.title}</span>
               </h3>
 
               {work.slogan && (
-                <p className="mt-1 sm:mt-1.5 italic text-[13.5px] sm:text-[14px] text-[#4A4A46] dark:text-[#C8C4BA] leading-snug">
+                <p className="mt-1 sm:mt-1.5 italic text-[13.5px] sm:text-[14px] text-[#4A4A46] dark:text-parchment leading-snug">
                   «{work.slogan}»
                 </p>
               )}
 
-              <p className="mt-2 text-[13.5px] sm:text-sm text-[#5C5C58] dark:text-[#A8A49B] leading-relaxed line-clamp-3">
+              <p className="mt-2 text-[13.5px] sm:text-sm text-ink-muted dark:text-sandstone-light leading-relaxed line-clamp-3">
                 {work.excerpt}
               </p>
             </button>
@@ -1400,7 +1400,7 @@ export const ProseSection = memo(function ProseSection({
                       }}
                       className={`inline-flex items-center gap-1 py-0.5 text-[11px] font-medium tracking-[0.01em] bg-transparent border-0 transition-colors duration-150 cursor-pointer ${
                         isCompleted
-                          ? 'text-emerald-700 dark:text-[#E5E5E5] hover:text-emerald-900 dark:hover:text-white'
+                          ? 'text-emerald-700 dark:text-silver hover:text-emerald-900 dark:hover:text-white'
                           : 'text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-300'
                       } ${
                         isSelectedStatus
@@ -1452,7 +1452,7 @@ export const ProseSection = memo(function ProseSection({
           {/* Card Footer with Publication Date on Bottom-Left & Read Action on Bottom-Right */}
           <div className="mt-5 pt-3.5 flex flex-wrap items-center justify-between gap-3 text-xs font-medium">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 min-w-0">
-              <span className="text-[#5C5C58] dark:text-[#C4BFB4] tabular-nums whitespace-nowrap">
+              <span className="text-ink-muted dark:text-parchment tabular-nums whitespace-nowrap">
                 {work.publishedAt}
               </span>
 
@@ -1460,9 +1460,9 @@ export const ProseSection = memo(function ProseSection({
                 <button
                   type="button"
                   onClick={() => openWork(work,'offer')}
-                  className="inline-flex items-center gap-1.5 text-[#5C5C58] dark:text-[#A8A49B] cursor-pointer hover:text-[#141413] dark:hover:text-[#F4F1EA] transition-colors whitespace-nowrap"
+                  className="inline-flex items-center gap-1.5 text-ink-muted dark:text-sandstone-light cursor-pointer hover:text-ink dark:hover:text-cream transition-colors whitespace-nowrap"
                 >
-                  <FolderOpen className="w-3.5 h-3.5 shrink-0 text-[#2C5937] dark:text-[#E5E5E5]" strokeWidth={1.85} />
+                  <FolderOpen className="w-3.5 h-3.5 shrink-0 text-pine dark:text-silver" strokeWidth={1.85} />
                   <span className="tabular-nums">
                     Тека · {(work.chapters?.length || 0) + 1} розд.
                   </span>
@@ -1473,7 +1473,7 @@ export const ProseSection = memo(function ProseSection({
                 <button
                   type="button"
                   onClick={() => openWork(work,'offer')}
-                  className="inline-flex items-center gap-1.5 text-[#5C5C58] dark:text-[#A8A49B] min-w-0 truncate cursor-pointer hover:text-[#141413] dark:hover:text-[#F4F1EA] transition-colors"
+                  className="inline-flex items-center gap-1.5 text-ink-muted dark:text-sandstone-light min-w-0 truncate cursor-pointer hover:text-ink dark:hover:text-cream transition-colors"
                 >
                   <FileText className="w-3.5 h-3.5 shrink-0" strokeWidth={1.85} />
                   <span className="truncate tabular-nums">
@@ -1483,12 +1483,12 @@ export const ProseSection = memo(function ProseSection({
               )}
 
               {paid && !unlocked && (
-                <span className="inline-flex items-center gap-1 font-mono text-[11px] tabular-nums text-[#2C5937] dark:text-[#E5E5E5]">
+                <span className="inline-flex items-center gap-1 font-mono text-[11px] tabular-nums text-pine dark:text-silver">
                   {hasActiveDiscount ? (
                     <>
                       <span className="line-through text-[#88857D]">{basePrice}</span>
                       <span className="font-semibold">{effectivePrice} ₴</span>
-                      <span className="text-[#1E563B] dark:text-[#E5E5E5]">
+                      <span className="text-pine-deep dark:text-silver">
                         −{workPricing.appliedDiscountPercent}%
                       </span>
                     </>
@@ -1496,12 +1496,12 @@ export const ProseSection = memo(function ProseSection({
                     <>
                       <span>{basePrice} ₴</span>
                       {proseTelegramDiscountPercent > 0 ? (
-                        <span className="text-[#5C5C58] dark:text-[#A8A49B]">
+                        <span className="text-ink-muted dark:text-sandstone-light">
                           (−{proseTelegramDiscountPercent}% з Telegram)
                         </span>
                       ) : (
                         proseAuthDiscountPercent > 0 && (
-                          <span className="text-[#5C5C58] dark:text-[#A8A49B]">
+                          <span className="text-ink-muted dark:text-sandstone-light">
                             (−{proseAuthDiscountPercent}% з акаунтом)
                           </span>
                         )
@@ -1515,7 +1515,7 @@ export const ProseSection = memo(function ProseSection({
                 <button
                   type="button"
                   onClick={() => openWork(work, 'offer', true)}
-                  className="inline-flex items-center text-[#5C5C58] dark:text-[#C4BFB4] hover:text-[#141413] dark:hover:text-[#F4F1EA] transition-colors cursor-pointer shrink-0"
+                  className="inline-flex items-center text-ink-muted dark:text-parchment hover:text-ink dark:hover:text-cream transition-colors cursor-pointer shrink-0"
                   title="Відгуки читачів"
                   aria-label="Відгуки читачів"
                 >
@@ -1529,8 +1529,8 @@ export const ProseSection = memo(function ProseSection({
               onClick={() => openWork(work,'offer')}
               className={`inline-flex items-center gap-1 whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
                 (paid || authOnly) && unlocked
-                  ?'text-[#1E563B] dark:text-[#E5E5E5] font-semibold'
-                  :'text-[#5C5C58] dark:text-[#C4BFB4] group-hover:text-[#2C5937] dark:group-hover:text-white'
+                  ?'text-pine-deep dark:text-silver font-semibold'
+                  :'text-ink-muted dark:text-parchment group-hover:text-pine dark:group-hover:text-white'
               }`}
             >
               <span>
@@ -1563,7 +1563,7 @@ export const ProseSection = memo(function ProseSection({
           <div
             role="tablist"
             aria-label="Джерело прози"
-            className="inline-flex items-center gap-0.5 sm:gap-1 p-1 rounded-xl bg-[#EAE7DF] dark:bg-[#262626] min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="inline-flex items-center gap-0.5 sm:gap-1 p-1 rounded-xl bg-paper-sand dark:bg-night-card min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
             <button
               type="button"
@@ -1573,7 +1573,7 @@ export const ProseSection = memo(function ProseSection({
               className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-medium whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
                 proseSourceTab === 'author'
                   ? 'bg-pear-pine-gradient text-white font-semibold shadow-2xs'
-                  : 'text-[#5C5C58] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-[#F4F1EA]'
+                  : 'text-ink-muted dark:text-sandstone hover:text-ink dark:hover:text-cream'
               }`}
             >
               <span>Моя проза</span>
@@ -1587,7 +1587,7 @@ export const ProseSection = memo(function ProseSection({
               className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-medium whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
                 proseSourceTab === 'community'
                   ? 'bg-pear-pine-gradient text-white font-semibold shadow-2xs'
-                  : 'text-[#5C5C58] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-[#F4F1EA]'
+                  : 'text-ink-muted dark:text-sandstone hover:text-ink dark:hover:text-cream'
               }`}
             >
               <span>Стрічка</span>
@@ -1601,7 +1601,7 @@ export const ProseSection = memo(function ProseSection({
               className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-medium whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
                 proseSourceTab === 'weekly'
                   ? 'bg-pear-pine-gradient text-white font-semibold shadow-2xs'
-                  : 'text-[#5C5C58] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-[#F4F1EA]'
+                  : 'text-ink-muted dark:text-sandstone hover:text-ink dark:hover:text-cream'
               }`}
             >
               <span>Проза тижня</span>
@@ -1613,9 +1613,9 @@ export const ProseSection = memo(function ProseSection({
             onClick={handleOpenSubmitModal}
             title="Запропонувати прозу"
             aria-label="Запропонувати прозу"
-            className="w-10 h-10 inline-flex items-center justify-center rounded-xl bg-[#EAE7DF] dark:bg-[#262626] hover:bg-[#E2DFD5] dark:hover:bg-[#323232] text-[#141413] dark:text-[#F4F1EA] active:scale-[0.95] transition-all cursor-pointer shrink-0"
+            className="w-10 h-10 inline-flex items-center justify-center rounded-xl bg-paper-sand dark:bg-night-card hover:bg-paper-sand dark:hover:bg-night-elevated text-ink dark:text-cream active:scale-[0.95] transition-all cursor-pointer shrink-0"
           >
-            <Send className="w-4 h-4 text-[#2C5937] dark:text-[#E5E5E5] shrink-0" strokeWidth={1.85} />
+            <Send className="w-4 h-4 text-pine dark:text-silver shrink-0" strokeWidth={1.85} />
           </button>
         </div>
 
@@ -1626,16 +1626,16 @@ export const ProseSection = memo(function ProseSection({
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-              className="perf-card rounded-2xl p-5 sm:p-8 md:p-10 bg-white dark:bg-[#2B2B2B] shadow-[0_18px_42px_-22px_rgba(24,48,33,0.28)] dark:shadow-[0_20px_46px_-20px_rgba(0,0,0,0.82)] space-y-6"
+              className="perf-card rounded-2xl p-5 sm:p-8 md:p-10 bg-white dark:bg-night-lift shadow-[0_18px_42px_-22px_rgba(24,48,33,0.28)] dark:shadow-[0_20px_46px_-20px_rgba(0,0,0,0.82)] space-y-6"
             >
               {/* Weekly Header + Archive Switcher + Font/Copy Controls */}
-              <div className="pb-4 border-b border-[#E6E3DA] dark:border-[#343434] flex flex-wrap items-center justify-between gap-3">
+              <div className="pb-4 border-b border-paper-sand dark:border-night-elevated flex flex-wrap items-center justify-between gap-3">
                 <div className="min-w-0 space-y-0.5">
-                  <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#2C5937] dark:text-[#BCD369]">
+                  <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-pine dark:text-[#BCD369]">
                     <Award className="w-3.5 h-3.5 shrink-0" strokeWidth={1.9} />
                     <span>Проза тижня · за підсумками оцінок</span>
                   </div>
-                  <p className="text-xs font-mono text-[#5C5C58] dark:text-[#A8A49B] tabular-nums">
+                  <p className="text-xs font-mono text-ink-muted dark:text-sandstone-light tabular-nums">
                     Період: {activeWeeklyProse.periodLabel}
                   </p>
                 </div>
@@ -1653,7 +1653,7 @@ export const ProseSection = memo(function ProseSection({
                       >
                         <ChevronLeft className="w-4 h-4" />
                       </button>
-                      <span className="px-1 text-[11px] font-mono text-[#5C5C58] dark:text-[#A8A49B] tabular-nums">
+                      <span className="px-1 text-[11px] font-mono text-ink-muted dark:text-sandstone-light tabular-nums">
                         {safeWeeklyIndex + 1}/{weeklySorted.length}
                       </span>
                       <button
@@ -1693,7 +1693,7 @@ export const ProseSection = memo(function ProseSection({
                     aria-label="Скопіювати текст"
                     className={`btn-editorial-icon w-9 h-9 ${
                       copiedWeeklyId === activeWeeklyProse.id
-                        ? 'bg-emerald-50 dark:bg-[#323232] text-emerald-800 dark:text-[#E5E5E5]'
+                        ? 'bg-emerald-50 dark:bg-night-elevated text-emerald-800 dark:text-silver'
                         : ''
                     }`}
                   >
@@ -1708,7 +1708,7 @@ export const ProseSection = memo(function ProseSection({
 
               {/* Author + Rating + Title + Metadata */}
               <div className="max-w-[65ch] mx-auto space-y-3">
-                <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-medium text-[#5C5C58] dark:text-[#A8A49B]">
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-medium text-ink-muted dark:text-sandstone-light">
                   <span className="inline-flex items-center gap-2">
                     {activeWeeklyProse.authorPhotoUrl && (
                       <img
@@ -1726,25 +1726,25 @@ export const ProseSection = memo(function ProseSection({
                   </span>
 
                   {activeWeeklyProse.ratingCount > 0 && (
-                    <span className="inline-flex items-center gap-1 font-mono text-[#141413] dark:text-[#F4F1EA] tabular-nums">
+                    <span className="inline-flex items-center gap-1 font-mono text-ink dark:text-cream tabular-nums">
                       <Star className="w-3.5 h-3.5 fill-[#FACC15] text-[#EAB308]" strokeWidth={1.75} />
                       <strong className="font-semibold">{activeWeeklyProse.ratingAverage.toFixed(1)}</strong>
-                      <span className="text-[#5C5C58] dark:text-[#A8A49B]">({activeWeeklyProse.ratingCount})</span>
+                      <span className="text-ink-muted dark:text-sandstone-light">({activeWeeklyProse.ratingCount})</span>
                     </span>
                   )}
                 </div>
 
-                <h3 className="text-2xl sm:text-3xl font-semibold tracking-[-0.02em] text-[#141413] dark:text-[#F4F1EA] leading-tight">
+                <h3 className="text-2xl sm:text-3xl font-semibold tracking-[-0.02em] text-ink dark:text-cream leading-tight">
                   <span className="prose-book-marker">{activeWeeklyProse.title}</span>
                 </h3>
 
                 {activeWeeklyProse.slogan && (
-                  <p className="italic text-sm sm:text-base text-[#4A4A46] dark:text-[#C8C4BA] leading-snug">
+                  <p className="italic text-sm sm:text-base text-[#4A4A46] dark:text-parchment leading-snug">
                     «{activeWeeklyProse.slogan}»
                   </p>
                 )}
 
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[#5C5C58] dark:text-[#A8A49B]">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-muted dark:text-sandstone-light">
                   <span>{activeWeeklyProse.genre}</span>
                   <span aria-hidden="true">·</span>
                   <span className="tabular-nums">{activeWeeklyProse.pages} стор.</span>
@@ -1767,11 +1767,11 @@ export const ProseSection = memo(function ProseSection({
               {activeWeeklyProse.moodboardUrls && activeWeeklyProse.moodboardUrls.length > 0 && (
                 <div className="max-w-[65ch] mx-auto space-y-2.5">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-medium text-[#5C5C58] dark:text-[#A8A49B]">
+                    <span className="text-xs font-medium text-ink-muted dark:text-sandstone-light">
                       Обкладинка
                     </span>
                     {activeWeeklyProse.moodboardUrls.length > 1 && (
-                      <span className="text-[11px] font-mono text-[#5C5C58] dark:text-[#A8A49B] tabular-nums">
+                      <span className="text-[11px] font-mono text-ink-muted dark:text-sandstone-light tabular-nums">
                         {activeWeeklyProse.moodboardUrls.length} фото
                       </span>
                     )}
@@ -1789,7 +1789,7 @@ export const ProseSection = memo(function ProseSection({
                           })
                         }
                         aria-label={`Відкрити обкладинку: ${activeWeeklyProse.title}`}
-                        className="group relative block w-full rounded-xl overflow-hidden bg-[#E2DFD7] dark:bg-[#202020] shadow-xs cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2C5937]/50"
+                        className="group relative block w-full rounded-xl overflow-hidden bg-paper-sand dark:bg-night-panel shadow-xs cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine/50"
                       >
                         <img
                           src={url}
@@ -1819,11 +1819,11 @@ export const ProseSection = memo(function ProseSection({
               {weeklyChapters.length > 0 && (
                 <div className="max-w-[65ch] mx-auto space-y-2.5">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#141413] dark:text-[#F4F1EA]">
-                      <FolderOpen className="w-3.5 h-3.5 text-[#2C5937] dark:text-[#E5E5E5]" strokeWidth={1.85} />
+                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink dark:text-cream">
+                      <FolderOpen className="w-3.5 h-3.5 text-pine dark:text-silver" strokeWidth={1.85} />
                       <span>Зміст теки</span>
                     </span>
-                    <span className="text-[11px] font-mono text-[#5C5C58] dark:text-[#A8A49B] tabular-nums">
+                    <span className="text-[11px] font-mono text-ink-muted dark:text-sandstone-light tabular-nums">
                       {weeklyChapters.length + 1} розд.
                     </span>
                   </div>
@@ -1838,8 +1838,8 @@ export const ProseSection = memo(function ProseSection({
                       }}
                       className={`min-h-[38px] px-3 py-1.5 inline-flex items-center gap-1.5 rounded-lg text-xs transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
                         weeklyChapterId === 'base'
-                          ? 'bg-[#141413] dark:bg-[#F4F1EA] text-white dark:text-[#181818] font-semibold'
-                          : 'bg-[#EAE7DF] dark:bg-[#323232] text-[#5C5C58] dark:text-[#A8A49B] hover:text-[#141413] dark:hover:text-[#F4F1EA] font-medium'
+                          ? 'bg-ink dark:bg-cream text-white dark:text-night font-semibold'
+                          : 'bg-paper-sand dark:bg-night-elevated text-ink-muted dark:text-sandstone-light hover:text-ink dark:hover:text-cream font-medium'
                       }`}
                     >
                       <span>Основний текст</span>
@@ -1856,8 +1856,8 @@ export const ProseSection = memo(function ProseSection({
                         }}
                         className={`min-h-[38px] px-3 py-1.5 inline-flex items-center gap-1.5 rounded-lg text-xs transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
                           weeklyChapterId === ch.id
-                            ? 'bg-[#141413] dark:bg-[#F4F1EA] text-white dark:text-[#181818] font-semibold'
-                            : 'bg-[#EAE7DF] dark:bg-[#323232] text-[#5C5C58] dark:text-[#A8A49B] hover:text-[#141413] dark:hover:text-[#F4F1EA] font-medium'
+                            ? 'bg-ink dark:bg-cream text-white dark:text-night font-semibold'
+                            : 'bg-paper-sand dark:bg-night-elevated text-ink-muted dark:text-sandstone-light hover:text-ink dark:hover:text-cream font-medium'
                         }`}
                       >
                         <span>{ch.title}</span>
@@ -1871,19 +1871,19 @@ export const ProseSection = memo(function ProseSection({
               {weeklyDisplayedText.trim() && (
                 <div className="max-w-[65ch] mx-auto space-y-5">
                   {weeklySelectedChapter && (
-                    <h4 className="font-serif text-xl sm:text-2xl font-semibold text-[#141413] dark:text-[#F4F1EA]">
+                    <h4 className="font-serif text-xl sm:text-2xl font-semibold text-ink dark:text-cream">
                       {weeklySelectedChapter.title}
                     </h4>
                   )}
 
                   {weeklyTotalPages > 1 && (
-                    <div className="text-[11px] font-mono text-[#5C5C58] dark:text-[#A8A49B] tabular-nums">
+                    <div className="text-[11px] font-mono text-ink-muted dark:text-sandstone-light tabular-nums">
                       Сторінка {safeWeeklyPageIndex + 1} з {weeklyTotalPages}
                     </div>
                   )}
 
                   <div
-                    className={`text-[#141413] dark:text-[#F4F1EA] space-y-5 leading-[1.78] ${
+                    className={`text-ink dark:text-cream space-y-5 leading-[1.78] ${
                       largeText ? 'text-lg' : 'text-base'
                     }`}
                   >
@@ -1909,7 +1909,7 @@ export const ProseSection = memo(function ProseSection({
                         <span>Попередня</span>
                       </button>
 
-                      <span className="text-xs font-mono text-[#5C5C58] dark:text-[#A8A49B] tabular-nums">
+                      <span className="text-xs font-mono text-ink-muted dark:text-sandstone-light tabular-nums">
                         {safeWeeklyPageIndex + 1} / {weeklyTotalPages}
                       </span>
 
@@ -1938,7 +1938,7 @@ export const ProseSection = memo(function ProseSection({
                       <button
                         type="button"
                         onClick={() => openWork(sourceWork, 'offer')}
-                        className="inline-flex items-center gap-1 text-xs font-medium text-[#2C5937] dark:text-[#E5E5E5] underline underline-offset-4 hover:opacity-80 transition-opacity cursor-pointer"
+                        className="inline-flex items-center gap-1 text-xs font-medium text-pine dark:text-silver underline underline-offset-4 hover:opacity-80 transition-opacity cursor-pointer"
                       >
                         <span>До твору в Стрічці</span>
                         <ArrowUpRight className="w-3.5 h-3.5" strokeWidth={1.85} />
@@ -1952,22 +1952,22 @@ export const ProseSection = memo(function ProseSection({
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-              className="perf-card rounded-2xl p-5 sm:p-8 md:p-10 bg-white dark:bg-[#2B2B2B] shadow-[0_18px_42px_-22px_rgba(24,48,33,0.28)] dark:shadow-[0_20px_46px_-20px_rgba(0,0,0,0.82)] space-y-5"
+              className="perf-card rounded-2xl p-5 sm:p-8 md:p-10 bg-white dark:bg-night-lift shadow-[0_18px_42px_-22px_rgba(24,48,33,0.28)] dark:shadow-[0_20px_46px_-20px_rgba(0,0,0,0.82)] space-y-5"
             >
-              <div className="pb-4 border-b border-[#E6E3DA] dark:border-[#343434] space-y-0.5">
-                <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#2C5937] dark:text-[#BCD369]">
+              <div className="pb-4 border-b border-paper-sand dark:border-night-elevated space-y-0.5">
+                <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-pine dark:text-[#BCD369]">
                   <Award className="w-3.5 h-3.5 shrink-0" strokeWidth={1.9} />
                   <span>Поточний тиждень · проміжний лідер</span>
                 </div>
                 {weeklyCurrentPeriod?.periodLabel && (
-                  <p className="text-xs font-mono text-[#5C5C58] dark:text-[#A8A49B] tabular-nums">
+                  <p className="text-xs font-mono text-ink-muted dark:text-sandstone-light tabular-nums">
                     Період: {weeklyCurrentPeriod.periodLabel}
                   </p>
                 )}
               </div>
 
               <div className="max-w-[65ch] mx-auto space-y-3">
-                <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-medium text-[#5C5C58] dark:text-[#A8A49B]">
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-medium text-ink-muted dark:text-sandstone-light">
                   <span className="inline-flex items-center gap-2">
                     {currentWeekLeaderProse.authorPhotoUrl && (
                       <img
@@ -1984,28 +1984,28 @@ export const ProseSection = memo(function ProseSection({
                     <span>{currentWeekLeaderProse.authorName || 'Читач'}</span>
                   </span>
 
-                  <span className="inline-flex items-center gap-1 font-mono text-[#141413] dark:text-[#F4F1EA] tabular-nums">
+                  <span className="inline-flex items-center gap-1 font-mono text-ink dark:text-cream tabular-nums">
                     <Star className="w-3.5 h-3.5 fill-[#FACC15] text-[#EAB308]" strokeWidth={1.75} />
                     <strong className="font-semibold">{currentWeekLeaderProse.ratingAverage.toFixed(1)}</strong>
-                    <span className="text-[#5C5C58] dark:text-[#A8A49B]">({currentWeekLeaderProse.ratingCount})</span>
+                    <span className="text-ink-muted dark:text-sandstone-light">({currentWeekLeaderProse.ratingCount})</span>
                   </span>
                 </div>
 
-                <h3 className="text-2xl sm:text-3xl font-semibold tracking-[-0.02em] text-[#141413] dark:text-[#F4F1EA] leading-tight">
+                <h3 className="text-2xl sm:text-3xl font-semibold tracking-[-0.02em] text-ink dark:text-cream leading-tight">
                   <span className="prose-book-marker">{currentWeekLeaderProse.title}</span>
                 </h3>
 
                 {currentWeekLeaderProse.slogan && (
-                  <p className="italic text-sm text-[#4A4A46] dark:text-[#C8C4BA]">
+                  <p className="italic text-sm text-[#4A4A46] dark:text-parchment">
                     «{currentWeekLeaderProse.slogan}»
                   </p>
                 )}
 
-                <p className="text-sm text-[#5C5C58] dark:text-[#A8A49B] leading-relaxed">
+                <p className="text-sm text-ink-muted dark:text-sandstone-light leading-relaxed">
                   {currentWeekLeaderProse.excerpt}
                 </p>
 
-                <p className="text-xs text-[#5C5C58] dark:text-[#A8A49B] leading-relaxed pt-1">
+                <p className="text-xs text-ink-muted dark:text-sandstone-light leading-relaxed pt-1">
                   Наприкінці тижня прозовий твір із найвищою оцінкою зі Стрічки буде автоматично скопійовано та зафіксовано у цьому вікні.
                 </p>
 
@@ -2022,19 +2022,19 @@ export const ProseSection = memo(function ProseSection({
               </div>
             </m.article>
           ) : (
-            <div className="perf-card rounded-2xl p-6 sm:p-10 bg-white dark:bg-[#2B2B2B] shadow-[0_18px_42px_-22px_rgba(24,48,33,0.28)] dark:shadow-[0_20px_46px_-20px_rgba(0,0,0,0.82)] text-center space-y-3">
-              <div className="inline-flex items-center justify-center w-11 h-11 rounded-xl bg-[#EAE7DF] dark:bg-[#323232] text-[#2C5937] dark:text-[#BCD369] mx-auto">
+            <div className="perf-card rounded-2xl p-6 sm:p-10 bg-white dark:bg-night-lift shadow-[0_18px_42px_-22px_rgba(24,48,33,0.28)] dark:shadow-[0_20px_46px_-20px_rgba(0,0,0,0.82)] text-center space-y-3">
+              <div className="inline-flex items-center justify-center w-11 h-11 rounded-xl bg-paper-sand dark:bg-night-elevated text-pine dark:text-[#BCD369] mx-auto">
                 <Award className="w-5 h-5" strokeWidth={1.8} />
               </div>
-              <h3 className="text-lg sm:text-xl font-semibold text-[#141413] dark:text-[#F4F1EA]">
+              <h3 className="text-lg sm:text-xl font-semibold text-ink dark:text-cream">
                 Проза тижня ще формується
               </h3>
               {weeklyCurrentPeriod?.periodLabel && (
-                <p className="text-xs font-mono text-[#5C5C58] dark:text-[#A8A49B] tabular-nums">
+                <p className="text-xs font-mono text-ink-muted dark:text-sandstone-light tabular-nums">
                   Період: {weeklyCurrentPeriod.periodLabel}
                 </p>
               )}
-              <p className="text-sm text-[#5C5C58] dark:text-[#A8A49B] max-w-md mx-auto leading-relaxed">
+              <p className="text-sm text-ink-muted dark:text-sandstone-light max-w-md mx-auto leading-relaxed">
                 Щопонеділка найкращий прозовий твір зі Стрічки за підсумками оцінок читачів автоматично копіюється та фіксується у цьому вікні.
               </p>
               <div className="pt-2">
@@ -2053,7 +2053,7 @@ export const ProseSection = memo(function ProseSection({
         ) : (
           <>
         {proseSourceTab === 'author' && proseTelegramDiscountPercent > 0 && (
-          <div className="mb-6 relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#183624] via-[#224A32] to-[#142A1D] dark:from-[#262626] dark:via-[#2C2C2C] dark:to-[#202020] p-4 sm:p-5 text-white shadow-lg">
+          <div className="mb-6 relative overflow-hidden rounded-2xl bg-gradient-to-r from-pine-dark via-[#224A32] to-[#142A1D] dark:from-night-card dark:via-night-surface dark:to-night-panel p-4 sm:p-5 text-white shadow-lg">
             <div
               aria-hidden="true"
               style={{
@@ -2063,7 +2063,7 @@ export const ProseSection = memo(function ProseSection({
             />
             <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3.5">
               <div className="flex items-start gap-3 min-w-0">
-                <span className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center text-[#BCD369] dark:text-[#E5E5E5] shrink-0 mt-0.5 shadow-inner">
+                <span className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center text-[#BCD369] dark:text-silver shrink-0 mt-0.5 shadow-inner">
                   <Send className="w-5 h-5" strokeWidth={2} />
                 </span>
                 <div className="space-y-0.5 min-w-0">
@@ -2083,7 +2083,7 @@ export const ProseSection = memo(function ProseSection({
                 <button
                   type="button"
                   onClick={onOpenTelegramModal}
-                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white text-[#183624] dark:bg-[#E5E5E5] dark:text-[#181818] text-xs font-semibold shadow-md hover:opacity-95 active:scale-[0.97] transition-all duration-150 cursor-pointer shrink-0 whitespace-nowrap"
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white text-pine-dark dark:bg-silver dark:text-night text-xs font-semibold shadow-md hover:opacity-95 active:scale-[0.97] transition-all duration-150 cursor-pointer shrink-0 whitespace-nowrap"
                 >
                   <span>{isTelegramSubscribed ? 'Статус підписки' : 'Підтвердити підписку'}</span>
                   <ExternalLink className="w-3.5 h-3.5 opacity-70" strokeWidth={2} />
@@ -2101,7 +2101,7 @@ export const ProseSection = memo(function ProseSection({
         >
           {proseSourceTab === 'author' && (
           <div
-            className="inline-flex shrink-0 items-center gap-0.5 p-1 bg-[#EAE7DF] dark:bg-[#262626] rounded-xl"
+            className="inline-flex shrink-0 items-center gap-0.5 p-1 bg-paper-sand dark:bg-night-card rounded-xl"
             role="tablist"
             aria-label="Фільтр прозових творів"
           >
@@ -2113,7 +2113,7 @@ export const ProseSection = memo(function ProseSection({
               className={`touch-surface min-h-[38px] sm:min-h-[40px] px-2 sm:px-3.5 py-1.5 sm:py-2 text-[11px] sm:text-xs rounded-lg transition-all duration-150 whitespace-nowrap shrink-0 cursor-pointer ${
                 filter === 'all'
                   ? 'bg-pear-pine-gradient text-white font-semibold shadow-xs'
-                  : 'font-medium text-[#5C5C58] dark:text-[#C4BFB4] hover:text-[#141413] dark:hover:text-[#F4F1EA]'
+                  : 'font-medium text-ink-muted dark:text-parchment hover:text-ink dark:hover:text-cream'
               }`}
             >
               Усі
@@ -2126,7 +2126,7 @@ export const ProseSection = memo(function ProseSection({
               className={`touch-surface min-h-[38px] sm:min-h-[40px] px-2 sm:px-3.5 py-1.5 sm:py-2 text-[11px] sm:text-xs rounded-lg transition-all duration-150 whitespace-nowrap shrink-0 cursor-pointer ${
                 filter === 'free'
                   ? 'bg-pear-pine-gradient text-white font-semibold shadow-xs'
-                  : 'font-medium text-[#5C5C58] dark:text-[#C4BFB4] hover:text-[#141413] dark:hover:text-[#F4F1EA]'
+                  : 'font-medium text-ink-muted dark:text-parchment hover:text-ink dark:hover:text-cream'
               }`}
             >
               Відкриті
@@ -2140,7 +2140,7 @@ export const ProseSection = memo(function ProseSection({
               className={`touch-surface min-h-[38px] sm:min-h-[40px] px-2 sm:px-3.5 py-1.5 sm:py-2 text-[11px] sm:text-xs rounded-lg transition-all duration-150 whitespace-nowrap shrink-0 cursor-pointer ${
                 filter === 'paid'
                   ? 'bg-pear-pine-gradient text-white font-semibold shadow-xs'
-                  : 'font-medium text-[#5C5C58] dark:text-[#C4BFB4] hover:text-[#141413] dark:hover:text-[#F4F1EA]'
+                  : 'font-medium text-ink-muted dark:text-parchment hover:text-ink dark:hover:text-cream'
               }`}
             >
               Платні
@@ -2154,7 +2154,7 @@ export const ProseSection = memo(function ProseSection({
                 className={`touch-surface min-h-[38px] sm:min-h-[40px] px-2 sm:px-3.5 py-1.5 sm:py-2 text-[11px] sm:text-xs rounded-lg transition-all duration-150 whitespace-nowrap shrink-0 cursor-pointer ${
                   filter === 'unlocked'
                     ? 'bg-pear-pine-gradient text-white font-semibold shadow-xs'
-                    : 'font-medium text-[#5C5C58] dark:text-[#C4BFB4] hover:text-[#141413] dark:hover:text-[#F4F1EA]'
+                    : 'font-medium text-ink-muted dark:text-parchment hover:text-ink dark:hover:text-cream'
                 }`}
               >
                 Придбані
@@ -2164,7 +2164,7 @@ export const ProseSection = memo(function ProseSection({
           )}
 
           <div
-            className="inline-flex shrink-0 items-center gap-0.5 p-1 bg-[#EAE7DF] dark:bg-[#262626] rounded-xl"
+            className="inline-flex shrink-0 items-center gap-0.5 p-1 bg-paper-sand dark:bg-night-card rounded-xl"
             role="group"
             aria-label="Сортування прозових творів"
           >
@@ -2179,7 +2179,7 @@ export const ProseSection = memo(function ProseSection({
               className={`touch-surface min-h-[38px] sm:min-h-[40px] px-2 sm:px-3.5 py-1.5 sm:py-2 text-[11px] sm:text-xs rounded-lg transition-all duration-150 whitespace-nowrap shrink-0 cursor-pointer ${
                 sortBy === 'newest'
                   ? 'bg-pear-pine-gradient text-white font-semibold shadow-xs'
-                  : 'font-medium text-[#5C5C58] dark:text-[#C4BFB4] hover:text-[#141413] dark:hover:text-[#F4F1EA]'
+                  : 'font-medium text-ink-muted dark:text-parchment hover:text-ink dark:hover:text-cream'
               }`}
             >
               Найновіші
@@ -2195,7 +2195,7 @@ export const ProseSection = memo(function ProseSection({
               className={`touch-surface min-h-[38px] sm:min-h-[40px] px-2 sm:px-3.5 py-1.5 sm:py-2 text-[11px] sm:text-xs rounded-lg transition-all duration-150 whitespace-nowrap shrink-0 cursor-pointer ${
                 sortBy === 'rating'
                   ? 'bg-pear-pine-gradient text-white font-semibold shadow-xs'
-                  : 'font-medium text-[#5C5C58] dark:text-[#C4BFB4] hover:text-[#141413] dark:hover:text-[#F4F1EA]'
+                  : 'font-medium text-ink-muted dark:text-parchment hover:text-ink dark:hover:text-cream'
               }`}
             >
               За рейтингом
@@ -2206,7 +2206,7 @@ export const ProseSection = memo(function ProseSection({
         {/* Unified Chronological Grid */}
         {filteredProseList.length === 0 ? (
           <div className="py-12 text-center">
-            <p className="font-serif text-2xl text-[#141413] dark:text-[#F4F1EA] mb-1">
+            <p className="font-serif text-2xl text-ink dark:text-cream mb-1">
               У цій категорії поки немає творів
             </p>
             <button
@@ -2240,7 +2240,7 @@ export const ProseSection = memo(function ProseSection({
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.18 }}
-                className="fixed inset-0 z-50 bg-[#141413]/55 dark:bg-black/75 backdrop-blur-xs flex items-center justify-center p-2 sm:p-6"
+                className="fixed inset-0 z-50 bg-ink/72 dark:bg-black/82 flex items-center justify-center p-2 sm:p-6"
                 onClick={closeWork}
                 role="dialog"
                 aria-modal="true"
@@ -2260,7 +2260,7 @@ export const ProseSection = memo(function ProseSection({
                       aria-valuemin={0}
                       aria-valuemax={100}
                       aria-valuenow={0}
-                      className="fixed top-0 left-0 right-0 z-[60] h-[3px] pointer-events-none bg-[#141413]/10 dark:bg-white/10"
+                      className="fixed top-0 left-0 right-0 z-[60] h-[3px] pointer-events-none bg-ink/10 dark:bg-white/10"
                     >
                       <m.div
                         style={{ scaleX: smoothReadingProgress }}
@@ -2276,7 +2276,7 @@ export const ProseSection = memo(function ProseSection({
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.97, y: 12 }}
                   transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-                  className="bg-[#F9F9F7] dark:bg-[#202020] rounded-2xl max-w-3xl w-full max-h-[92vh] sm:max-h-[90vh] overflow-y-auto overscroll-contain px-4 pt-4 pb-24 sm:px-8 sm:pt-8 sm:pb-24 md:px-11 md:pt-11 md:pb-24 shadow-xl will-change-transform text-[#141413] dark:text-[#F4F1EA]"
+                  className="bg-paper dark:bg-night-panel rounded-2xl max-w-3xl w-full max-h-[92vh] sm:max-h-[90vh] overflow-y-auto overscroll-contain px-4 pt-4 pb-24 sm:px-8 sm:pt-8 sm:pb-24 md:px-11 md:pt-11 md:pb-24 shadow-xl will-change-transform text-ink dark:text-cream"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <div ref={modalContentRef}>
@@ -2284,7 +2284,7 @@ export const ProseSection = memo(function ProseSection({
               <div className="pb-4 sm:pb-5">
                 {/* Top Utility Row: Single-Line Genre/Length + Controls */}
                 <div className="flex items-center justify-between gap-2 mb-2.5 sm:mb-3">
-                  <div className="flex items-center gap-1.5 text-xs text-[#5C5C58] dark:text-[#A8A49B] min-w-0 truncate">
+                  <div className="flex items-center gap-1.5 text-xs text-ink-muted dark:text-sandstone-light min-w-0 truncate">
                     <span className="truncate">{activeWork.genre}</span>
                     <span aria-hidden="true">·</span>
                     <span className="tabular-nums shrink-0">{activeWork.pages} стор.</span>
@@ -2304,7 +2304,7 @@ export const ProseSection = memo(function ProseSection({
                     <button
                       type="button"
                       onClick={closeWork}
-                      className="w-9 h-9 sm:w-10 sm:h-10 inline-flex items-center justify-center text-[#5C5C58] dark:text-[#C4BFB4] hover:text-[#141413] dark:hover:text-[#F4F1EA] hover:bg-[#EFECE6] dark:hover:bg-[#323232] active:scale-[0.95] rounded-lg transition-all duration-150 cursor-pointer"
+                      className="w-9 h-9 sm:w-10 sm:h-10 inline-flex items-center justify-center text-ink-muted dark:text-parchment hover:text-ink dark:hover:text-cream hover:bg-paper-warm dark:hover:bg-night-elevated active:scale-[0.95] rounded-lg transition-all duration-150 cursor-pointer"
                       aria-label="Закрити вікно читання"
                     >
                       <X className="w-5 h-5" />
@@ -2313,7 +2313,7 @@ export const ProseSection = memo(function ProseSection({
                 </div>
 
                 {activeWork.isCommunity && (
-                  <div className="mb-2.5 inline-flex items-center gap-2 text-xs font-medium text-[#5C5C58] dark:text-[#A8A49B]">
+                  <div className="mb-2.5 inline-flex items-center gap-2 text-xs font-medium text-ink-muted dark:text-sandstone-light">
                     {activeWork.authorPhotoUrl && (
                       <img
                         src={activeWork.authorPhotoUrl}
@@ -2333,23 +2333,23 @@ export const ProseSection = memo(function ProseSection({
                 {/* Story Title & Editorial Slogan */}
                 <h3
                   id="prose-modal-title"
-                  className="text-xl sm:text-2xl md:text-3xl font-semibold tracking-[-0.02em] text-[#141413] dark:text-[#F4F1EA] leading-[1.24] sm:leading-tight"
+                  className="text-xl sm:text-2xl md:text-3xl font-semibold tracking-[-0.02em] text-ink dark:text-cream leading-[1.24] sm:leading-tight"
                 >
                   <span className="prose-book-marker">{activeWork.title}</span>
                 </h3>
                 {activeWork.slogan && (
-                  <p className="mt-1.5 italic text-[14px] sm:text-base text-[#5C5C58] dark:text-[#A8A49B] leading-snug">
+                  <p className="mt-1.5 italic text-[14px] sm:text-base text-ink-muted dark:text-sandstone-light leading-snug">
                     «{activeWork.slogan}»
                   </p>
                 )}
 
                 {/* Calm Unified Secondary Metadata Line */}
-                <div className="mt-3 flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-[11px] sm:text-xs text-[#5C5C58] dark:text-[#A8A49B]">
+                <div className="mt-3 flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-[11px] sm:text-xs text-ink-muted dark:text-sandstone-light">
                   {activeWork.status && (
                     <span
                       className={`inline-flex items-center gap-1 font-medium ${
                         activeWork.status === 'completed'
-                          ? 'text-emerald-700 dark:text-[#E5E5E5]'
+                          ? 'text-emerald-700 dark:text-silver'
                           : 'text-amber-700 dark:text-amber-400'
                       }`}
                     >
@@ -2370,7 +2370,7 @@ export const ProseSection = memo(function ProseSection({
                       return (
                         <span
                           key={tag.id}
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#EFECE6]/85 dark:bg-[#323232] text-[#141413] dark:text-[#F4F1EA] font-medium"
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-paper-warm/85 dark:bg-night-elevated text-ink dark:text-cream font-medium"
                         >
                           <BookMarked
                             className="w-3 h-3 shrink-0"
@@ -2391,10 +2391,10 @@ export const ProseSection = memo(function ProseSection({
                   <span className="tabular-nums">{activeWork.publishedAt}</span>
 
                   {activeWork.ratingCount > 0 && (
-                    <span className="inline-flex items-center gap-1 font-mono text-[#141413] dark:text-[#F4F1EA] tabular-nums">
+                    <span className="inline-flex items-center gap-1 font-mono text-ink dark:text-cream tabular-nums">
                       <Star className="w-3 h-3 fill-[#FACC15] text-[#EAB308]" strokeWidth={1.75} />
                       <span className="font-semibold">{activeWork.ratingAverage.toFixed(1)}</span>
-                      <span className="text-[#5C5C58] dark:text-[#A8A49B]">({activeWork.ratingCount})</span>
+                      <span className="text-ink-muted dark:text-sandstone-light">({activeWork.ratingCount})</span>
                     </span>
                   )}
 
@@ -2402,8 +2402,8 @@ export const ProseSection = memo(function ProseSection({
                     <span
                       className={`inline-flex items-center gap-1 font-medium ${
                         activeWorkUnlocked
-                          ? 'text-[#1E563B] dark:text-[#E5E5E5]'
-                          : 'text-[#2C5937] dark:text-[#E5E5E5]'
+                          ? 'text-pine-deep dark:text-silver'
+                          : 'text-pine dark:text-silver'
                       }`}
                     >
                       <UserCheck className="w-3.5 h-3.5" strokeWidth={2} />
@@ -2413,11 +2413,11 @@ export const ProseSection = memo(function ProseSection({
 
                   {activeWorkPaid && (
                     activeWorkUnlocked ? (
-                      <span className="text-[#1E563B] dark:text-[#E5E5E5] font-medium tabular-nums">
+                      <span className="text-pine-deep dark:text-silver font-medium tabular-nums">
                         {activeOrderCode ? `Доступ відкрито (#${activeOrderCode})` : 'Доступ відкрито'}
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 font-mono font-semibold text-[#2C5937] dark:text-[#E5E5E5] tabular-nums">
+                      <span className="inline-flex items-center gap-1 font-mono font-semibold text-pine dark:text-silver tabular-nums">
                         {activeWorkHasDiscount ? (
                           <>
                             <span>Доступ</span>
@@ -2425,7 +2425,7 @@ export const ProseSection = memo(function ProseSection({
                               {activeWorkBasePrice} ₴
                             </span>
                             <span>{activeWorkEffectivePrice} ₴</span>
-                            <span className="text-[#1E563B] dark:text-[#E5E5E5]">
+                            <span className="text-pine-deep dark:text-silver">
                               (−{activeWorkAppliedDiscountPercent}%)
                             </span>
                           </>
@@ -2442,11 +2442,11 @@ export const ProseSection = memo(function ProseSection({
                 activeWork.isCommunity ? (
                   <div className="pt-3 pb-4 max-w-[65ch] mx-auto space-y-2.5">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-xs font-medium text-[#5C5C58] dark:text-[#A8A49B]">
+                      <span className="text-xs font-medium text-ink-muted dark:text-sandstone-light">
                         Обкладинка
                       </span>
                       {activeWork.moodboardUrls.length > 1 && (
-                        <span className="text-[11px] font-mono text-[#5C5C58] dark:text-[#A8A49B] tabular-nums">
+                        <span className="text-[11px] font-mono text-ink-muted dark:text-sandstone-light tabular-nums">
                           {activeWork.moodboardUrls.length} фото
                         </span>
                       )}
@@ -2464,7 +2464,7 @@ export const ProseSection = memo(function ProseSection({
                             })
                           }
                           aria-label={`Відкрити обкладинку: ${activeWork.title}`}
-                          className="group relative block w-full rounded-xl overflow-hidden bg-[#E2DFD7] dark:bg-[#262626] shadow-xs cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2C5937]/50"
+                          className="group relative block w-full rounded-xl overflow-hidden bg-paper-sand dark:bg-night-card shadow-xs cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine/50"
                         >
                           <img
                             src={url}
@@ -2491,11 +2491,11 @@ export const ProseSection = memo(function ProseSection({
                 ) : (
                   <div className="pt-4 pb-5 max-w-[65ch] mx-auto">
                     <div className="flex items-center justify-between gap-2 mb-3">
-                      <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#141413] dark:text-[#F4F1EA]">
-                        <FolderOpen className="w-3.5 h-3.5 text-[#2C5937] dark:text-[#E5E5E5]" strokeWidth={1.85} />
+                      <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink dark:text-cream">
+                        <FolderOpen className="w-3.5 h-3.5 text-pine dark:text-silver" strokeWidth={1.85} />
                         <span>Муд-борд твору</span>
                       </span>
-                      <span className="text-[11px] font-mono text-[#5C5C58] dark:text-[#A8A49B] tabular-nums">
+                      <span className="text-[11px] font-mono text-ink-muted dark:text-sandstone-light tabular-nums">
                         {activeWork.moodboardUrls.length} {activeWork.moodboardUrls.length === 1 ? 'фото' : 'фотографій'}
                       </span>
                     </div>
@@ -2512,7 +2512,7 @@ export const ProseSection = memo(function ProseSection({
                             })
                           }
                           aria-label={`Відкрити фото ${mIdx + 1}`}
-                          className="relative group rounded-xl overflow-hidden aspect-[4/3] bg-[#E2DFD7] dark:bg-[#262626] shadow-xs cursor-zoom-in block w-full"
+                          className="relative group rounded-xl overflow-hidden aspect-[4/3] bg-paper-sand dark:bg-night-card shadow-xs cursor-zoom-in block w-full"
                         >
                           <EditorialImage
                             src={url}
@@ -2532,11 +2532,11 @@ export const ProseSection = memo(function ProseSection({
               {activeChapters.length > 0 && (
                 <div className="pt-4 pb-5 max-w-[65ch] mx-auto">
                   <div className="flex items-center justify-between gap-2 mb-3">
-                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#141413] dark:text-[#F4F1EA]">
-                      <FolderOpen className="w-3.5 h-3.5 text-[#2C5937] dark:text-[#E5E5E5]" strokeWidth={1.85} />
+                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink dark:text-cream">
+                      <FolderOpen className="w-3.5 h-3.5 text-pine dark:text-silver" strokeWidth={1.85} />
                       <span>Зміст теки</span>
                     </span>
-                    <span className="text-[11px] font-mono text-[#5C5C58] dark:text-[#A8A49B] tabular-nums">
+                    <span className="text-[11px] font-mono text-ink-muted dark:text-sandstone-light tabular-nums">
                       {activeChapters.length + 1} розд.
                     </span>
                   </div>
@@ -2549,8 +2549,8 @@ export const ProseSection = memo(function ProseSection({
                       onClick={() => setActiveChapterId('base')}
                       className={`min-h-[38px] px-3 py-1.5 inline-flex items-center gap-1.5 rounded-lg text-xs transition-colors duration-150 whitespace-nowrap shrink-0 cursor-pointer ${
                         activeChapterId === 'base'
-                          ? 'bg-[#141413] dark:bg-[#F4F1EA] text-white dark:text-[#181818] font-semibold'
-                          : 'bg-[#EAE7DF] dark:bg-[#262626] text-[#5C5C58] dark:text-[#A8A49B] hover:text-[#141413] dark:hover:text-[#F4F1EA] font-medium'
+                          ? 'bg-ink dark:bg-cream text-white dark:text-night font-semibold'
+                          : 'bg-paper-sand dark:bg-night-card text-ink-muted dark:text-sandstone-light hover:text-ink dark:hover:text-cream font-medium'
                       }`}
                     >
                       <span>Основний текст</span>
@@ -2567,8 +2567,8 @@ export const ProseSection = memo(function ProseSection({
                           onClick={() => setActiveChapterId(chapter.id)}
                           className={`min-h-[38px] px-3 py-1.5 inline-flex items-center gap-1.5 rounded-lg text-xs transition-colors duration-150 whitespace-nowrap shrink-0 cursor-pointer ${
                             isActiveChapter
-                              ? 'bg-[#141413] dark:bg-[#F4F1EA] text-white dark:text-[#181818] font-semibold'
-                              : 'bg-[#EAE7DF] dark:bg-[#262626] text-[#5C5C58] dark:text-[#A8A49B] hover:text-[#141413] dark:hover:text-[#F4F1EA] font-medium'
+                              ? 'bg-ink dark:bg-cream text-white dark:text-night font-semibold'
+                              : 'bg-paper-sand dark:bg-night-card text-ink-muted dark:text-sandstone-light hover:text-ink dark:hover:text-cream font-medium'
                           }`}
                         >
                           {!activeWorkUnlocked && <Lock className="w-3 h-3 shrink-0 opacity-80" strokeWidth={2} />}
@@ -2582,7 +2582,7 @@ export const ProseSection = memo(function ProseSection({
 
               {/* Post-Purchase Confirmation Note */}
               {justUnlockedOrder && justUnlockedOrder.workId === activeWork.id && (
-                <div className="mt-6 p-4 bg-emerald-50 dark:bg-[#262626] rounded-xl flex items-start gap-3 text-xs text-emerald-900 dark:text-[#F4F1EA]">
+                <div className="mt-6 p-4 bg-emerald-50 dark:bg-night-card rounded-xl flex items-start gap-3 text-xs text-emerald-900 dark:text-cream">
                   <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5"/>
                   <div>
                     <p className="font-semibold tabular-nums">
@@ -2601,11 +2601,11 @@ export const ProseSection = memo(function ProseSection({
               {activeWorkUnlocked ? (
                 loadingWorkId === activeWork.id ? (
                   <div className="py-10 max-w-[65ch] mx-auto space-y-4 animate-pulse"aria-live="polite">
-                    <div className="h-4 bg-[#E6E3DA] dark:bg-[#323232] rounded w-full"/>
-                    <div className="h-4 bg-[#E6E3DA] dark:bg-[#323232] rounded w-11/12"/>
-                    <div className="h-4 bg-[#E6E3DA] dark:bg-[#323232] rounded w-4/5"/>
-                    <div className="h-4 bg-[#E6E3DA] dark:bg-[#323232] rounded w-full mt-6"/>
-                    <div className="h-4 bg-[#E6E3DA] dark:bg-[#323232] rounded w-10/12"/>
+                    <div className="h-4 bg-paper-sand dark:bg-night-elevated rounded w-full"/>
+                    <div className="h-4 bg-paper-sand dark:bg-night-elevated rounded w-11/12"/>
+                    <div className="h-4 bg-paper-sand dark:bg-night-elevated rounded w-4/5"/>
+                    <div className="h-4 bg-paper-sand dark:bg-night-elevated rounded w-full mt-6"/>
+                    <div className="h-4 bg-paper-sand dark:bg-night-elevated rounded w-10/12"/>
                   </div>
                 ) : loadContentError ? (
                   <div className="py-10 text-center space-y-4">
@@ -2624,22 +2624,22 @@ export const ProseSection = memo(function ProseSection({
                   <div className="pt-6 space-y-6 max-w-[65ch] mx-auto">
                     <div className="pb-2 flex flex-wrap items-end justify-between gap-2">
                       <div>
-                        <p className="text-xs text-[#5C5C58] dark:text-[#A8A49B] tabular-nums mb-1">
+                        <p className="text-xs text-ink-muted dark:text-sandstone-light tabular-nums mb-1">
                           {selectedChapter.publishedAt}
                         </p>
-                        <h4 className="font-serif text-2xl sm:text-3xl font-semibold text-[#141413] dark:text-[#F4F1EA]">
+                        <h4 className="font-serif text-2xl sm:text-3xl font-semibold text-ink dark:text-cream">
                           {selectedChapter.title}
                         </h4>
                       </div>
                       {totalSectionPages > 0 && (
-                        <span className="text-[11px] font-mono text-[#5C5C58] dark:text-[#A8A49B] tabular-nums">
+                        <span className="text-[11px] font-mono text-ink-muted dark:text-sandstone-light tabular-nums">
                           Сторінка {safePageIndex + 1} з {totalSectionPages} · {formatUkrainianWords(currentPageWords)}
                         </span>
                       )}
                     </div>
 
                     <div
-                      className={`text-[#141413] dark:text-[#F4F1EA] space-y-5 leading-[1.78] ${
+                      className={`text-ink dark:text-cream space-y-5 leading-[1.78] ${
                         largeText ? 'text-lg' : 'text-base'
                       }`}
                     >
@@ -2683,7 +2683,7 @@ export const ProseSection = memo(function ProseSection({
                               return (
                                 <span
                                   key={`ellipsis-${idx}`}
-                                  className="px-1.5 text-xs text-[#5C5C58] dark:text-[#A8A49B]"
+                                  className="px-1.5 text-xs text-ink-muted dark:text-sandstone-light"
                                 >
                                   …
                                 </span>
@@ -2699,8 +2699,8 @@ export const ProseSection = memo(function ProseSection({
                                 aria-current={active ? 'page' : undefined}
                                 className={`min-w-[36px] min-h-[36px] px-2.5 rounded-lg text-xs font-mono tabular-nums transition-colors cursor-pointer ${
                                   active
-                                    ? 'bg-[#141413] dark:bg-[#F4F1EA] text-white dark:text-[#181818] font-semibold'
-                                    : 'text-[#5C5C58] dark:text-[#A8A49B] hover:bg-[#EAE7DF] dark:hover:bg-[#323232] hover:text-[#141413] dark:hover:text-[#F4F1EA]'
+                                    ? 'bg-ink dark:bg-cream text-white dark:text-night font-semibold'
+                                    : 'text-ink-muted dark:text-sandstone-light hover:bg-paper-sand dark:hover:bg-night-elevated hover:text-ink dark:hover:text-cream'
                                 }`}
                               >
                                 {idx + 1}
@@ -2755,15 +2755,15 @@ export const ProseSection = memo(function ProseSection({
                   <div className="pt-6 space-y-6">
                     {activeWork.hasPdf && activePdfUrl && (
                       <div className="space-y-3">
-                        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-white dark:bg-[#262626] rounded-xl">
+                        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-white dark:bg-night-card rounded-xl">
                           <div className="flex items-center gap-2.5 min-w-0">
-                            <FileText className="w-4 h-4 text-[#2C5937] dark:text-[#E5E5E5] shrink-0"/>
+                            <FileText className="w-4 h-4 text-pine dark:text-silver shrink-0"/>
                             <div className="min-w-0">
-                              <p className="text-xs font-medium text-[#141413] dark:text-[#F4F1EA] truncate">
+                              <p className="text-xs font-medium text-ink dark:text-cream truncate">
                                 {activeWork.pdfFileName ||`${activeWork.title}.pdf`}
                               </p>
                               {activeWork.pdfFileSize && (
-                                <p className="text-[11px] font-mono text-[#5C5C58] dark:text-[#A8A49B] tabular-nums">
+                                <p className="text-[11px] font-mono text-ink-muted dark:text-sandstone-light tabular-nums">
                                   PDF-документ · {formatFileSize(activeWork.pdfFileSize)}
                                 </p>
                               )}
@@ -2791,7 +2791,7 @@ export const ProseSection = memo(function ProseSection({
                     {activeFullText.trim() && (
                       <div className="max-w-[65ch] mx-auto space-y-5">
                         {totalSectionPages > 1 && (
-                          <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-[#5C5C58] dark:text-[#A8A49B] tabular-nums">
+                          <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-ink-muted dark:text-sandstone-light tabular-nums">
                             <span>
                               Сторінка {safePageIndex + 1} з {totalSectionPages}
                             </span>
@@ -2804,7 +2804,7 @@ export const ProseSection = memo(function ProseSection({
                         )}
 
                         <div
-                          className={`py-1 text-[#141413] dark:text-[#F4F1EA] space-y-5 leading-[1.78] ${
+                          className={`py-1 text-ink dark:text-cream space-y-5 leading-[1.78] ${
                             largeText ?'text-lg':'text-base'
                           }`}
                         >
@@ -2848,7 +2848,7 @@ export const ProseSection = memo(function ProseSection({
                                   return (
                                     <span
                                       key={`ellipsis-${idx}`}
-                                      className="px-1.5 text-xs text-[#5C5C58] dark:text-[#A8A49B]"
+                                      className="px-1.5 text-xs text-ink-muted dark:text-sandstone-light"
                                     >
                                       …
                                     </span>
@@ -2864,8 +2864,8 @@ export const ProseSection = memo(function ProseSection({
                                     aria-current={active ? 'page' : undefined}
                                     className={`min-w-[36px] min-h-[36px] px-2.5 rounded-lg text-xs font-mono tabular-nums transition-colors cursor-pointer ${
                                       active
-                                        ? 'bg-[#141413] dark:bg-[#F4F1EA] text-white dark:text-[#181818] font-semibold'
-                                        : 'text-[#5C5C58] dark:text-[#A8A49B] hover:bg-[#EAE7DF] dark:hover:bg-[#323232] hover:text-[#141413] dark:hover:text-[#F4F1EA]'
+                                        ? 'bg-ink dark:bg-cream text-white dark:text-night font-semibold'
+                                        : 'text-ink-muted dark:text-sandstone-light hover:bg-paper-sand dark:hover:bg-night-elevated hover:text-ink dark:hover:text-cream'
                                     }`}
                                   >
                                     {idx + 1}
@@ -2907,25 +2907,25 @@ export const ProseSection = memo(function ProseSection({
                 <div className="pt-7 max-w-[65ch] mx-auto">
                   {selectedChapter ? (
                     <div className="py-4 space-y-2">
-                      <p className="text-xs text-[#5C5C58] dark:text-[#A8A49B] tabular-nums">
+                      <p className="text-xs text-ink-muted dark:text-sandstone-light tabular-nums">
                         {selectedChapter.publishedAt}
                       </p>
-                      <h4 className="font-serif text-2xl font-semibold text-[#141413] dark:text-[#F4F1EA] flex items-center gap-2">
-                        <Lock className="w-4 h-4 text-[#2C5937] dark:text-[#E5E5E5] shrink-0" />
+                      <h4 className="font-serif text-2xl font-semibold text-ink dark:text-cream flex items-center gap-2">
+                        <Lock className="w-4 h-4 text-pine dark:text-silver shrink-0" />
                         <span>{selectedChapter.title}</span>
                       </h4>
-                      <p className="text-sm text-[#5C5C58] dark:text-[#A8A49B] leading-relaxed">
+                      <p className="text-sm text-ink-muted dark:text-sandstone-light leading-relaxed">
                         Цей розділ належить до закритої теки твору. Щоб прочитати «{selectedChapter.title}» та всі інші розділи, відкрийте повний доступ нижче.
                       </p>
                     </div>
                   ) : (
                     <>
                       <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-                        <p className="text-xs font-medium text-[#5C5C58] dark:text-[#A8A49B]">
+                        <p className="text-xs font-medium text-ink-muted dark:text-sandstone-light">
                           Вступний фрагмент
                         </p>
                         {activeWork.hasPdf && (
-                          <span className="inline-flex items-center gap-1.5 text-xs text-[#2C5937] dark:text-[#E5E5E5] font-medium tabular-nums">
+                          <span className="inline-flex items-center gap-1.5 text-xs text-pine dark:text-silver font-medium tabular-nums">
                             <FileText className="w-3.5 h-3.5"/>
                             <span>
                               Повна версія у PDF
@@ -2937,7 +2937,7 @@ export const ProseSection = memo(function ProseSection({
 
                       <div className="relative">
                         <div
-                          className={`text-[#141413] dark:text-[#F4F1EA] space-y-5 leading-[1.78] ${
+                          className={`text-ink dark:text-cream space-y-5 leading-[1.78] ${
                             largeText ?'text-lg':'text-base'
                           }`}
                         >
@@ -2952,7 +2952,7 @@ export const ProseSection = memo(function ProseSection({
                         </div>
                         <div
                           aria-hidden="true"
-                          className="pointer-events-none h-20 -mt-20 relative bg-gradient-to-b from-transparent to-[#F9F9F7] dark:to-[#202020]"
+                          className="pointer-events-none h-20 -mt-20 relative bg-gradient-to-b from-transparent to-paper dark:to-night-panel"
                         />
                       </div>
                     </>
@@ -2963,11 +2963,11 @@ export const ProseSection = memo(function ProseSection({
                     {activeWorkAuthorizedOnly ? (
                       <div className="space-y-5">
                         <div className="space-y-1.5">
-                          <h4 className="font-serif text-2xl sm:text-3xl font-semibold text-[#141413] dark:text-[#F4F1EA] flex items-center gap-2">
-                            <UserCheck className="w-5 h-5 text-[#2C5937] dark:text-[#E5E5E5] shrink-0" />
+                          <h4 className="font-serif text-2xl sm:text-3xl font-semibold text-ink dark:text-cream flex items-center gap-2">
+                            <UserCheck className="w-5 h-5 text-pine dark:text-silver shrink-0" />
                             <span>Читати повністю після входу</span>
                           </h4>
-                          <p className="text-sm text-[#5C5C58] dark:text-[#A8A49B] leading-relaxed">
+                          <p className="text-sm text-ink-muted dark:text-sandstone-light leading-relaxed">
                             Цей твір ({activeWork.pages} стор.) відкритий безкоштовно для всіх авторизованих читачів. Увійдіть через Google, пароль чи біометрію — і весь текст{activeWork.hasPdf ? ' та PDF-документ' : ''} одразу стане доступним у цьому вікні.
                           </p>
                         </div>
@@ -2993,11 +2993,11 @@ export const ProseSection = memo(function ProseSection({
                     ) : paywallView ==='offer'? (
                       <div className="space-y-5">
                         <div className="space-y-1.5">
-                          <h4 className="font-serif text-2xl sm:text-3xl font-semibold text-[#141413] dark:text-[#F4F1EA] flex items-center gap-2">
-                            <HryvniaIcon className="w-5 h-5 text-[#2C5937] dark:text-[#E5E5E5] shrink-0"/>
+                          <h4 className="font-serif text-2xl sm:text-3xl font-semibold text-ink dark:text-cream flex items-center gap-2">
+                            <HryvniaIcon className="w-5 h-5 text-pine dark:text-silver shrink-0"/>
                             <span>Продовжити читання історії</span>
                           </h4>
-                          <p className="text-sm text-[#5C5C58] dark:text-[#A8A49B] leading-relaxed">
+                          <p className="text-sm text-ink-muted dark:text-sandstone-light leading-relaxed">
                             {activeChapters.length > 0
                               ? `Обсяг твору — ${activeWork.pages} стор. (${activeChapters.length + 1} розд. у теці). Після оплати одразу відкриється весь твір та всі додані розділи.`
                               : activeWork.hasPdf
@@ -3007,18 +3007,18 @@ export const ProseSection = memo(function ProseSection({
                                 :`Обсяг повного тексту — ${activeWork.pages} стор. Після оплати весь твір одразу відкриється у цьому вікні.`}
                           </p>
                           {activeWorkHasDiscount ? (
-                            <p className="text-xs font-medium text-[#1E563B] dark:text-[#E5E5E5]">
+                            <p className="text-xs font-medium text-pine-deep dark:text-silver">
                               {activeWorkPricing.appliedSource === 'telegram'
                                 ? `Для підписників Telegram-каналу діє знижка −${activeWorkAppliedDiscountPercent}%: ${activeWorkBasePrice} ₴ → ${activeWorkEffectivePrice} ₴.`
                                 : `Для вашого акаунта діє знижка −${activeWorkAppliedDiscountPercent}%: ${activeWorkBasePrice} ₴ → ${activeWorkEffectivePrice} ₴.`}
                             </p>
                           ) : proseTelegramDiscountPercent > 0 && activeWorkPotentialTgPrice < activeWorkBasePrice ? (
-                            <p className="text-xs font-medium text-[#1E563B] dark:text-[#E5E5E5]">
+                            <p className="text-xs font-medium text-pine-deep dark:text-silver">
                               {`Для підписників Telegram-каналу діє знижка −${proseTelegramDiscountPercent}% (${activeWorkPotentialTgPrice} ₴ замість ${activeWorkBasePrice} ₴).`}
                             </p>
                           ) : (
                             proseAuthDiscountPercent > 0 && (
-                              <p className="text-xs font-medium text-[#1E563B] dark:text-[#E5E5E5]">
+                              <p className="text-xs font-medium text-pine-deep dark:text-silver">
                                 {`Для авторизованих читачів діє спеціальна знижка −${proseAuthDiscountPercent}% (${activeWorkPotentialGuestPrice} ₴ замість ${activeWorkBasePrice} ₴).`}
                               </p>
                             )
@@ -3067,7 +3067,7 @@ export const ProseSection = memo(function ProseSection({
                               <button
                                 type="button"
                                 onClick={onOpenTelegramModal}
-                                className="btn-editorial-secondary min-h-[46px] px-4 py-2.5 text-xs text-[#2C5937] dark:text-[#E5E5E5] tabular-nums"
+                                className="btn-editorial-secondary min-h-[46px] px-4 py-2.5 text-xs text-pine dark:text-silver tabular-nums"
                               >
                                 <Send className="w-3.5 h-3.5" />
                                 <span>Підтвердити Telegram (−{proseTelegramDiscountPercent}%)</span>
@@ -3080,7 +3080,7 @@ export const ProseSection = memo(function ProseSection({
                               <button
                                 type="button"
                                 onClick={onOpenAuthModal}
-                                className="btn-editorial-secondary min-h-[46px] px-4 py-2.5 text-xs text-[#2C5937] dark:text-[#E5E5E5] tabular-nums"
+                                className="btn-editorial-secondary min-h-[46px] px-4 py-2.5 text-xs text-pine dark:text-silver tabular-nums"
                               >
                                 <UserCheck className="w-3.5 h-3.5" />
                                 <span>Увійти зі знижкою −{proseAuthDiscountPercent}%</span>
@@ -3107,7 +3107,7 @@ export const ProseSection = memo(function ProseSection({
                           >
                             <label
                               htmlFor="prose-restore-input"
-                              className="block text-xs font-medium text-[#5C5C58] dark:text-[#A8A49B]"
+                              className="block text-xs font-medium text-ink-muted dark:text-sandstone-light"
                             >
                               Введіть email з квитанції або код замовлення (наприклад, AD-1042)
                             </label>
@@ -3133,7 +3133,7 @@ export const ProseSection = memo(function ProseSection({
                               <p
                                 className={`text-xs ${
                                   restoreMessage.ok
-                                    ?'text-emerald-700 dark:text-[#E5E5E5] font-medium'
+                                    ?'text-emerald-700 dark:text-silver font-medium'
                                     :'text-rose-700 dark:text-rose-400'
                                 }`}
                                 role="status"
@@ -3155,29 +3155,29 @@ export const ProseSection = memo(function ProseSection({
                                 setPendingMonobankInvoice(null);
                                 setPaymentError(null);
                               }}
-                              className="inline-flex items-center gap-1.5 min-h-[36px] -ml-1.5 px-1.5 text-xs font-medium text-[#5C5C58] dark:text-[#A8A49B] hover:text-[#2C5937] dark:hover:text-white rounded-lg transition-colors cursor-pointer"
+                              className="inline-flex items-center gap-1.5 min-h-[36px] -ml-1.5 px-1.5 text-xs font-medium text-ink-muted dark:text-sandstone-light hover:text-pine dark:hover:text-white rounded-lg transition-colors cursor-pointer"
                             >
                               <ArrowLeft className="w-3.5 h-3.5" />
                               <span>Змінити дані</span>
                             </button>
 
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#141413] text-white text-[11px] font-semibold tracking-tight">
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-ink text-white text-[11px] font-semibold tracking-tight">
                               <span>Монобанк</span>
                               <span className="text-white/50">·</span>
                               <span className="font-mono tabular-nums">{pendingMonobankInvoice.amountUah} ₴</span>
                             </span>
                           </div>
 
-                          <div className="p-4 sm:p-5 rounded-xl bg-white dark:bg-[#262626] space-y-3">
-                            <p className="text-sm font-semibold text-[#141413] dark:text-[#F4F1EA]">
+                          <div className="p-4 sm:p-5 rounded-xl bg-white dark:bg-night-card space-y-3">
+                            <p className="text-sm font-semibold text-ink dark:text-cream">
                               Рахунок Монобанк створено
                             </p>
-                            <p className="text-xs text-[#5C5C58] dark:text-[#A8A49B] leading-relaxed">
+                            <p className="text-xs text-ink-muted dark:text-sandstone-light leading-relaxed">
                               Перейдіть на сторінку оплати Монобанк для підтвердження платежу через застосунок Монобанк. Після оплати доступ відкриється автоматично.
                             </p>
 
                             {pendingMonobankInvoice.statusText && (
-                              <p className="text-xs font-medium text-[#2C5937] dark:text-[#E5E5E5]" role="status">
+                              <p className="text-xs font-medium text-pine dark:text-silver" role="status">
                                 {pendingMonobankInvoice.statusText}
                               </p>
                             )}
@@ -3187,7 +3187,7 @@ export const ProseSection = memo(function ProseSection({
                                 href={pendingMonobankInvoice.pageUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="flex-1 inline-flex items-center justify-center gap-2 min-h-[46px] px-5 py-2.5 rounded-xl bg-[#141413] dark:bg-white text-white dark:text-[#141413] text-xs sm:text-sm font-semibold hover:opacity-92 transition-opacity"
+                                className="flex-1 inline-flex items-center justify-center gap-2 min-h-[46px] px-5 py-2.5 rounded-xl bg-ink dark:bg-white text-white dark:text-ink text-xs sm:text-sm font-semibold hover:opacity-92 transition-opacity"
                               >
                                 <span>Відкрити оплату Монобанк</span>
                                 <ExternalLink className="w-4 h-4 shrink-0" />
@@ -3224,19 +3224,19 @@ export const ProseSection = memo(function ProseSection({
                                 setPaywallView('offer');
                                 setPaymentError(null);
                               }}
-                              className="inline-flex items-center gap-1.5 min-h-[36px] -ml-1.5 px-1.5 text-xs font-medium text-[#5C5C58] dark:text-[#A8A49B] hover:text-[#2C5937] dark:hover:text-white rounded-lg transition-colors cursor-pointer"
+                              className="inline-flex items-center gap-1.5 min-h-[36px] -ml-1.5 px-1.5 text-xs font-medium text-ink-muted dark:text-sandstone-light hover:text-pine dark:hover:text-white rounded-lg transition-colors cursor-pointer"
                             >
                               <ArrowLeft className="w-3.5 h-3.5"/>
                               <span>Назад</span>
                             </button>
 
-                            <span className="inline-flex items-center gap-1 text-[11px] font-mono text-emerald-800 dark:text-[#E5E5E5]">
+                            <span className="inline-flex items-center gap-1 text-[11px] font-mono text-emerald-800 dark:text-silver">
                               <Lock className="w-3 h-3" />
                               <span>Монобанк · E2EE</span>
                             </span>
                           </div>
 
-                          <div className="p-3.5 sm:p-4 rounded-xl bg-[#141413] dark:bg-[#262626] text-white flex items-center justify-between gap-3">
+                          <div className="p-3.5 sm:p-4 rounded-xl bg-ink dark:bg-night-card text-white flex items-center justify-between gap-3">
                             <div className="min-w-0">
                               <p className="text-sm font-semibold tracking-tight">
                                 Оплата тільки через Монобанк
@@ -3251,7 +3251,7 @@ export const ProseSection = memo(function ProseSection({
                                   {activeWorkBasePrice} ₴
                                 </span>
                               )}
-                              <span className="text-base sm:text-lg font-bold text-[#E5E5E5]">
+                              <span className="text-base sm:text-lg font-bold text-silver">
                                 {activeWorkEffectivePrice} ₴
                               </span>
                             </div>
@@ -3261,7 +3261,7 @@ export const ProseSection = memo(function ProseSection({
                             <div>
                               <label
                                 htmlFor="prose-buyer-name"
-                                className="block text-xs font-medium text-[#5C5C58] dark:text-[#A8A49B] mb-1.5"
+                                className="block text-xs font-medium text-ink-muted dark:text-sandstone-light mb-1.5"
                               >
                                 Ім’я та прізвище
                               </label>
@@ -3280,7 +3280,7 @@ export const ProseSection = memo(function ProseSection({
                             <div>
                               <label
                                 htmlFor="prose-buyer-email"
-                                className="block text-xs font-medium text-[#5C5C58] dark:text-[#A8A49B] mb-1.5"
+                                className="block text-xs font-medium text-ink-muted dark:text-sandstone-light mb-1.5"
                               >
                                 Email для доступу й квитанції
                               </label>
@@ -3310,14 +3310,14 @@ export const ProseSection = memo(function ProseSection({
                           )}
 
                           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 pt-1">
-                            <p className="text-[11px] text-[#5C5C58] dark:text-[#A8A49B]">
+                            <p className="text-[11px] text-ink-muted dark:text-sandstone-light">
                               Миттєве відкриття тексту після підтвердження платежу через Монобанк.
                             </p>
 
                             <button
                               type="submit"
                               disabled={submittingPayment || !monobankAcquiringEnabled}
-                              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 min-h-[48px] px-6 py-3 rounded-xl bg-[#141413] dark:bg-white text-white dark:text-[#141413] text-sm font-semibold hover:opacity-92 active:scale-[0.98] transition-all duration-150 cursor-pointer disabled:opacity-55 tabular-nums whitespace-nowrap shrink-0"
+                              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 min-h-[48px] px-6 py-3 rounded-xl bg-ink dark:bg-white text-white dark:text-ink text-sm font-semibold hover:opacity-92 active:scale-[0.98] transition-all duration-150 cursor-pointer disabled:opacity-55 tabular-nums whitespace-nowrap shrink-0"
                             >
                               <span>
                                 {submittingPayment
@@ -3354,15 +3354,15 @@ export const ProseSection = memo(function ProseSection({
                         ariaLabel={`Оцінити твір «${activeWork.title}» від 0.1 до 5.0`}
                       />
 
-                      <div className="flex items-center gap-2 text-xs text-[#5C5C58] dark:text-[#A8A49B] font-mono tabular-nums">
+                      <div className="flex items-center gap-2 text-xs text-ink-muted dark:text-sandstone-light font-mono tabular-nums">
                         {pendingRating !== null && activeWork.userRating === null ? (
-                          <span className="text-[#2C5937] dark:text-[#E5E5E5] font-semibold">
+                          <span className="text-pine dark:text-silver font-semibold">
                             Обрано · {pendingRating.toFixed(1)} / 5.0
                           </span>
                         ) : activeWork.ratingCount > 0 ? (
                           <span className="inline-flex items-center gap-1">
                             <Star className="w-3 h-3 fill-[#FACC15] text-[#EAB308]" strokeWidth={1.75} />
-                            <strong className="text-[#141413] dark:text-[#F4F1EA] font-semibold">
+                            <strong className="text-ink dark:text-cream font-semibold">
                               {activeWork.ratingAverage.toFixed(1)}
                             </strong>
                             <span>({activeWork.ratingCount})</span>
@@ -3373,8 +3373,8 @@ export const ProseSection = memo(function ProseSection({
 
                         {activeWork.userRating !== null && (
                           <>
-                            <span aria-hidden="true" className="text-[#C8C4BA] dark:text-[#454545]">·</span>
-                            <span className="text-[#1E563B] dark:text-[#E5E5E5] font-medium">
+                            <span aria-hidden="true" className="text-parchment dark:text-[#454545]">·</span>
+                            <span className="text-pine-deep dark:text-silver font-medium">
                               Ваша: {activeWork.userRating.toFixed(1)}
                             </span>
                           </>
@@ -3384,9 +3384,9 @@ export const ProseSection = memo(function ProseSection({
                   ) : (
                     <div className="flex items-center gap-2.5 min-h-[24px]">
                       {activeWork.ratingCount > 0 && (
-                        <span className="inline-flex items-center gap-1 text-xs font-mono tabular-nums text-[#5C5C58] dark:text-[#A8A49B]">
+                        <span className="inline-flex items-center gap-1 text-xs font-mono tabular-nums text-ink-muted dark:text-sandstone-light">
                           <Star className="w-3.5 h-3.5 fill-[#FACC15] text-[#EAB308]" strokeWidth={1.75} />
-                          <strong className="text-[#141413] dark:text-[#F4F1EA] font-semibold">
+                          <strong className="text-ink dark:text-cream font-semibold">
                             {activeWork.ratingAverage.toFixed(1)}
                           </strong>
                           <span>({activeWork.ratingCount})</span>
@@ -3410,7 +3410,7 @@ export const ProseSection = memo(function ProseSection({
 
                 {!guestUser && !commentsOpen && (
                   <div className="w-full flex flex-col items-center text-center gap-2.5 pt-4 pb-1">
-                    <p className="text-xs sm:text-sm text-[#5C5C58] dark:text-[#A8A49B]">
+                    <p className="text-xs sm:text-sm text-ink-muted dark:text-sandstone-light">
                       Щоб залишити оцінку або відгук
                     </p>
                     <button
@@ -3433,7 +3433,7 @@ export const ProseSection = memo(function ProseSection({
                     className={`text-xs font-medium ${
                       ratingFeedback.isError
                         ? 'text-rose-700 dark:text-rose-400'
-                        : 'text-[#1E563B] dark:text-[#E5E5E5]'
+                        : 'text-pine-deep dark:text-silver'
                     }`}
                   >
                     {ratingFeedback.text}
@@ -3469,7 +3469,7 @@ export const ProseSection = memo(function ProseSection({
                           <button
                             type="button"
                             onClick={() => setPendingRating(null)}
-                            className="touch-surface sm:order-1 inline-flex items-center justify-center min-h-[44px] sm:min-h-[40px] px-3.5 py-2 text-xs font-medium text-[#5C5C58] dark:text-[#A8A49B] hover:text-[#141413] dark:hover:text-[#F4F1EA] hover:bg-[#EFECE6] dark:hover:bg-[#323232] rounded-xl transition-colors duration-150 whitespace-nowrap shrink-0 cursor-pointer"
+                            className="touch-surface sm:order-1 inline-flex items-center justify-center min-h-[44px] sm:min-h-[40px] px-3.5 py-2 text-xs font-medium text-ink-muted dark:text-sandstone-light hover:text-ink dark:hover:text-cream hover:bg-paper-warm dark:hover:bg-night-elevated rounded-xl transition-colors duration-150 whitespace-nowrap shrink-0 cursor-pointer"
                           >
                             Скасувати
                           </button>
@@ -3477,7 +3477,7 @@ export const ProseSection = memo(function ProseSection({
                           <button
                             type="button"
                             onClick={() => setCommentsOpen(true)}
-                            className="touch-surface sm:order-2 sm:ml-auto flex-1 sm:flex-none inline-flex items-center justify-center gap-2 min-h-[44px] sm:min-h-[40px] px-4 py-2 text-xs font-medium text-[#141413] dark:text-[#F4F1EA] bg-transparent hover:bg-[#EFECE6] dark:hover:bg-[#323232] active:scale-[0.97] rounded-xl transition-all duration-150 whitespace-nowrap shrink-0 cursor-pointer"
+                            className="touch-surface sm:order-2 sm:ml-auto flex-1 sm:flex-none inline-flex items-center justify-center gap-2 min-h-[44px] sm:min-h-[40px] px-4 py-2 text-xs font-medium text-ink dark:text-cream bg-transparent hover:bg-paper-warm dark:hover:bg-night-elevated active:scale-[0.97] rounded-xl transition-all duration-150 whitespace-nowrap shrink-0 cursor-pointer"
                           >
                             <MessageSquare className="w-3.5 h-3.5" strokeWidth={1.75} />
                             <span>Додати коментар</span>
@@ -3533,7 +3533,7 @@ export const ProseSection = memo(function ProseSection({
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.16 }}
-                className="fixed inset-0 z-[70] bg-black/88 backdrop-blur-xs flex flex-col items-center justify-center p-4 sm:p-6"
+                className="fixed inset-0 z-[70] bg-black/92 flex flex-col items-center justify-center p-4 sm:p-6"
                 onClick={() => setLightboxState(null)}
                 role="dialog"
                 aria-modal="true"

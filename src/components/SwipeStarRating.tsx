@@ -169,9 +169,9 @@ export function SwipeStarRating({
           onKeyDown={handleKeyDown}
           className={`relative inline-flex items-center gap-1 min-h-[44px] py-2.5 px-2 -my-2 -mx-2 rounded-lg touch-none select-none transition-transform ${
             isInteractive
-              ?'cursor-ew-resize hover:bg-[#F7F6F2] dark:hover:bg-[#323232] focus-visible:outline-2 focus-visible:outline-[#2C5937] dark:focus-visible:outline-[#E5E5E5]'
+              ?'cursor-ew-resize hover:bg-paper dark:hover:bg-night-elevated focus-visible:outline-2 focus-visible:outline-pine dark:focus-visible:outline-silver'
               :''
-          } ${draggingValue !== null ?'bg-[#F7F6F2] dark:bg-[#323232] scale-[1.03]':''}`}
+          } ${draggingValue !== null ?'bg-paper dark:bg-night-elevated scale-[1.03]':''}`}
         >
           {[1, 2, 3, 4, 5].map((starIndex) => {
             const fillRatio = Math.max(0, Math.min(1, displayValue - (starIndex - 1)));
@@ -200,8 +200,8 @@ export function SwipeStarRating({
           <span
             className={`font-mono text-xs tabular-nums transition-colors ${
               draggingValue !== null || hoverValue !== null
-                ?'font-semibold text-[#141413] bg-[#FEF08A] dark:bg-[#FACC15] px-2 py-0.5 rounded'
-                :'text-[#5C5C58] dark:text-[#A8A49B]'
+                ?'font-semibold text-ink bg-[#FEF08A] dark:bg-[#FACC15] px-2 py-0.5 rounded'
+                :'text-ink-muted dark:text-sandstone-light'
             }`}
           >
             {displayValue.toFixed(1)}
@@ -210,7 +210,7 @@ export function SwipeStarRating({
       </div>
 
       {showHint && isInteractive && (
-        <span className="text-[11px] text-[#787872] dark:text-[#8E8A82]">
+        <span className="text-[11px] text-ink-subtle dark:text-[#8E8A82]">
           Проведіть пальцем або мишею по зірочках (крок 0.1)
         </span>
       )}

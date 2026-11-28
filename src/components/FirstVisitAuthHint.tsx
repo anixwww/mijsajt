@@ -89,24 +89,24 @@ export function FirstVisitAuthHint({
           role="status"
           aria-live="polite"
           aria-label="Підказка про авторизацію"
-          className="fixed bottom-[76px] sm:bottom-[82px] left-3 right-3 sm:left-6 sm:right-auto sm:w-[372px] z-40 rounded-2xl bg-[#202020] border border-white/10 shadow-[0_18px_42px_-12px_rgba(0,0,0,0.8)] overflow-hidden"
+          className="fixed bottom-[76px] sm:bottom-[82px] left-3 right-3 sm:left-6 sm:right-auto sm:w-[372px] z-40 rounded-2xl bg-night-panel border border-white/10 shadow-[0_18px_42px_-12px_rgba(0,0,0,0.8)] overflow-hidden"
         >
           <div className="p-3.5 sm:p-4 space-y-3">
             <div className="flex items-start justify-between gap-2.5">
               <div className="flex items-start gap-2.5 min-w-0">
-                <span className="w-8 h-8 rounded-xl bg-[#323232] text-[#E5E5E5] flex items-center justify-center shrink-0 mt-0.5">
+                <span className="w-8 h-8 rounded-xl bg-night-elevated text-silver flex items-center justify-center shrink-0 mt-0.5">
                   <LogIn className="w-4 h-4" strokeWidth={1.9} />
                 </span>
                 <div className="min-w-0 space-y-1">
-                  <p className="text-xs sm:text-[13px] font-semibold text-[#FAF9F5] leading-snug">
+                  <p className="text-xs sm:text-[13px] font-semibold text-paper leading-snug">
                     Вперше на сайті?
                   </p>
-                  <p className="text-[11px] sm:text-xs text-[#C5C1B8] leading-relaxed">
+                  <p className="text-[11px] sm:text-xs text-parchment leading-relaxed">
                     Авторизація відкриє доступ до{' '}
-                    <span className="text-[#FAF9F5] font-medium">радіо</span>,{' '}
-                    <span className="text-[#FAF9F5] font-medium">глобального чату</span>{' '}
+                    <span className="text-paper font-medium">радіо</span>,{' '}
+                    <span className="text-paper font-medium">глобального чату</span>{' '}
                     та участі в{' '}
-                    <span className="text-[#FAF9F5] font-medium">рейтингу</span>.
+                    <span className="text-paper font-medium">рейтингу</span>.
                   </p>
                 </div>
               </div>
@@ -115,21 +115,21 @@ export function FirstVisitAuthHint({
                 type="button"
                 onClick={dismiss}
                 aria-label="Закрити підказку"
-                className="w-7 h-7 rounded-lg hover:bg-white/10 text-[#C4BFB4] hover:text-[#FAF9F5] flex items-center justify-center transition-colors shrink-0 cursor-pointer"
+                className="w-7 h-7 rounded-lg hover:bg-white/10 text-parchment hover:text-paper flex items-center justify-center transition-colors shrink-0 cursor-pointer"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
             </div>
 
             <div className="flex items-center justify-between gap-2 pt-0.5">
-              <div className="flex items-center gap-2 text-[11px] text-[#C4BFB4] min-w-0">
+              <div className="flex items-center gap-2 text-[11px] text-parchment min-w-0">
                 <span className="inline-flex items-center gap-1">
                   <Radio className="w-3 h-3 text-[#C4B5FD]" />
                   <span>Радіо</span>
                 </span>
                 <span aria-hidden="true">·</span>
                 <span className="inline-flex items-center gap-1">
-                  <MessagesSquare className="w-3 h-3 text-[#E5E5E5]" />
+                  <MessagesSquare className="w-3 h-3 text-silver" />
                   <span>Чат</span>
                 </span>
                 <span aria-hidden="true">·</span>
@@ -145,7 +145,7 @@ export function FirstVisitAuthHint({
                   dismiss();
                   onOpenAuthModal();
                 }}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#E5E5E5] text-[#181818] text-xs font-semibold hover:opacity-95 active:scale-[0.97] transition-all shrink-0 cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-silver text-night text-xs font-semibold hover:opacity-95 active:scale-[0.97] transition-all shrink-0 cursor-pointer"
               >
                 <LogIn className="w-3.5 h-3.5" strokeWidth={2} />
                 <span>Увійти</span>
@@ -163,7 +163,7 @@ export function FirstVisitAuthHint({
               animate={{ scaleX: 0 }}
               transition={{ duration: AUTO_HIDE_MS / 1000, ease: 'linear' }}
               style={{ transformOrigin: 'left' }}
-              className="h-full w-full bg-[#E5E5E5]/45"
+              className="h-full w-full bg-silver/45"
             />
           </div>
         </m.aside>

@@ -980,18 +980,18 @@ export const RadioEngine = memo(function RadioEngine({
       aria-hidden={!radioShowDirectEmbed || isPoetryImmersed}
       className={
         radioShowDirectEmbed && !isPoetryImmersed
-          ? 'fixed bottom-[76px] sm:bottom-[82px] right-3 sm:right-6 z-50 w-[min(calc(100vw-1.5rem),22rem)] rounded-2xl bg-[#202020] p-2 shadow-2xl space-y-1.5'
+          ? 'fixed bottom-[76px] sm:bottom-[82px] right-3 sm:right-6 z-50 w-[min(calc(100vw-1.5rem),22rem)] rounded-2xl bg-night-panel p-2 shadow-2xl space-y-1.5'
           : 'fixed bottom-0 right-0 w-[300px] h-[166px] opacity-[0.01] pointer-events-none -z-10'
       }
     >
       {radioShowDirectEmbed && !isPoetryImmersed && (
-        <div className="flex items-center justify-between px-1.5 text-[11px] text-[#C4BFB4]">
+        <div className="flex items-center justify-between px-1.5 text-[11px] text-parchment">
           <span className="truncate font-medium">Плеєр SoundCloud</span>
           <button
             type="button"
             onClick={() => setRadioShowDirectEmbed(false)}
             aria-label="Згорнути плеєр SoundCloud"
-            className="p-1 rounded-lg hover:bg-white/10 text-[#C4BFB4] hover:text-white cursor-pointer"
+            className="p-1 rounded-lg hover:bg-white/10 text-parchment hover:text-white cursor-pointer"
           >
             <X className="w-3.5 h-3.5" />
           </button>

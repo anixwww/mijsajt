@@ -112,7 +112,7 @@ export function ShareButton({ title, text, url, variant = 'inline', iconStyle }:
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.16 }}
-                className="fixed inset-0 z-[70] bg-[#141413]/45 dark:bg-black/70 backdrop-blur-xs flex items-center justify-center p-4"
+                className="fixed inset-0 z-[70] bg-ink/45 dark:bg-black/70 backdrop-blur-xs flex items-center justify-center p-4"
                 onClick={() => setMenuOpen(false)}
                 role="dialog"
                 aria-modal="true"
@@ -123,15 +123,15 @@ export function ShareButton({ title, text, url, variant = 'inline', iconStyle }:
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.97, y: 8 }}
                   transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-                  className="bg-[#F9F9F7] dark:bg-[#202020] rounded-2xl max-w-md w-full p-6 shadow-xl will-change-transform text-[#141413] dark:text-[#F4F1EA]"
+                  className="bg-paper dark:bg-night-panel rounded-2xl max-w-md w-full p-6 shadow-xl will-change-transform text-ink dark:text-cream"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <div className="flex items-start justify-between gap-4 pb-4">
                     <div className="min-w-0">
-                      <p className="text-xs text-[#5C5C58] dark:text-[#A8A49B] mb-1">Поділитися матеріалом</p>
+                      <p className="text-xs text-ink-muted dark:text-sandstone-light mb-1">Поділитися матеріалом</p>
                       <h4
                         id="share-dialog-title"
-                        className="font-serif text-2xl font-semibold text-[#141413] dark:text-[#F4F1EA] truncate"
+                        className="font-serif text-2xl font-semibold text-ink dark:text-cream truncate"
                       >
                         {title}
                       </h4>
@@ -139,7 +139,7 @@ export function ShareButton({ title, text, url, variant = 'inline', iconStyle }:
                     <button
                       type="button"
                       onClick={() => setMenuOpen(false)}
-                      className="p-1.5 text-[#5C5C58] dark:text-[#A8A49B] hover:text-[#141413] dark:hover:text-[#F4F1EA] hover:bg-[#EFECE6] dark:hover:bg-[#323232] rounded-md transition-colors cursor-pointer shrink-0"
+                      className="p-1.5 text-ink-muted dark:text-sandstone-light hover:text-ink dark:hover:text-cream hover:bg-paper-warm dark:hover:bg-night-elevated rounded-md transition-colors cursor-pointer shrink-0"
                       aria-label="Закрити вікно поширення"
                     >
                       <X className="w-4 h-4"/>
@@ -148,7 +148,7 @@ export function ShareButton({ title, text, url, variant = 'inline', iconStyle }:
 
                   <div className="pt-4 space-y-4">
                     <div>
-                      <label className="block text-xs font-medium text-[#5C5C58] dark:text-[#A8A49B] mb-1.5">
+                      <label className="block text-xs font-medium text-ink-muted dark:text-sandstone-light mb-1.5">
                         Пряме посилання
                       </label>
                       <div className="flex items-center gap-2">
@@ -157,7 +157,7 @@ export function ShareButton({ title, text, url, variant = 'inline', iconStyle }:
                           readOnly
                           value={url}
                           onFocus={(e) => e.target.select()}
-                          className="flex-1 min-w-0 px-3 py-2 text-xs font-mono text-[#141413] dark:text-[#F4F1EA] bg-white dark:bg-[#262626] rounded-md focus:outline-none"
+                          className="flex-1 min-w-0 px-3 py-2 text-xs font-mono text-ink dark:text-cream bg-white dark:bg-night-card rounded-md focus:outline-none"
                         />
                       <button
                         type="button"
@@ -166,7 +166,7 @@ export function ShareButton({ title, text, url, variant = 'inline', iconStyle }:
                       >
                         {copied ? (
                           <>
-                            <Check className="w-3.5 h-3.5 text-emerald-500 dark:text-[#181818] dark:group-hover:text-white"/>
+                            <Check className="w-3.5 h-3.5 text-emerald-500 dark:text-night dark:group-hover:text-white"/>
                             <span>Скопійовано</span>
                           </>
                         ) : (
@@ -178,14 +178,14 @@ export function ShareButton({ title, text, url, variant = 'inline', iconStyle }:
                       </button>
                     </div>
                     {copied && (
-                      <p className="text-[11px] font-medium text-emerald-800 dark:text-[#E5E5E5] mt-1.5"role="status">
+                      <p className="text-[11px] font-medium text-emerald-800 dark:text-silver mt-1.5"role="status">
                         Посилання скопійовано в буфер обміну.
                       </p>
                     )}
                   </div>
 
                   <div className="pt-3">
-                    <p className="text-xs font-medium text-[#5C5C58] dark:text-[#A8A49B] mb-2.5">
+                    <p className="text-xs font-medium text-ink-muted dark:text-sandstone-light mb-2.5">
                       Або надіслати через
                     </p>
                     <div className="grid grid-cols-2 gap-2">
@@ -195,13 +195,13 @@ export function ShareButton({ title, text, url, variant = 'inline', iconStyle }:
                           href={target.href}
                           target={target.isMail ? undefined :'_blank'}
                           rel={target.isMail ? undefined :'noopener noreferrer'}
-                          className="flex items-center justify-between px-3.5 py-2.5 text-xs font-medium text-[#141413] dark:text-[#F4F1EA] bg-white dark:bg-[#262626] hover:text-[#2C5937] dark:hover:text-[#FFFFFF] dark:hover:bg-[#323232] active:scale-[0.98] rounded-lg transition-all duration-150 whitespace-nowrap"
+                          className="flex items-center justify-between px-3.5 py-2.5 text-xs font-medium text-ink dark:text-cream bg-white dark:bg-night-card hover:text-pine dark:hover:text-[#FFFFFF] dark:hover:bg-night-elevated active:scale-[0.98] rounded-lg transition-all duration-150 whitespace-nowrap"
                         >
                           <span className="truncate">{target.label}</span>
                           {target.isMail ? (
-                            <Mail className="w-3.5 h-3.5 text-[#5C5C58] dark:text-[#A8A49B] shrink-0"strokeWidth={1.75} />
+                            <Mail className="w-3.5 h-3.5 text-ink-muted dark:text-sandstone-light shrink-0"strokeWidth={1.75} />
                           ) : (
-                            <ExternalLink className="w-3.5 h-3.5 text-[#5C5C58] dark:text-[#A8A49B] shrink-0"strokeWidth={1.75} />
+                            <ExternalLink className="w-3.5 h-3.5 text-ink-muted dark:text-sandstone-light shrink-0"strokeWidth={1.75} />
                           )}
                         </a>
                       ))}
@@ -210,10 +210,10 @@ export function ShareButton({ title, text, url, variant = 'inline', iconStyle }:
                         <button
                           type="button"
                           onClick={handleNativeShareFromMenu}
-                          className="flex items-center justify-between px-3.5 py-2.5 text-xs font-medium text-[#141413] dark:text-[#F4F1EA] bg-white dark:bg-[#262626] hover:text-[#2C5937] dark:hover:text-[#FFFFFF] dark:hover:bg-[#323232] active:scale-[0.98] rounded-lg transition-all duration-150 whitespace-nowrap cursor-pointer"
+                          className="flex items-center justify-between px-3.5 py-2.5 text-xs font-medium text-ink dark:text-cream bg-white dark:bg-night-card hover:text-pine dark:hover:text-[#FFFFFF] dark:hover:bg-night-elevated active:scale-[0.98] rounded-lg transition-all duration-150 whitespace-nowrap cursor-pointer"
                         >
                           <span>Інші додатки</span>
-                          <Share2 className="w-3.5 h-3.5 text-[#5C5C58] dark:text-[#A8A49B] shrink-0"strokeWidth={1.75} />
+                          <Share2 className="w-3.5 h-3.5 text-ink-muted dark:text-sandstone-light shrink-0"strokeWidth={1.75} />
                         </button>
                       )}
                     </div>
@@ -238,7 +238,7 @@ export function ShareButton({ title, text, url, variant = 'inline', iconStyle }:
           style={!copied ? iconStyle : undefined}
           className={`btn-editorial-icon ${
             copied
-              ? 'bg-emerald-50 dark:bg-[#323232] text-emerald-800 dark:text-[#E5E5E5] hover:bg-emerald-100 dark:hover:bg-[#3D3D3D] hover:text-emerald-900 dark:hover:text-[#FFFFFF]'
+              ? 'bg-emerald-50 dark:bg-night-elevated text-emerald-800 dark:text-silver hover:bg-emerald-100 dark:hover:bg-night-muted hover:text-emerald-900 dark:hover:text-[#FFFFFF]'
               : ''
           }`}
         >
@@ -256,7 +256,7 @@ export function ShareButton({ title, text, url, variant = 'inline', iconStyle }:
         >
           {copied ? (
             <>
-              <Check className="w-3.5 h-3.5 text-emerald-700 dark:text-[#E5E5E5]"strokeWidth={1.85} />
+              <Check className="w-3.5 h-3.5 text-emerald-700 dark:text-silver"strokeWidth={1.85} />
               <span>Посилання скопійовано</span>
             </>
           ) : (
@@ -270,13 +270,13 @@ export function ShareButton({ title, text, url, variant = 'inline', iconStyle }:
         <button
           type="button"
           onClick={handleShareClick}
-          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-[#5C5C58] dark:text-[#A8A49B] hover:text-[#2C5937] dark:hover:text-[#FFFFFF] hover:bg-[#F4F1EA] dark:hover:bg-[#323232] active:scale-[0.98] rounded-lg transition-all duration-150 whitespace-nowrap shrink-0 cursor-pointer"
+          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-ink-muted dark:text-sandstone-light hover:text-pine dark:hover:text-[#FFFFFF] hover:bg-cream dark:hover:bg-night-elevated active:scale-[0.98] rounded-lg transition-all duration-150 whitespace-nowrap shrink-0 cursor-pointer"
           aria-label={`Поділитися: ${title}`}
         >
           {copied ? (
             <>
-              <Check className="w-3.5 h-3.5 text-emerald-700 dark:text-[#E5E5E5]"strokeWidth={1.85} />
-              <span className="text-emerald-800 dark:text-[#E5E5E5]">Скопійовано</span>
+              <Check className="w-3.5 h-3.5 text-emerald-700 dark:text-silver"strokeWidth={1.85} />
+              <span className="text-emerald-800 dark:text-silver">Скопійовано</span>
             </>
           ) : (
             <>

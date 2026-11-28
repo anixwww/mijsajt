@@ -850,14 +850,14 @@ export const HeroSection = memo(function HeroSection({
 
   return (
     <section
-      className="hero-pine-bg w-full relative flex-1 flex flex-col justify-between overflow-hidden text-[#111E16] dark:text-[#F4F1EA] transition-colors duration-200"
+      className="hero-pine-bg w-full relative flex-1 flex flex-col justify-between overflow-hidden text-pine-night dark:text-cream transition-colors duration-200"
     >
 
       {/* Top Utility Strip with Auth Button (left) and Radio & Settings Burger Menu (right) */}
       <header className="relative z-20 w-full max-w-5xl mx-auto px-3 sm:px-6 pt-4 sm:pt-5 flex flex-col items-end gap-2">
         <div className="w-full flex items-center justify-between gap-1.5 sm:gap-2 min-w-0">
           <div
-            className="inline-flex shrink-0 items-center p-1 bg-[#EAE7DF] dark:bg-[#262626] rounded-xl gap-1 min-w-0"
+            className="inline-flex shrink-0 items-center p-1 bg-paper-sand dark:bg-night-card rounded-xl gap-1 min-w-0"
             role="group"
             aria-label="Акаунт гостя, радіо та рейтинг"
           >
@@ -1092,8 +1092,8 @@ export const HeroSection = memo(function HeroSection({
               }
               className={`touch-surface inline-flex items-center justify-center gap-1.5 min-h-[38px] sm:min-h-[40px] px-1.5 sm:px-3.5 py-1.5 sm:py-2 text-[11px] sm:text-xs rounded-lg transition-all duration-150 whitespace-nowrap shrink-0 cursor-pointer ${
                 guestUser
-                  ? 'bg-white dark:bg-[#323232] text-[#141413] dark:text-[#F4F1EA] font-semibold shadow-xs'
-                  : 'font-medium text-[#5C5C58] dark:text-[#C4BFB4] hover:text-[#141413] dark:hover:text-[#F4F1EA]'
+                  ? 'bg-white dark:bg-night-elevated text-ink dark:text-cream font-semibold shadow-xs'
+                  : 'font-medium text-ink-muted dark:text-parchment hover:text-ink dark:hover:text-cream'
               }`}
             >
               {guestUser ? (
@@ -1109,7 +1109,7 @@ export const HeroSection = memo(function HeroSection({
                       className="w-4 h-4 rounded-full object-cover shrink-0"
                     />
                   ) : (
-                    <User className="w-3.5 h-3.5 text-[#2C5937] dark:text-[#E5E5E5] shrink-0" strokeWidth={1.85} />
+                    <User className="w-3.5 h-3.5 text-pine dark:text-silver shrink-0" strokeWidth={1.85} />
                   )}
                   <span className="max-w-[58px] sm:max-w-[140px] truncate">
                     {guestUser.displayName}
@@ -1298,18 +1298,18 @@ export const HeroSection = memo(function HeroSection({
                 key={key}
                 type="button"
                 onClick={() => handleOpenModal(key)}
-                className="touch-surface group w-full text-left bg-[#FAFBF8] dark:bg-[#262626] hover:bg-white dark:hover:bg-[#323232] rounded-2xl px-3.5 py-3 shadow-[0_12px_28px_-20px_rgba(17,30,22,0.26)] dark:shadow-[0_14px_30px_-18px_rgba(0,0,0,0.68)] flex items-center gap-3.5 transition-all duration-150 active:scale-[0.985] cursor-pointer"
+                className="touch-surface group w-full text-left bg-paper dark:bg-night-card hover:bg-white dark:hover:bg-night-elevated rounded-2xl px-3.5 py-3 shadow-[0_12px_28px_-20px_rgba(17,30,22,0.26)] dark:shadow-[0_14px_30px_-18px_rgba(0,0,0,0.68)] flex items-center gap-3.5 transition-all duration-150 active:scale-[0.985] cursor-pointer"
               >
                 <span
-                  className="w-10 h-10 rounded-[11px] inline-flex items-center justify-center shrink-0 transition-all duration-150 group-hover:scale-[1.04] shadow-xs bg-[#EAE7DF] dark:bg-[#323232] text-[#5C5C58] dark:text-[#C4BFB4] group-hover:text-[#141413] dark:group-hover:text-[#F4F1EA]"
+                  className="w-10 h-10 rounded-[11px] inline-flex items-center justify-center shrink-0 transition-all duration-150 group-hover:scale-[1.04] shadow-xs bg-paper-sand dark:bg-night-elevated text-ink-muted dark:text-parchment group-hover:text-ink dark:group-hover:text-cream"
                 >
                   <HomeActionIcon kind={key} />
                 </span>
-                <span className="min-w-0 flex-1 text-[13.5px] sm:text-[14px] font-medium tracking-[-0.005em] dark:tracking-[0.005em] text-[#111E16] dark:text-[#F4F1EA] leading-snug">
+                <span className="min-w-0 flex-1 text-[13.5px] sm:text-[14px] font-medium tracking-[-0.005em] dark:tracking-[0.005em] text-pine-night dark:text-cream leading-snug">
                   {label}
                 </span>
                 <ChevronRight
-                  className="w-4 h-4 text-[#6A736C] dark:text-[#8E8E8E] group-hover:translate-x-0.5 group-hover:text-[#2C5937] dark:group-hover:text-[#F4F1EA] transition-all duration-150 shrink-0"
+                  className="w-4 h-4 text-[#6A736C] dark:text-[#8E8E8E] group-hover:translate-x-0.5 group-hover:text-pine dark:group-hover:text-cream transition-all duration-150 shrink-0"
                   strokeWidth={1.85}
                 />
               </button>
@@ -1350,7 +1350,7 @@ export const HeroSection = memo(function HeroSection({
                   onClick={(e) => e.stopPropagation()}
                   className={`w-full ${
                     selectedInterview ? 'max-w-2xl' : 'max-w-lg'
-                  } max-h-[85vh] overflow-y-auto bg-[#F9F9F5] dark:bg-[#202020] rounded-2xl p-6 sm:p-7 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.45)] text-[#141413] dark:text-[#F4F1EA] transition-[max-width] duration-200`}
+                  } max-h-[85vh] overflow-y-auto bg-paper dark:bg-night-panel rounded-2xl p-6 sm:p-7 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.45)] text-ink dark:text-cream transition-[max-width] duration-200`}
                 >
                   <div className="flex items-start justify-between gap-4 mb-5">
                     <div className="min-w-0 flex-1">
@@ -1359,14 +1359,14 @@ export const HeroSection = memo(function HeroSection({
                           <button
                             type="button"
                             onClick={() => setSelectedInterviewId(null)}
-                            className="inline-flex items-center gap-1.5 text-xs font-medium text-[#2C5937] dark:text-[#E5E5E5] hover:opacity-80 transition-opacity cursor-pointer"
+                            className="inline-flex items-center gap-1.5 text-xs font-medium text-pine dark:text-silver hover:opacity-80 transition-opacity cursor-pointer"
                           >
                             <ArrowLeft className="w-3.5 h-3.5" strokeWidth={2} />
                             <span>До списку розмов</span>
                           </button>
 
                           {(selectedInterview.outlet || selectedInterview.dateLabel) && (
-                            <div className="flex flex-wrap items-center gap-1.5 text-xs text-[#5C5C58] dark:text-[#C4BFB4]">
+                            <div className="flex flex-wrap items-center gap-1.5 text-xs text-ink-muted dark:text-parchment">
                               {selectedInterview.outlet && <span>{selectedInterview.outlet}</span>}
                               {selectedInterview.outlet && selectedInterview.dateLabel && (
                                 <span aria-hidden="true">·</span>
@@ -1377,7 +1377,7 @@ export const HeroSection = memo(function HeroSection({
 
                           <h3
                             id="home-action-modal-title"
-                            className="font-serif text-xl sm:text-2xl font-semibold tracking-[-0.015em] text-[#141413] dark:text-[#F4F1EA] leading-snug"
+                            className="font-serif text-xl sm:text-2xl font-semibold tracking-[-0.015em] text-ink dark:text-cream leading-snug"
                           >
                             {selectedInterview.title}
                           </h3>
@@ -1386,7 +1386,7 @@ export const HeroSection = memo(function HeroSection({
                         <>
                           <h3
                             id="home-action-modal-title"
-                            className="font-serif text-2xl sm:text-[26px] font-semibold tracking-[-0.01em] text-[#141413] dark:text-[#F4F1EA] leading-tight"
+                            className="font-serif text-2xl sm:text-[26px] font-semibold tracking-[-0.01em] text-ink dark:text-cream leading-tight"
                           >
                             {activeModal === 'about' && 'Про мене'}
                             {activeModal === 'contact' && (homeActionContactTitle || 'Зв’язок')}
@@ -1394,7 +1394,7 @@ export const HeroSection = memo(function HeroSection({
                             {activeModal === 'interviews' && 'Розмови'}
                           </h3>
                           {activeModal === 'monobank' && monobankModalSubtitle.trim().length > 0 && (
-                            <p className="text-xs text-[#5C5C58] dark:text-[#C4BFB4] mt-1">
+                            <p className="text-xs text-ink-muted dark:text-parchment mt-1">
                               {monobankModalSubtitle}
                             </p>
                           )}
@@ -1453,7 +1453,7 @@ export const HeroSection = memo(function HeroSection({
                             maxLength={2500}
                             value={aboutDraft}
                             onChange={(e) => setAboutDraft(e.target.value)}
-                            className="w-full px-3.5 py-2.5 text-sm leading-relaxed text-[#141413] dark:text-[#F4F1EA] bg-[#EFECE6] dark:bg-[#2A2A2A] rounded-xl focus:outline-none focus:bg-white dark:focus:bg-[#323232] transition-colors"
+                            className="w-full px-3.5 py-2.5 text-sm leading-relaxed text-ink dark:text-cream bg-paper-warm dark:bg-night-lift rounded-xl focus:outline-none focus:bg-white dark:focus:bg-night-elevated transition-colors"
                             aria-label="Текст блоку Про мене"
                           />
                           {aboutError && (
@@ -1475,7 +1475,7 @@ export const HeroSection = memo(function HeroSection({
                                 setAboutDraft(authorAboutText);
                                 setAboutError(null);
                               }}
-                              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-[#141413] dark:text-[#F4F1EA] bg-[#EAE7DF] dark:bg-[#323232] dark:hover:bg-[#3D3D3D] active:scale-[0.98] rounded-lg transition-all duration-150 whitespace-nowrap cursor-pointer"
+                              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-ink dark:text-cream bg-paper-sand dark:bg-night-elevated dark:hover:bg-night-muted active:scale-[0.98] rounded-lg transition-all duration-150 whitespace-nowrap cursor-pointer"
                             >
                               <X className="w-3.5 h-3.5" />
                               <span>Скасувати</span>
@@ -1483,7 +1483,7 @@ export const HeroSection = memo(function HeroSection({
                           </div>
                         </form>
                       ) : aboutParagraphs.length > 0 ? (
-                        <div className="p-5 rounded-xl bg-white dark:bg-[#262626] space-y-3.5 text-[15px] leading-[1.74] text-[#1E3025] dark:text-[#D4D4D4]">
+                        <div className="p-5 rounded-xl bg-white dark:bg-night-card space-y-3.5 text-[15px] leading-[1.74] text-[#1E3025] dark:text-[#D4D4D4]">
                           {aboutParagraphs.map((paragraph, index) => (
                             <p key={index} className="whitespace-pre-line">
                               {paragraph}
@@ -1491,8 +1491,8 @@ export const HeroSection = memo(function HeroSection({
                           ))}
                         </div>
                       ) : (
-                        <div className="p-5 rounded-xl bg-white dark:bg-[#262626] text-center space-y-3">
-                          <p className="text-sm text-[#5C5C58] dark:text-[#A8A49B]">
+                        <div className="p-5 rounded-xl bg-white dark:bg-night-card text-center space-y-3">
+                          <p className="text-sm text-ink-muted dark:text-sandstone-light">
                             Інформації поки що немає.
                           </p>
                           {isAdmin && (
@@ -1518,7 +1518,7 @@ export const HeroSection = memo(function HeroSection({
                           <div>
                             <label
                               htmlFor="contact-email-inline"
-                              className="block text-xs font-medium text-[#5C5C58] dark:text-[#A8A49B] mb-1"
+                              className="block text-xs font-medium text-ink-muted dark:text-sandstone-light mb-1"
                             >
                               Електронна пошта
                             </label>
@@ -1528,14 +1528,14 @@ export const HeroSection = memo(function HeroSection({
                               value={contactEmailDraft}
                               onChange={(e) => setContactEmailDraft(e.target.value)}
                               placeholder="email@example.com"
-                              className="w-full px-3.5 py-2.5 text-sm bg-[#EFECE6] dark:bg-[#2A2A2A] text-[#141413] dark:text-[#F4F1EA] placeholder:text-[#8E8B82] rounded-xl focus:outline-none focus:bg-white dark:focus:bg-[#323232] transition-colors"
+                              className="w-full px-3.5 py-2.5 text-sm bg-paper-warm dark:bg-night-lift text-ink dark:text-cream placeholder:text-stone-warm rounded-xl focus:outline-none focus:bg-white dark:focus:bg-night-elevated transition-colors"
                             />
                           </div>
 
                           <div>
                             <label
                               htmlFor="contact-telegram-inline"
-                              className="block text-xs font-medium text-[#5C5C58] dark:text-[#A8A49B] mb-1"
+                              className="block text-xs font-medium text-ink-muted dark:text-sandstone-light mb-1"
                             >
                               Посилання на Telegram (@username або URL)
                             </label>
@@ -1545,7 +1545,7 @@ export const HeroSection = memo(function HeroSection({
                               value={contactTelegramDraft}
                               onChange={(e) => setContactTelegramDraft(e.target.value)}
                               placeholder="https://t.me/username або @username"
-                              className="w-full px-3.5 py-2.5 text-sm bg-[#EFECE6] dark:bg-[#2A2A2A] text-[#141413] dark:text-[#F4F1EA] placeholder:text-[#8E8B82] rounded-xl focus:outline-none focus:bg-white dark:focus:bg-[#323232] transition-colors"
+                              className="w-full px-3.5 py-2.5 text-sm bg-paper-warm dark:bg-night-lift text-ink dark:text-cream placeholder:text-stone-warm rounded-xl focus:outline-none focus:bg-white dark:focus:bg-night-elevated transition-colors"
                             />
                           </div>
 
@@ -1574,7 +1574,7 @@ export const HeroSection = memo(function HeroSection({
                                 );
                                 setContactEditError(null);
                               }}
-                              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-[#141413] dark:text-[#F4F1EA] bg-[#EAE7DF] dark:bg-[#323232] dark:hover:bg-[#3D3D3D] active:scale-[0.98] rounded-lg transition-all duration-150 whitespace-nowrap cursor-pointer"
+                              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-ink dark:text-cream bg-paper-sand dark:bg-night-elevated dark:hover:bg-night-muted active:scale-[0.98] rounded-lg transition-all duration-150 whitespace-nowrap cursor-pointer"
                             >
                               <X className="w-3.5 h-3.5" />
                               <span>Скасувати</span>
@@ -1593,8 +1593,8 @@ export const HeroSection = memo(function HeroSection({
 
                         if (!hasEmail && !hasTelegram) {
                           return (
-                            <div className="p-5 rounded-xl bg-white dark:bg-[#262626] space-y-3 text-center">
-                              <p className="text-sm text-[#5C5C58] dark:text-[#A8A49B]">
+                            <div className="p-5 rounded-xl bg-white dark:bg-night-card space-y-3 text-center">
+                              <p className="text-sm text-ink-muted dark:text-sandstone-light">
                                 Пошта та посилання на Telegram ще не вказані.
                               </p>
                               {isAdmin && (
@@ -1614,9 +1614,9 @@ export const HeroSection = memo(function HeroSection({
                         return (
                           <div className="space-y-3">
                             {hasEmail && (
-                              <div className="p-4 sm:p-5 rounded-xl bg-white dark:bg-[#262626] space-y-2">
+                              <div className="p-4 sm:p-5 rounded-xl bg-white dark:bg-night-card space-y-2">
                                 <div className="flex items-center justify-between gap-2">
-                                  <p className="text-[11px] font-medium uppercase tracking-wider text-[#5C5C58] dark:text-[#C4BFB4]">
+                                  <p className="text-[11px] font-medium uppercase tracking-wider text-ink-muted dark:text-parchment">
                                     Електронна пошта
                                   </p>
                                   <div className="flex items-center gap-1.5 shrink-0">
@@ -1625,10 +1625,10 @@ export const HeroSection = memo(function HeroSection({
                                       onClick={() => handleCopyText(contactEmail, 'email')}
                                       title={copiedEmail ? 'Пошту скопійовано' : 'Скопіювати пошту'}
                                       aria-label={copiedEmail ? 'Пошту скопійовано' : 'Скопіювати пошту'}
-                                      className="inline-flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-[#EAE7DF] dark:bg-[#323232] text-[#141413] dark:text-[#F4F1EA] hover:opacity-85 transition-opacity cursor-pointer"
+                                      className="inline-flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-paper-sand dark:bg-night-elevated text-ink dark:text-cream hover:opacity-85 transition-opacity cursor-pointer"
                                     >
                                       {copiedEmail ? (
-                                        <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#2C5937] dark:text-[#E5E5E5]" strokeWidth={2} />
+                                        <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-pine dark:text-silver" strokeWidth={2} />
                                       ) : (
                                         <Copy className="w-3.5 h-3.5 sm:w-4 sm:h-4" strokeWidth={1.85} />
                                       )}
@@ -1645,7 +1645,7 @@ export const HeroSection = memo(function HeroSection({
                                 </div>
                                 <a
                                   href={`mailto:${contactEmail}`}
-                                  className="block text-[13px] sm:text-[15px] font-semibold text-[#2C5937] dark:text-[#E5E5E5] hover:underline break-words"
+                                  className="block text-[13px] sm:text-[15px] font-semibold text-pine dark:text-silver hover:underline break-words"
                                 >
                                   {contactEmail}
                                 </a>
@@ -1657,22 +1657,22 @@ export const HeroSection = memo(function HeroSection({
                                 href={tg.url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="w-full touch-surface flex items-center justify-between gap-3 p-4 sm:p-5 rounded-xl bg-white dark:bg-[#262626] hover:bg-[#F3F1EA] dark:hover:bg-[#323232] transition-colors group"
+                                className="w-full touch-surface flex items-center justify-between gap-3 p-4 sm:p-5 rounded-xl bg-white dark:bg-night-card hover:bg-paper-warm dark:hover:bg-night-elevated transition-colors group"
                               >
                                 <div className="flex items-center gap-3 min-w-0">
                                   <span className="w-10 h-10 rounded-xl bg-pear-pine-gradient text-white inline-flex items-center justify-center shrink-0 shadow-xs">
                                     <SocialPlatformIcon platform="telegram" className="w-4 h-4" />
                                   </span>
                                   <div className="min-w-0">
-                                    <p className="text-[11px] font-medium uppercase tracking-wider text-[#5C5C58] dark:text-[#C4BFB4]">
+                                    <p className="text-[11px] font-medium uppercase tracking-wider text-ink-muted dark:text-parchment">
                                       Telegram
                                     </p>
-                                    <p className="text-sm sm:text-base font-semibold text-[#141413] dark:text-[#F4F1EA] truncate">
+                                    <p className="text-sm sm:text-base font-semibold text-ink dark:text-cream truncate">
                                       {tgHandle.startsWith('@') ? tgHandle : 'Написати у Telegram'}
                                     </p>
                                   </div>
                                 </div>
-                                <ExternalLink className="w-4 h-4 text-[#5C5C58] dark:text-[#C4BFB4] group-hover:text-[#2C5937] dark:group-hover:text-[#F4F1EA] shrink-0 transition-colors" />
+                                <ExternalLink className="w-4 h-4 text-ink-muted dark:text-parchment group-hover:text-pine dark:group-hover:text-cream shrink-0 transition-colors" />
                               </a>
                             )}
                           </div>
@@ -1685,23 +1685,23 @@ export const HeroSection = memo(function HeroSection({
                   {activeModal === 'monobank' && (
                     <div className="space-y-4">
                       {(monobankCardLabel.trim().length > 0 || monobankModalText.trim().length > 0) && (
-                        <div className="p-4 sm:p-5 rounded-xl bg-white dark:bg-[#262626] space-y-2.5">
+                        <div className="p-4 sm:p-5 rounded-xl bg-white dark:bg-night-card space-y-2.5">
                           <div className="flex flex-wrap items-center justify-between gap-2">
                             {monobankCardLabel.trim().length > 0 && (
-                              <div className="inline-flex items-center gap-2 text-xs font-semibold text-[#2C5937] dark:text-[#E5E5E5]">
+                              <div className="inline-flex items-center gap-2 text-xs font-semibold text-pine dark:text-silver">
                                 <Heart className="w-4 h-4" strokeWidth={1.85} />
                                 <span>{monobankCardLabel}</span>
                               </div>
                             )}
                             {jarInfo?.enabled && typeof jarInfo.amountUah === 'number' && (
-                              <span className="font-mono text-xs font-semibold text-[#2C5937] dark:text-emerald-400 tabular-nums">
+                              <span className="font-mono text-xs font-semibold text-pine dark:text-emerald-400 tabular-nums">
                                 У банці: {jarInfo.amountUah.toLocaleString('uk-UA')} ₴
                                 {jarInfo.goalUah ? ` / ${jarInfo.goalUah.toLocaleString('uk-UA')} ₴` : ''}
                               </span>
                             )}
                           </div>
                           {monobankModalText.trim().length > 0 && (
-                            <p className="text-sm text-[#3A3A37] dark:text-[#D4D4D4] leading-relaxed whitespace-pre-line">
+                            <p className="text-sm text-night-soft dark:text-[#D4D4D4] leading-relaxed whitespace-pre-line">
                               {monobankModalText}
                             </p>
                           )}
@@ -1711,8 +1711,8 @@ export const HeroSection = memo(function HeroSection({
                       {monobankJarUrl ? (
                         <div className="space-y-2.5">
                           {guestUser ? (
-                            <p className="text-xs text-[#5C5C58] dark:text-[#A8A49B] px-1">
-                              Донат автоматично зарахується у рейтинг на ім’я <strong className="text-[#141413] dark:text-[#F4F1EA]">{guestUser.displayName}</strong>.
+                            <p className="text-xs text-ink-muted dark:text-sandstone-light px-1">
+                              Донат автоматично зарахується у рейтинг на ім’я <strong className="text-ink dark:text-cream">{guestUser.displayName}</strong>.
                             </p>
                           ) : (
                             <div className="space-y-1">
@@ -1754,13 +1754,13 @@ export const HeroSection = memo(function HeroSection({
                           )}
 
                           {(jarCheckState === 'watching' || jarCheckState === 'checking') && (
-                            <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-[#EAE7DF]/70 dark:bg-[#2A2A2A] text-xs text-[#3A3A37] dark:text-[#D4D4D4]">
+                            <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-paper-sand/70 dark:bg-night-lift text-xs text-night-soft dark:text-[#D4D4D4]">
                               <span>Очікуємо переказ у банку…</span>
                               <button
                                 type="button"
                                 disabled={jarCheckState === 'checking'}
                                 onClick={() => void checkMonobankDonation(true)}
-                                className="inline-flex items-center gap-1.5 font-semibold text-[#2C5937] dark:text-[#F4F1EA] hover:underline cursor-pointer whitespace-nowrap shrink-0 disabled:opacity-50"
+                                className="inline-flex items-center gap-1.5 font-semibold text-pine dark:text-cream hover:underline cursor-pointer whitespace-nowrap shrink-0 disabled:opacity-50"
                               >
                                 <RefreshCw
                                   className={`w-3.5 h-3.5 ${jarCheckState === 'checking' ? 'animate-spin' : ''}`}
@@ -1771,7 +1771,7 @@ export const HeroSection = memo(function HeroSection({
                           )}
 
                           {jarStatusNote && (
-                            <p className="text-[11px] text-[#5C5C58] dark:text-[#A8A49B] px-1">
+                            <p className="text-[11px] text-ink-muted dark:text-sandstone-light px-1">
                               {jarStatusNote}
                             </p>
                           )}
@@ -1780,11 +1780,11 @@ export const HeroSection = memo(function HeroSection({
                             <button
                               type="button"
                               onClick={() => handleCopyText(monobankJarUrl, 'monobank')}
-                              className="flex-1 touch-surface inline-flex items-center justify-center gap-2 min-h-[42px] px-4 py-2 text-xs font-medium text-[#141413] dark:text-[#F4F1EA] bg-[#EAE7DF] dark:bg-[#323232] hover:bg-[#E1DDD3] dark:hover:bg-[#3D3D3D] rounded-xl transition-colors cursor-pointer whitespace-nowrap shrink-0"
+                              className="flex-1 touch-surface inline-flex items-center justify-center gap-2 min-h-[42px] px-4 py-2 text-xs font-medium text-ink dark:text-cream bg-paper-sand dark:bg-night-elevated hover:bg-paper-stone dark:hover:bg-night-muted rounded-xl transition-colors cursor-pointer whitespace-nowrap shrink-0"
                             >
                               {copiedMonobank ? (
                                 <>
-                                  <Check className="w-3.5 h-3.5 text-[#2C5937] dark:text-[#E5E5E5]" />
+                                  <Check className="w-3.5 h-3.5 text-pine dark:text-silver" />
                                   <span>Посилання скопійовано</span>
                                 </>
                               ) : (
@@ -1799,7 +1799,7 @@ export const HeroSection = memo(function HeroSection({
                               <button
                                 type="button"
                                 onClick={() => void checkMonobankDonation(true)}
-                                className="touch-surface inline-flex items-center justify-center gap-1.5 min-h-[42px] px-3.5 py-2 text-xs font-medium text-[#2C5937] dark:text-[#E5E5E5] bg-[#EAE7DF] dark:bg-[#323232] hover:bg-[#E1DDD3] dark:hover:bg-[#3D3D3D] rounded-xl transition-colors cursor-pointer whitespace-nowrap shrink-0"
+                                className="touch-surface inline-flex items-center justify-center gap-1.5 min-h-[42px] px-3.5 py-2 text-xs font-medium text-pine dark:text-silver bg-paper-sand dark:bg-night-elevated hover:bg-paper-stone dark:hover:bg-night-muted rounded-xl transition-colors cursor-pointer whitespace-nowrap shrink-0"
                               >
                                 <RefreshCw className="w-3.5 h-3.5" />
                                 <span>Я вже задонатив</span>
@@ -1810,7 +1810,7 @@ export const HeroSection = memo(function HeroSection({
                       ) : (
                         <div className="space-y-3">
                           {monobankEmptyText.trim().length > 0 && (
-                            <p className="text-xs text-[#5C5C58] dark:text-[#A8A49B] leading-relaxed whitespace-pre-line">
+                            <p className="text-xs text-ink-muted dark:text-sandstone-light leading-relaxed whitespace-pre-line">
                               {monobankEmptyText}
                             </p>
                           )}
@@ -1830,7 +1830,7 @@ export const HeroSection = memo(function HeroSection({
                                   setActiveModal(null);
                                   onOpenAuthorStudio();
                                 }}
-                                className="touch-surface inline-flex items-center justify-center gap-2 min-h-[42px] px-4 py-2 text-xs font-medium text-[#141413] dark:text-[#F4F1EA] bg-[#EAE7DF] dark:bg-[#323232] dark:hover:bg-[#3D3D3D] rounded-xl cursor-pointer"
+                                className="touch-surface inline-flex items-center justify-center gap-2 min-h-[42px] px-4 py-2 text-xs font-medium text-ink dark:text-cream bg-paper-sand dark:bg-night-elevated dark:hover:bg-night-muted rounded-xl cursor-pointer"
                               >
                                 <Settings2 className="w-3.5 h-3.5" />
                                 <span>Додати банку</span>
@@ -1848,7 +1848,7 @@ export const HeroSection = memo(function HeroSection({
                       {selectedInterview ? (
                         <div className="space-y-5">
                           {selectedInterview.content && (
-                            <div className="p-5 sm:p-6 rounded-xl bg-white dark:bg-[#262626] text-[15px] sm:text-base leading-[1.78] text-[#1C1C1A] dark:text-[#E5E2DA] whitespace-pre-line">
+                            <div className="p-5 sm:p-6 rounded-xl bg-white dark:bg-night-card text-[15px] sm:text-base leading-[1.78] text-[#1C1C1A] dark:text-[#E5E2DA] whitespace-pre-line">
                               {selectedInterview.content}
                             </div>
                           )}
@@ -1857,7 +1857,7 @@ export const HeroSection = memo(function HeroSection({
                             <button
                               type="button"
                               onClick={() => setSelectedInterviewId(null)}
-                              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-[#5C5C58] dark:text-[#A8A49B] hover:text-[#141413] dark:hover:text-[#F4F1EA] bg-[#EAE7DF] dark:bg-[#323232] hover:bg-[#E1DDD2] dark:hover:bg-[#3D3D3D] rounded-xl transition-colors cursor-pointer"
+                              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-ink-muted dark:text-sandstone-light hover:text-ink dark:hover:text-cream bg-paper-sand dark:bg-night-elevated hover:bg-paper-stone dark:hover:bg-night-muted rounded-xl transition-colors cursor-pointer"
                             >
                               <ArrowLeft className="w-3.5 h-3.5" strokeWidth={1.85} />
                               <span>Усі розмови</span>
@@ -1884,8 +1884,8 @@ export const HeroSection = memo(function HeroSection({
                           </div>
                         </div>
                       ) : interviews.length === 0 ? (
-                        <div className="p-6 rounded-xl bg-white dark:bg-[#262626] text-center space-y-3">
-                          <p className="text-sm text-[#5C5C58] dark:text-[#A8A49B]">
+                        <div className="p-6 rounded-xl bg-white dark:bg-night-card text-center space-y-3">
+                          <p className="text-sm text-ink-muted dark:text-sandstone-light">
                             Розмов поки що немає.
                           </p>
                           {isAdmin && (
@@ -1913,27 +1913,27 @@ export const HeroSection = memo(function HeroSection({
                                   trackClick(`interview:${item.id}`, `Розмова: «${item.title}»`, 'action');
                                   setSelectedInterviewId(item.id);
                                 }}
-                                className="touch-surface group w-full text-left block p-4 rounded-xl bg-white dark:bg-[#262626] hover:bg-[#F3F5EE] dark:hover:bg-[#323232] transition-colors duration-150 cursor-pointer"
+                                className="touch-surface group w-full text-left block p-4 rounded-xl bg-white dark:bg-night-card hover:bg-[#F3F5EE] dark:hover:bg-night-elevated transition-colors duration-150 cursor-pointer"
                               >
                                 <div className="flex items-start justify-between gap-3">
                                   <div className="min-w-0 flex-1 space-y-1.5">
                                     {(item.outlet || item.dateLabel) && (
-                                      <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-medium text-[#5C5C58] dark:text-[#C4BFB4]">
+                                      <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-medium text-ink-muted dark:text-parchment">
                                         {item.outlet && <span>{item.outlet}</span>}
                                         {item.outlet && item.dateLabel && <span aria-hidden="true">·</span>}
                                         {item.dateLabel && <span>{item.dateLabel}</span>}
                                       </div>
                                     )}
-                                    <h4 className="font-serif text-base sm:text-lg font-semibold text-[#141413] dark:text-[#F4F1EA] group-hover:text-[#2C5937] dark:group-hover:text-[#F5F5F5] leading-snug transition-colors">
+                                    <h4 className="font-serif text-base sm:text-lg font-semibold text-ink dark:text-cream group-hover:text-pine dark:group-hover:text-[#F5F5F5] leading-snug transition-colors">
                                       {item.title}
                                     </h4>
                                     {item.content && (
-                                      <p className="text-xs text-[#5C5C58] dark:text-[#A8A49B] line-clamp-2 leading-relaxed">
+                                      <p className="text-xs text-ink-muted dark:text-sandstone-light line-clamp-2 leading-relaxed">
                                         {item.content}
                                       </p>
                                     )}
                                   </div>
-                                  <span className="w-8 h-8 rounded-lg bg-[#EAE7DF] dark:bg-[#323232] text-[#5C5C58] dark:text-[#A8A49B] group-hover:bg-pear-pine-gradient group-hover:text-white dark:group-hover:text-white inline-flex items-center justify-center shrink-0 transition-all duration-150">
+                                  <span className="w-8 h-8 rounded-lg bg-paper-sand dark:bg-night-elevated text-ink-muted dark:text-sandstone-light group-hover:bg-pear-pine-gradient group-hover:text-white dark:group-hover:text-white inline-flex items-center justify-center shrink-0 transition-all duration-150">
                                     <ChevronRight className="w-4 h-4" strokeWidth={1.85} />
                                   </span>
                                 </div>
@@ -1950,22 +1950,22 @@ export const HeroSection = memo(function HeroSection({
                               onClick={() =>
                                 trackClick(`interview:${item.id}`, `Розмова: «${item.title}»`, 'action')
                               }
-                              className="touch-surface group block p-4 rounded-xl bg-white dark:bg-[#262626] hover:bg-[#F3F5EE] dark:hover:bg-[#323232] transition-colors duration-150"
+                              className="touch-surface group block p-4 rounded-xl bg-white dark:bg-night-card hover:bg-[#F3F5EE] dark:hover:bg-night-elevated transition-colors duration-150"
                             >
                               <div className="flex items-start justify-between gap-3">
                                 <div className="min-w-0 flex-1 space-y-1">
                                   {(item.outlet || item.dateLabel) && (
-                                    <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-medium text-[#5C5C58] dark:text-[#C4BFB4]">
+                                    <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-medium text-ink-muted dark:text-parchment">
                                       {item.outlet && <span>{item.outlet}</span>}
                                       {item.outlet && item.dateLabel && <span aria-hidden="true">·</span>}
                                       {item.dateLabel && <span>{item.dateLabel}</span>}
                                     </div>
                                   )}
-                                  <h4 className="font-serif text-base sm:text-lg font-semibold text-[#141413] dark:text-[#F4F1EA] group-hover:text-[#2C5937] dark:group-hover:text-[#F5F5F5] leading-snug transition-colors">
+                                  <h4 className="font-serif text-base sm:text-lg font-semibold text-ink dark:text-cream group-hover:text-pine dark:group-hover:text-[#F5F5F5] leading-snug transition-colors">
                                     {item.title}
                                   </h4>
                                 </div>
-                                <span className="w-8 h-8 rounded-lg bg-[#EAE7DF] dark:bg-[#323232] text-[#5C5C58] dark:text-[#A8A49B] group-hover:bg-pear-pine-gradient group-hover:text-white dark:group-hover:text-white inline-flex items-center justify-center shrink-0 transition-all duration-150">
+                                <span className="w-8 h-8 rounded-lg bg-paper-sand dark:bg-night-elevated text-ink-muted dark:text-sandstone-light group-hover:bg-pear-pine-gradient group-hover:text-white dark:group-hover:text-white inline-flex items-center justify-center shrink-0 transition-all duration-150">
                                   <ArrowUpRight className="w-4 h-4" strokeWidth={1.85} />
                                 </span>
                               </div>

@@ -647,8 +647,8 @@ export function StudioHomeTab({
               onClick={() => setSubTab(t.id)}
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
                 active
-                  ? 'bg-[#141413] dark:bg-[#EDEAE1] text-white dark:text-[#181818] font-semibold'
-                  : 'text-[#5C5C58] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-[#EDEAE1] hover:bg-[#F5F4EE] dark:hover:bg-[#323232]'
+                  ? 'bg-ink dark:bg-cream-soft text-white dark:text-night font-semibold'
+                  : 'text-ink-muted dark:text-sandstone hover:text-ink dark:hover:text-cream-soft hover:bg-paper-oat dark:hover:bg-night-elevated'
               }`}
             >
               <span>{t.label}</span>
@@ -656,7 +656,7 @@ export function StudioHomeTab({
                 <span
                   className={`font-mono text-[11px] tabular-nums ${
                     t.highlight && !active
-                      ? 'text-[#2C5937] dark:text-[#E5E5E5] font-semibold'
+                      ? 'text-pine dark:text-silver font-semibold'
                       : 'opacity-75'
                   }`}
                 >
@@ -688,7 +688,7 @@ export function StudioHomeTab({
           </div>
 
           <div className="pt-3 space-y-4">
-            <p className="text-xs font-semibold text-[#141413] dark:text-[#EDEAE1]">
+            <p className="text-xs font-semibold text-ink dark:text-cream-soft">
               Назви чотирьох кнопок під фото на головній
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -716,7 +716,7 @@ export function StudioHomeTab({
                 <button
                   type="button"
                   onClick={() => setSubTab('contacts')}
-                  className="mt-1.5 text-[11px] font-medium text-[#2C5937] dark:text-[#E5E5E5] hover:underline cursor-pointer"
+                  className="mt-1.5 text-[11px] font-medium text-pine dark:text-silver hover:underline cursor-pointer"
                 >
                   Редагувати пошту і Telegram →
                 </button>
@@ -734,7 +734,7 @@ export function StudioHomeTab({
                 <button
                   type="button"
                   onClick={() => setSubTab('contacts')}
-                  className="mt-1.5 text-[11px] font-medium text-[#2C5937] dark:text-[#E5E5E5] hover:underline cursor-pointer"
+                  className="mt-1.5 text-[11px] font-medium text-pine dark:text-silver hover:underline cursor-pointer"
                 >
                   Редагувати текст вікна Монобанки →
                 </button>
@@ -764,33 +764,33 @@ export function StudioHomeTab({
       {subTab === 'repeaters' && (
         <form onSubmit={handleSaveRepeaters} className="max-w-3xl space-y-5">
           <div className="space-y-1">
-            <p className="text-xs font-semibold text-[#141413] dark:text-[#EDEAE1]">
+            <p className="text-xs font-semibold text-ink dark:text-cream-soft">
               Що відображається в ретрансляторах на головній
             </p>
-            <p className="text-xs text-[#5C5C58] dark:text-[#A6A196]">
+            <p className="text-xs text-ink-muted dark:text-sandstone">
               Оберіть добірку та кількість елементів для кожного з чотирьох блоків вітрини.
             </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Вірші */}
-            <div className="p-4 rounded-xl bg-[#FAF9F5] dark:bg-[#262626] space-y-2.5 flex flex-col justify-between">
+            <div className="p-4 rounded-xl bg-paper dark:bg-night-card space-y-2.5 flex flex-col justify-between">
               <div className="space-y-1.5">
-                <p className="text-xs font-semibold text-[#141413] dark:text-[#EDEAE1]">
+                <p className="text-xs font-semibold text-ink dark:text-cream-soft">
                   Ретранслятор «Вірші»
                 </p>
-                <p className="text-xs text-[#5C5C58] dark:text-[#A6A196] leading-relaxed">
+                <p className="text-xs text-ink-muted dark:text-sandstone leading-relaxed">
                   Автоматично чергує твори автора (адміністратора) та вірші користувачів: один показ — твір автора, наступний — твір читача.
                 </p>
               </div>
-              <div className="text-[11px] font-mono text-[#2C5937] dark:text-[#E5E5E5] opacity-85">
+              <div className="text-[11px] font-mono text-pine dark:text-silver opacity-85">
                 Режим: чергування (Адмін ↔ Користувач)
               </div>
             </div>
 
             {/* Проза */}
-            <div className="p-4 rounded-xl bg-[#FAF9F5] dark:bg-[#262626] space-y-3">
-              <p className="text-xs font-semibold text-[#141413] dark:text-[#EDEAE1]">
+            <div className="p-4 rounded-xl bg-paper dark:bg-night-card space-y-3">
+              <p className="text-xs font-semibold text-ink dark:text-cream-soft">
                 Ретранслятор «Проза»
               </p>
               <div>
@@ -833,8 +833,8 @@ export function StudioHomeTab({
             </div>
 
             {/* Блог */}
-            <div className="p-4 rounded-xl bg-[#FAF9F5] dark:bg-[#262626] space-y-3">
-              <p className="text-xs font-semibold text-[#141413] dark:text-[#EDEAE1]">
+            <div className="p-4 rounded-xl bg-paper dark:bg-night-card space-y-3">
+              <p className="text-xs font-semibold text-ink dark:text-cream-soft">
                 Ретранслятор «БДК»
               </p>
               <div>
@@ -876,8 +876,8 @@ export function StudioHomeTab({
             </div>
 
             {/* Крамниця */}
-            <div className="p-4 rounded-xl bg-[#FAF9F5] dark:bg-[#262626] space-y-3">
-              <p className="text-xs font-semibold text-[#141413] dark:text-[#EDEAE1]">
+            <div className="p-4 rounded-xl bg-paper dark:bg-night-card space-y-3">
+              <p className="text-xs font-semibold text-ink dark:text-cream-soft">
                 Ретранслятор «Крамниця»
               </p>
               <div>
@@ -933,7 +933,7 @@ export function StudioHomeTab({
       {subTab === 'profile' && (
         <form onSubmit={handleSaveAuthorProfile} className="max-w-3xl space-y-5">
           <div>
-            <p className="text-xs text-[#5C5C58] dark:text-[#A6A196] mb-3">
+            <p className="text-xs text-ink-muted dark:text-sandstone mb-3">
               Фото плавно змінюються на головній сторінці (до 20 фото). Перше фото є головним.
             </p>
             {photosDraft.length > 0 ? (
@@ -941,7 +941,7 @@ export function StudioHomeTab({
                 {photosDraft.map((url, idx) => (
                   <div
                     key={`${url}-${idx}`}
-                    className="relative group rounded-xl overflow-hidden bg-[#F5F4EE] dark:bg-[#262626]"
+                    className="relative group rounded-xl overflow-hidden bg-paper-oat dark:bg-night-card"
                   >
                     <EditorialImage
                       key={url}
@@ -991,7 +991,7 @@ export function StudioHomeTab({
                 ))}
               </div>
             ) : (
-              <div className="p-4 rounded-xl bg-[#FAF9F5] dark:bg-[#262626] text-xs text-[#5C5C58] dark:text-[#A6A196]">
+              <div className="p-4 rounded-xl bg-paper dark:bg-night-card text-xs text-ink-muted dark:text-sandstone">
                 Список порожній — при збереженні відновиться стандартний портрет.
               </div>
             )}
@@ -1066,8 +1066,8 @@ export function StudioHomeTab({
       {subTab === 'contacts' && (
         <form onSubmit={handleSaveContactsAndSocials} className="max-w-2xl space-y-6">
           <div className="space-y-4">
-            <p className="text-xs font-semibold text-[#141413] dark:text-[#EDEAE1] flex items-center gap-2">
-              <Heart className="w-4 h-4 text-[#2C5937] dark:text-[#E5E5E5]" />
+            <p className="text-xs font-semibold text-ink dark:text-cream-soft flex items-center gap-2">
+              <Heart className="w-4 h-4 text-pine dark:text-silver" />
               <span>Прямий зв’язок та підтримка</span>
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
@@ -1127,7 +1127,7 @@ export function StudioHomeTab({
           </div>
 
           <div className="pt-3 space-y-3.5">
-            <p className="text-xs font-semibold text-[#141413] dark:text-[#EDEAE1]">
+            <p className="text-xs font-semibold text-ink dark:text-cream-soft">
               Текст вікна «Підтримати через Монобанк»
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
@@ -1194,7 +1194,7 @@ export function StudioHomeTab({
           </div>
 
           <div className="pt-3 space-y-3">
-            <p className="text-xs font-semibold text-[#141413] dark:text-[#EDEAE1]">
+            <p className="text-xs font-semibold text-ink dark:text-cream-soft">
               Соціальні мережі у футері
             </p>
             <div className="rounded-xl space-y-1.5">
@@ -1203,9 +1203,9 @@ export function StudioHomeTab({
                 return (
                   <div
                     key={item.platform}
-                    className="px-3.5 py-2.5 rounded-xl flex flex-col sm:flex-row sm:items-center gap-2.5 bg-[#FAF9F5] dark:bg-[#262626]"
+                    className="px-3.5 py-2.5 rounded-xl flex flex-col sm:flex-row sm:items-center gap-2.5 bg-paper dark:bg-night-card"
                   >
-                    <label className="inline-flex items-center gap-2.5 min-w-[140px] text-xs font-medium text-[#141413] dark:text-[#EDEAE1] cursor-pointer select-none">
+                    <label className="inline-flex items-center gap-2.5 min-w-[140px] text-xs font-medium text-ink dark:text-cream-soft cursor-pointer select-none">
                       <input
                         type="checkbox"
                         checked={item.enabled}
@@ -1217,11 +1217,11 @@ export function StudioHomeTab({
                             )
                           );
                         }}
-                        className="accent-[#315E3C] dark:accent-[#E5E5E5] w-4 h-4 rounded cursor-pointer"
+                        className="accent-pine dark:accent-silver w-4 h-4 rounded cursor-pointer"
                       />
                       <SocialPlatformIcon
                         platform={item.platform}
-                        className="w-4 h-4 text-[#5C5C58] dark:text-[#A6A196]"
+                        className="w-4 h-4 text-ink-muted dark:text-sandstone"
                       />
                       <span>{meta?.label || item.label}</span>
                     </label>
@@ -1252,7 +1252,7 @@ export function StudioHomeTab({
                           )
                         );
                       }}
-                      className="flex-1 min-w-0 px-3 py-1.5 text-xs font-mono bg-[#EFECE6] dark:bg-[#1B1B1B] rounded-lg text-[#141413] dark:text-[#EDEAE1] focus:outline-none focus:bg-white dark:focus:bg-[#323232]"
+                      className="flex-1 min-w-0 px-3 py-1.5 text-xs font-mono bg-paper-warm dark:bg-night-deep rounded-lg text-ink dark:text-cream-soft focus:outline-none focus:bg-white dark:focus:bg-night-elevated"
                     />
                   </div>
                 );
@@ -1275,8 +1275,8 @@ export function StudioHomeTab({
             className="pb-4 space-y-3"
           >
             <div className="flex items-center justify-between gap-2">
-              <p className="text-xs font-semibold text-[#141413] dark:text-[#EDEAE1] flex items-center gap-2">
-                <Mic className="w-4 h-4 text-[#2C5937] dark:text-[#E5E5E5]" />
+              <p className="text-xs font-semibold text-ink dark:text-cream-soft flex items-center gap-2">
+                <Mic className="w-4 h-4 text-pine dark:text-silver" />
                 <span>{editingInterviewId ? 'Редагувати розмову' : 'Додати розмову'}</span>
               </p>
               {editingInterviewId && (
@@ -1290,7 +1290,7 @@ export function StudioHomeTab({
                     setNewInterviewContent('');
                     setNewInterviewUrl('');
                   }}
-                  className="text-xs font-medium text-[#5C5C58] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-[#EDEAE1] cursor-pointer"
+                  className="text-xs font-medium text-ink-muted dark:text-sandstone hover:text-ink dark:hover:text-cream-soft cursor-pointer"
                 >
                   Скасувати
                 </button>
@@ -1343,7 +1343,7 @@ export function StudioHomeTab({
           </form>
 
           {interviewsDraft.length === 0 ? (
-            <p className="text-xs text-[#5C5C58] dark:text-[#A6A196] py-6 text-center">
+            <p className="text-xs text-ink-muted dark:text-sandstone py-6 text-center">
               Список розмов поки порожній.
             </p>
           ) : (
@@ -1351,13 +1351,13 @@ export function StudioHomeTab({
               {interviewsDraft.map((item) => (
                 <div
                   key={item.id}
-                  className="px-4 py-3 rounded-xl flex items-start justify-between gap-3 bg-[#FAF9F5] dark:bg-[#262626]"
+                  className="px-4 py-3 rounded-xl flex items-start justify-between gap-3 bg-paper dark:bg-night-card"
                 >
                   <div className="min-w-0 flex-1 space-y-0.5">
-                    <p className="text-sm font-medium text-[#141413] dark:text-[#EDEAE1]">
+                    <p className="text-sm font-medium text-ink dark:text-cream-soft">
                       {item.title}
                     </p>
-                    <p className="text-xs text-[#5C5C58] dark:text-[#A6A196] truncate">
+                    <p className="text-xs text-ink-muted dark:text-sandstone truncate">
                       {[item.outlet, item.dateLabel, item.content ? 'Текст на сайті' : '', item.url]
                         .filter(Boolean)
                         .join(' · ')}
@@ -1376,7 +1376,7 @@ export function StudioHomeTab({
                       }}
                       title="Редагувати"
                       aria-label={`Редагувати: ${item.title}`}
-                      className="p-1.5 rounded-lg text-[#5C5C58] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-[#EDEAE1] hover:bg-[#F5F4EE] dark:hover:bg-[#323232] cursor-pointer"
+                      className="p-1.5 rounded-lg text-ink-muted dark:text-sandstone hover:text-ink dark:hover:text-cream-soft hover:bg-paper-oat dark:hover:bg-night-elevated cursor-pointer"
                     >
                       <Pencil className="w-3.5 h-3.5" />
                     </button>
@@ -1412,12 +1412,12 @@ export function StudioHomeTab({
       {subTab === 'messages' && (
         <div className="max-w-3xl space-y-4">
           {contactMessages.length === 0 ? (
-            <div className="py-12 text-center space-y-2 bg-[#FAF9F5] dark:bg-[#262626] rounded-xl">
-              <Mail className="w-7 h-7 text-[#5C5C58] dark:text-[#A6A196] mx-auto" strokeWidth={1.5} />
-              <p className="text-sm font-medium text-[#141413] dark:text-[#EDEAE1]">
+            <div className="py-12 text-center space-y-2 bg-paper dark:bg-night-card rounded-xl">
+              <Mail className="w-7 h-7 text-ink-muted dark:text-sandstone mx-auto" strokeWidth={1.5} />
+              <p className="text-sm font-medium text-ink dark:text-cream-soft">
                 Нових звернень немає
               </p>
-              <p className="text-xs text-[#5C5C58] dark:text-[#A6A196]">
+              <p className="text-xs text-ink-muted dark:text-sandstone">
                 Повідомлення з форми «Зв’язатися з автором» з’являтимуться тут.
               </p>
             </div>
@@ -1428,26 +1428,26 @@ export function StudioHomeTab({
                   key={msg.id}
                   className={`p-4 rounded-xl space-y-2 ${
                     msg.read
-                      ? 'bg-[#FAF9F5] dark:bg-[#262626]'
-                      : 'bg-[#F2F6EE] dark:bg-[#323232]'
+                      ? 'bg-paper dark:bg-night-card'
+                      : 'bg-[#F2F6EE] dark:bg-night-elevated'
                   }`}
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="text-xs font-semibold text-[#141413] dark:text-[#EDEAE1]">
+                    <div className="text-xs font-semibold text-ink dark:text-cream-soft">
                       {msg.name}{' '}
-                      <span className="font-normal text-[#5C5C58] dark:text-[#A6A196]">
+                      <span className="font-normal text-ink-muted dark:text-sandstone">
                         · {msg.contact}
                       </span>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-[11px] font-mono text-[#5C5C58] dark:text-[#C4BFB4] tabular-nums">
+                      <span className="text-[11px] font-mono text-ink-muted dark:text-parchment tabular-nums">
                         {new Date(msg.createdAt).toLocaleDateString('uk-UA')}
                       </span>
                       {!msg.read && (
                         <button
                           type="button"
                           onClick={() => handleMarkMessageRead(msg.id)}
-                          className="px-2.5 py-1 text-[11px] font-medium rounded-lg bg-white dark:bg-[#202020] text-[#2C5937] dark:text-[#E5E5E5] cursor-pointer whitespace-nowrap"
+                          className="px-2.5 py-1 text-[11px] font-medium rounded-lg bg-white dark:bg-night-panel text-pine dark:text-silver cursor-pointer whitespace-nowrap"
                         >
                           Прочитано
                         </button>
@@ -1463,7 +1463,7 @@ export function StudioHomeTab({
                       </button>
                     </div>
                   </div>
-                  <p className="text-xs text-[#2B2B28] dark:text-[#D5D1C8] leading-relaxed whitespace-pre-line">
+                  <p className="text-xs text-night-lift dark:text-paper-stone leading-relaxed whitespace-pre-line">
                     {msg.message}
                   </p>
                 </div>

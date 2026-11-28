@@ -310,7 +310,7 @@ export function StudioRadioTab({
         <div
           role="tablist"
           aria-label="Хвилі радіостанції"
-          className="inline-flex items-center gap-1 p-1 rounded-xl bg-[#EAE7DF] dark:bg-[#202020]"
+          className="inline-flex items-center gap-1 p-1 rounded-xl bg-paper-sand dark:bg-night-panel"
         >
           {RADIO_STATIONS.map((station) => {
             const active = selectedStation === station.id;
@@ -324,8 +324,8 @@ export function StudioRadioTab({
                 onClick={() => setSelectedStation(station.id)}
                 className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap shrink-0 cursor-pointer inline-flex items-center gap-1.5 ${
                   active
-                    ? 'bg-white dark:bg-[#323232] text-[#141413] dark:text-[#EDEAE1] shadow-xs'
-                    : 'text-[#5C5C58] dark:text-[#C4BFB4] hover:text-[#141413] dark:hover:text-[#EDEAE1]'
+                    ? 'bg-white dark:bg-night-elevated text-ink dark:text-cream-soft shadow-xs'
+                    : 'text-ink-muted dark:text-parchment hover:text-ink dark:hover:text-cream-soft'
                 }`}
               >
                 <span>{station.label}</span>
@@ -342,7 +342,7 @@ export function StudioRadioTab({
       >
         <label
           htmlFor="studio-radio-url"
-          className="block text-xs font-semibold text-[#141413] dark:text-[#EDEAE1]"
+          className="block text-xs font-semibold text-ink dark:text-cream-soft"
         >
           Додати пісні або цілий плейлист у хвилю «{activeStationLabel}» (посилання SoundCloud, по одному на рядок)
         </label>
@@ -357,7 +357,7 @@ export function StudioRadioTab({
           className={`${STUDIO_INPUT_CLASS} font-mono text-xs`}
         />
         <div className="flex flex-wrap items-center justify-between gap-2.5">
-          <span className="text-xs text-[#5C5C58] dark:text-[#A6A196]">
+          <span className="text-xs text-ink-muted dark:text-sandstone">
             Можна вставити посилання на плейлист (/sets/...) — сайт сам витягне всі пісні.
           </span>
           <div className="flex flex-wrap items-center gap-2">
@@ -386,16 +386,16 @@ export function StudioRadioTab({
         </div>
 
         {playlistPreview && (
-          <div className="mt-3 rounded-xl bg-[#FAF9F5] dark:bg-[#202020] p-3.5 space-y-3">
+          <div className="mt-3 rounded-xl bg-paper dark:bg-night-panel p-3.5 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <p className="text-xs font-semibold text-[#141413] dark:text-[#EDEAE1]">
+                <p className="text-xs font-semibold text-ink dark:text-cream-soft">
                   {playlistPreview.playlistTitle
                     ? `Плейлист «${playlistPreview.playlistTitle}»`
                     : 'Витягнуті пісні'}{' '}
                   ({playlistPreview.selectedIds.length} / {playlistPreview.tracks.length})
                 </p>
-                <p className="text-[11px] text-[#5C5C58] dark:text-[#A6A196]">
+                <p className="text-[11px] text-ink-muted dark:text-sandstone">
                   Позначте треки, які хочете додати до хвилі «{activeStationLabel}».
                 </p>
               </div>
@@ -415,7 +415,7 @@ export function StudioRadioTab({
                         : prev
                     )
                   }
-                  className="text-xs font-medium text-[#2B5434] dark:text-[#E5E5E5] hover:underline cursor-pointer"
+                  className="text-xs font-medium text-pine dark:text-silver hover:underline cursor-pointer"
                 >
                   {playlistPreview.selectedIds.length === playlistPreview.tracks.length
                     ? 'Зняти всі'
@@ -424,35 +424,35 @@ export function StudioRadioTab({
                 <button
                   type="button"
                   onClick={() => setPlaylistPreview(null)}
-                  className="text-xs font-medium text-[#5C5C58] dark:text-[#A6A196] hover:underline cursor-pointer"
+                  className="text-xs font-medium text-ink-muted dark:text-sandstone hover:underline cursor-pointer"
                 >
                   Закрити
                 </button>
               </div>
             </div>
 
-            <div className="max-h-60 overflow-y-auto rounded-lg bg-white dark:bg-[#181818]">
+            <div className="max-h-60 overflow-y-auto rounded-lg bg-white dark:bg-night">
               {playlistPreview.tracks.map((track, idx) => {
                 const checked = playlistPreview.selectedIds.includes(track.id);
                 return (
                   <label
                     key={track.id}
-                    className="flex items-center gap-3 px-3 py-2 text-xs cursor-pointer hover:bg-[#FAF9F5] dark:hover:bg-[#262626]"
+                    className="flex items-center gap-3 px-3 py-2 text-xs cursor-pointer hover:bg-paper dark:hover:bg-night-card"
                   >
                     <input
                       type="checkbox"
                       checked={checked}
                       onChange={() => handleTogglePreviewTrack(track.id)}
-                      className="rounded accent-[#2B5434] dark:accent-[#E5E5E5]"
+                      className="rounded accent-pine dark:accent-silver"
                     />
-                    <span className="font-mono text-[11px] text-[#787872] dark:text-[#C4BFB4] w-5 shrink-0 tabular-nums">
+                    <span className="font-mono text-[11px] text-ink-subtle dark:text-parchment w-5 shrink-0 tabular-nums">
                       {String(idx + 1).padStart(2, '0')}
                     </span>
                     <div className="min-w-0 flex-1">
-                      <p className="font-medium text-[#141413] dark:text-[#EDEAE1] truncate">
+                      <p className="font-medium text-ink dark:text-cream-soft truncate">
                         {track.title}
                       </p>
-                      <p className="text-[11px] text-[#5C5C58] dark:text-[#A6A196] truncate">
+                      <p className="text-[11px] text-ink-muted dark:text-sandstone truncate">
                         {track.artist} · {track.soundcloudUrl}
                       </p>
                     </div>
@@ -489,18 +489,18 @@ export function StudioRadioTab({
       </form>
 
       {stationTracks.length === 0 ? (
-        <div className="py-12 text-center space-y-2 bg-[#FAF9F5] dark:bg-[#262626] rounded-xl">
-          <Radio className="w-7 h-7 text-[#5C5C58] dark:text-[#A6A196] mx-auto" strokeWidth={1.5} />
-          <p className="text-sm font-medium text-[#141413] dark:text-[#EDEAE1]">
+        <div className="py-12 text-center space-y-2 bg-paper dark:bg-night-card rounded-xl">
+          <Radio className="w-7 h-7 text-ink-muted dark:text-sandstone mx-auto" strokeWidth={1.5} />
+          <p className="text-sm font-medium text-ink dark:text-cream-soft">
             У хвилі «{activeStationLabel}» поки немає треків
           </p>
-          <p className="text-xs text-[#5C5C58] dark:text-[#A6A196]">
+          <p className="text-xs text-ink-muted dark:text-sandstone">
             Вставте посилання на пісню або плейлист SoundCloud вище, щоб додати їх до цієї хвилі.
           </p>
         </div>
       ) : (
-        <div className="rounded-xl bg-[#FAF9F5] dark:bg-[#262626] overflow-hidden">
-          <div className="px-4 py-2.5 text-[11px] text-[#5C5C58] dark:text-[#A6A196] border-b border-black/[0.06] dark:border-white/[0.06] flex flex-wrap items-center justify-between gap-2">
+        <div className="rounded-xl bg-paper dark:bg-night-card overflow-hidden">
+          <div className="px-4 py-2.5 text-[11px] text-ink-muted dark:text-sandstone border-b border-black/[0.06] dark:border-white/[0.06] flex flex-wrap items-center justify-between gap-2">
             <span>
               В активному ефірі: <strong>{stationRepertoire.repertoireTracks.length}</strong> треків (Топ-10 за лайками + 10 найновіших)
             </span>
@@ -514,14 +514,14 @@ export function StudioRadioTab({
             return (
               <div
                 key={track.id}
-                className="flex items-center gap-3 px-4 py-3 hover:bg-[#FAF9F5] dark:hover:bg-[#2E2E2E] transition-colors"
+                className="flex items-center gap-3 px-4 py-3 hover:bg-paper dark:hover:bg-night-hover transition-colors"
               >
-                <span className="w-6 font-mono text-xs text-[#787872] dark:text-[#C4BFB4] tabular-nums shrink-0">
+                <span className="w-6 font-mono text-xs text-ink-subtle dark:text-parchment tabular-nums shrink-0">
                   {String(idx + 1).padStart(2, '0')}
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <p className="text-sm font-medium text-[#141413] dark:text-[#EDEAE1] truncate">
+                    <p className="text-sm font-medium text-ink dark:text-cream-soft truncate">
                       {track.title}
                     </p>
                     {bucket === 'top_liked' && (
@@ -530,17 +530,17 @@ export function StudioRadioTab({
                       </span>
                     )}
                     {bucket === 'newest' && (
-                      <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#2C5937]/12 text-[#2C5937] dark:bg-emerald-500/15 dark:text-emerald-300 shrink-0">
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-pine/12 text-pine dark:bg-emerald-500/15 dark:text-emerald-300 shrink-0">
                         Нові-10 ({likesCount})
                       </span>
                     )}
                     {bucket === null && (
-                      <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-black/[0.06] dark:bg-white/[0.08] text-[#5C5C58] dark:text-[#A6A196] shrink-0">
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-black/[0.06] dark:bg-white/[0.08] text-ink-muted dark:text-sandstone shrink-0">
                         Поза ефіром ({likesCount})
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-[#5C5C58] dark:text-[#A6A196] truncate">
+                  <p className="text-xs text-ink-muted dark:text-sandstone truncate">
                     {track.artist}
                   </p>
                 </div>
@@ -548,7 +548,7 @@ export function StudioRadioTab({
                 href={track.soundcloudUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-1.5 rounded-lg text-[#5C5C58] dark:text-[#A6A196] hover:bg-[#EFECE6] dark:hover:bg-[#323232] transition-colors shrink-0"
+                className="p-1.5 rounded-lg text-ink-muted dark:text-sandstone hover:bg-paper-warm dark:hover:bg-night-elevated transition-colors shrink-0"
                 title="Відкрити на SoundCloud"
               >
                 <ExternalLink className="w-3.5 h-3.5" />
@@ -558,7 +558,7 @@ export function StudioRadioTab({
                 disabled={idx === 0}
                 onClick={() => handleReorder(idx, -1)}
                 aria-label="Підняти вище"
-                className="p-1.5 rounded-lg text-[#5C5C58] dark:text-[#A6A196] hover:bg-[#EFECE6] dark:hover:bg-[#323232] disabled:opacity-30 cursor-pointer shrink-0"
+                className="p-1.5 rounded-lg text-ink-muted dark:text-sandstone hover:bg-paper-warm dark:hover:bg-night-elevated disabled:opacity-30 cursor-pointer shrink-0"
               >
                 <ArrowUp className="w-3.5 h-3.5" />
               </button>
@@ -567,7 +567,7 @@ export function StudioRadioTab({
                 disabled={idx === stationTracks.length - 1}
                 onClick={() => handleReorder(idx, 1)}
                 aria-label="Опустити нижче"
-                className="p-1.5 rounded-lg text-[#5C5C58] dark:text-[#A6A196] hover:bg-[#EFECE6] dark:hover:bg-[#323232] disabled:opacity-30 cursor-pointer shrink-0"
+                className="p-1.5 rounded-lg text-ink-muted dark:text-sandstone hover:bg-paper-warm dark:hover:bg-night-elevated disabled:opacity-30 cursor-pointer shrink-0"
               >
                 <ArrowDown className="w-3.5 h-3.5" />
               </button>

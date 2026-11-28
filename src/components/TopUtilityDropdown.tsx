@@ -109,10 +109,10 @@ function ToggleSwitchControl({
         e.stopPropagation();
         onToggle();
       }}
-      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#315E3C]/50 dark:focus-visible:ring-white/40 cursor-pointer ${
+      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine/50 dark:focus-visible:ring-white/40 cursor-pointer ${
         checked
           ? 'bg-pear-pine-gradient'
-          : 'bg-[#D5D1C7] dark:bg-[#3D3D3D]'
+          : 'bg-paper-stone dark:bg-night-muted'
       }`}
     >
       <span
@@ -478,7 +478,7 @@ export function TopUtilityDropdown({
             onClick={onOpenLeaderboard}
             aria-label="Рейтинг активності та донатерів"
             title="Рейтинг активності та донатерів"
-            className="touch-surface inline-flex items-center justify-center w-[38px] sm:w-[40px] h-[38px] sm:h-[40px] rounded-xl bg-[#EAE7DF] dark:bg-[#262626] text-[#5C5C58] dark:text-[#C4BFB4] hover:text-[#141413] dark:hover:text-[#F4F1EA] hover:bg-[#DDD8CD] dark:hover:bg-[#323232] transition-all cursor-pointer shadow-xs shrink-0"
+            className="touch-surface inline-flex items-center justify-center w-[38px] sm:w-[40px] h-[38px] sm:h-[40px] rounded-xl bg-paper-sand dark:bg-night-card text-ink-muted dark:text-parchment hover:text-ink dark:hover:text-cream hover:bg-paper-stone dark:hover:bg-night-elevated transition-all cursor-pointer shadow-xs shrink-0"
           >
             <Trophy className="w-[18px] h-[18px]" strokeWidth={1.9} />
           </button>
@@ -486,7 +486,7 @@ export function TopUtilityDropdown({
         {/* Burger Menu with Notifications, Feedback & Install Controls */}
         <div
           ref={menuWrapperRef}
-          className="relative inline-flex shrink-0 items-center p-1 bg-[#EAE7DF] dark:bg-[#262626] rounded-xl"
+          className="relative inline-flex shrink-0 items-center p-1 bg-paper-sand dark:bg-night-card rounded-xl"
         >
           <button
             type="button"
@@ -501,8 +501,8 @@ export function TopUtilityDropdown({
             }
             className={`relative touch-surface inline-flex items-center justify-center w-[38px] sm:w-[40px] h-[38px] sm:h-[40px] rounded-lg transition-all duration-150 shrink-0 cursor-pointer ${
               menuOpen
-                ? 'bg-white dark:bg-[#323232] text-[#141413] dark:text-[#F4F1EA] shadow-xs'
-                : 'text-[#141413] dark:text-[#F4F1EA] hover:bg-white/75 dark:hover:bg-[#323232]'
+                ? 'bg-white dark:bg-night-elevated text-ink dark:text-cream shadow-xs'
+                : 'text-ink dark:text-cream hover:bg-white/75 dark:hover:bg-night-elevated'
             }`}
           >
             {menuOpen ? (
@@ -513,7 +513,7 @@ export function TopUtilityDropdown({
             {unreadFeedbackRepliesCount > 0 && !menuOpen && (
               <span
                 aria-hidden="true"
-                className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-[#EAE7DF] dark:ring-[#262626]"
+                className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-paper-sand dark:ring-night-card"
               />
             )}
           </button>
@@ -527,16 +527,16 @@ export function TopUtilityDropdown({
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 4, scale: 0.97 }}
                 transition={{ duration: 0.14, ease: [0.16, 1, 0.3, 1] }}
-                className="absolute right-0 top-full mt-2 w-72 z-50 rounded-2xl bg-[#F9F9F5] dark:bg-[#202020] shadow-[0_18px_40px_-14px_rgba(20,20,19,0.28)] dark:shadow-[0_22px_48px_-14px_rgba(0,0,0,0.8)] p-3 space-y-2 text-left"
+                className="absolute right-0 top-full mt-2 w-72 z-50 rounded-2xl bg-paper dark:bg-night-panel shadow-[0_18px_40px_-14px_rgba(20,20,19,0.28)] dark:shadow-[0_22px_48px_-14px_rgba(0,0,0,0.8)] p-3 space-y-2 text-left"
               >
                 {/* Notifications Toggle Switch Row */}
                 <div
                   role="menuitem"
                   onClick={() => void handleToggleNotifications()}
-                  className="flex items-center justify-between gap-3 px-2.5 py-2 rounded-xl hover:bg-[#EFECE6] dark:hover:bg-[#2C2C2C] transition-colors cursor-pointer select-none"
+                  className="flex items-center justify-between gap-3 px-2.5 py-2 rounded-xl hover:bg-paper-warm dark:hover:bg-night-surface transition-colors cursor-pointer select-none"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <span className="w-8 h-8 rounded-lg bg-[#EAE7DF] dark:bg-[#323232] text-[#2C5937] dark:text-[#E5E5E5] inline-flex items-center justify-center shrink-0">
+                    <span className="w-8 h-8 rounded-lg bg-paper-sand dark:bg-night-elevated text-pine dark:text-silver inline-flex items-center justify-center shrink-0">
                       {isNotifActive ? (
                         <BellRing className="w-4 h-4" strokeWidth={1.9} />
                       ) : (
@@ -544,10 +544,10 @@ export function TopUtilityDropdown({
                       )}
                     </span>
                     <div className="min-w-0">
-                      <p className="text-xs font-semibold text-[#141413] dark:text-[#F4F1EA] truncate">
+                      <p className="text-xs font-semibold text-ink dark:text-cream truncate">
                         Сповіщення
                       </p>
-                      <p className="text-[11px] text-[#5C5C58] dark:text-[#C4BFB4] truncate">
+                      <p className="text-[11px] text-ink-muted dark:text-parchment truncate">
                         {isInstalled && hasSystemPush
                           ? 'Увімкнено у додатку'
                           : hasSystemPush
@@ -566,7 +566,7 @@ export function TopUtilityDropdown({
                 </div>
 
                 {notifNotice && (
-                  <div className="mx-1 px-2.5 py-2 rounded-xl bg-[#EFECE6] dark:bg-[#2A2A2A] text-[11px] leading-relaxed text-[#3B3B37] dark:text-[#D5D1C8] space-y-1.5">
+                  <div className="mx-1 px-2.5 py-2 rounded-xl bg-paper-warm dark:bg-night-lift text-[11px] leading-relaxed text-[#3B3B37] dark:text-paper-stone space-y-1.5">
                     <p>{notifNotice.text}</p>
                     {notifNotice.needsStandaloneTab && (
                       <a
@@ -574,7 +574,7 @@ export function TopUtilityDropdown({
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#1E3A29] text-white dark:bg-[#F4F1EA] dark:text-[#181818] font-semibold hover:opacity-90 transition-opacity whitespace-nowrap"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-pine-dark text-white dark:bg-cream dark:text-night font-semibold hover:opacity-90 transition-opacity whitespace-nowrap"
                       >
                         <span>Відкрити вкладку</span>
                         <ExternalLink className="w-3 h-3" strokeWidth={2} />
@@ -583,29 +583,29 @@ export function TopUtilityDropdown({
                   </div>
                 )}
 
-                <div className="h-px bg-[#DCD8CD]/75 dark:bg-[#383838] mx-1" />
+                <div className="h-px bg-paper-stone/75 dark:bg-night-soft mx-1" />
 
                 {/* Festive Bottom Navigation Illumination Toggle Row */}
                 <div
                   role="menuitem"
                   onClick={handleToggleFestiveLights}
-                  className="flex items-center justify-between gap-3 px-2.5 py-2 rounded-xl hover:bg-[#EFECE6] dark:hover:bg-[#2C2C2C] transition-colors cursor-pointer select-none"
+                  className="flex items-center justify-between gap-3 px-2.5 py-2 rounded-xl hover:bg-paper-warm dark:hover:bg-night-surface transition-colors cursor-pointer select-none"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <span
                       className={`w-8 h-8 rounded-lg inline-flex items-center justify-center shrink-0 transition-colors ${
                         festiveLightsEnabled
-                          ? 'bg-[#EAE7DF] dark:bg-[#323232] text-[#D97706] dark:text-[#FDE68A]'
-                          : 'bg-[#EAE7DF] dark:bg-[#323232] text-[#2C5937] dark:text-[#E5E5E5]'
+                          ? 'bg-paper-sand dark:bg-night-elevated text-[#D97706] dark:text-[#FDE68A]'
+                          : 'bg-paper-sand dark:bg-night-elevated text-pine dark:text-silver'
                       }`}
                     >
                       <FestiveLightsIcon active={festiveLightsEnabled} className="w-4 h-4" />
                     </span>
                     <div className="min-w-0">
-                      <p className="text-xs font-semibold text-[#141413] dark:text-[#F4F1EA] truncate">
+                      <p className="text-xs font-semibold text-ink dark:text-cream truncate">
                         Святкова ілюмінація
                       </p>
-                      <p className="text-[11px] text-[#5C5C58] dark:text-[#C4BFB4] truncate">
+                      <p className="text-[11px] text-ink-muted dark:text-parchment truncate">
                         {festiveLightsEnabled ? 'Увімкнено' : 'Вимкнено'}
                       </p>
                     </div>
@@ -617,7 +617,7 @@ export function TopUtilityDropdown({
                   />
                 </div>
 
-                <div className="h-px bg-[#DCD8CD]/75 dark:bg-[#383838] mx-1" />
+                <div className="h-px bg-paper-stone/75 dark:bg-night-soft mx-1" />
                 <button
                   type="button"
                   role="menuitem"
@@ -625,17 +625,17 @@ export function TopUtilityDropdown({
                     setMenuOpen(false);
                     setFeedbackOpen(true);
                   }}
-                  className="w-full flex items-center justify-between gap-3 px-2.5 py-2 rounded-xl hover:bg-[#EFECE6] dark:hover:bg-[#2C2C2C] transition-colors cursor-pointer text-left"
+                  className="w-full flex items-center justify-between gap-3 px-2.5 py-2 rounded-xl hover:bg-paper-warm dark:hover:bg-night-surface transition-colors cursor-pointer text-left"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <span className="w-8 h-8 rounded-lg bg-[#EAE7DF] dark:bg-[#323232] text-[#2C5937] dark:text-[#E5E5E5] inline-flex items-center justify-center shrink-0">
+                    <span className="w-8 h-8 rounded-lg bg-paper-sand dark:bg-night-elevated text-pine dark:text-silver inline-flex items-center justify-center shrink-0">
                       <MessageSquare className="w-4 h-4" strokeWidth={1.9} />
                     </span>
                     <div className="min-w-0">
-                      <p className="text-xs font-semibold text-[#141413] dark:text-[#F4F1EA] truncate">
+                      <p className="text-xs font-semibold text-ink dark:text-cream truncate">
                         Відгук про сайт
                       </p>
-                      <p className="text-[11px] text-[#5C5C58] dark:text-[#C4BFB4] truncate">
+                      <p className="text-[11px] text-ink-muted dark:text-parchment truncate">
                         {unreadFeedbackRepliesCount > 0
                           ? 'Є нова відповідь автора'
                           : 'Що змінити чи додати'}
@@ -649,22 +649,22 @@ export function TopUtilityDropdown({
                   )}
                 </button>
 
-                <div className="h-px bg-[#DCD8CD]/75 dark:bg-[#383838] mx-1" />
+                <div className="h-px bg-paper-stone/75 dark:bg-night-soft mx-1" />
                 <button
                   type="button"
                   role="menuitem"
                   onClick={() => void handleInstallFromMenu()}
-                  className="w-full flex items-center justify-between gap-3 px-2.5 py-2 rounded-xl hover:bg-[#EFECE6] dark:hover:bg-[#2C2C2C] transition-colors cursor-pointer text-left"
+                  className="w-full flex items-center justify-between gap-3 px-2.5 py-2 rounded-xl hover:bg-paper-warm dark:hover:bg-night-surface transition-colors cursor-pointer text-left"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <span className="w-8 h-8 rounded-lg bg-[#EAE7DF] dark:bg-[#323232] text-[#2C5937] dark:text-[#E5E5E5] inline-flex items-center justify-center shrink-0">
+                    <span className="w-8 h-8 rounded-lg bg-paper-sand dark:bg-night-elevated text-pine dark:text-silver inline-flex items-center justify-center shrink-0">
                       <Download className="w-4 h-4" strokeWidth={1.9} />
                     </span>
                     <div className="min-w-0">
-                      <p className="text-xs font-semibold text-[#141413] dark:text-[#F4F1EA] truncate">
+                      <p className="text-xs font-semibold text-ink dark:text-cream truncate">
                         Встановити додаток
                       </p>
-                      <p className="text-[11px] text-[#5C5C58] dark:text-[#C4BFB4] truncate">
+                      <p className="text-[11px] text-ink-muted dark:text-parchment truncate">
                         {isInstalled
                           ? 'Встановлено на пристрій'
                           : isInstallable
@@ -708,14 +708,14 @@ export function TopUtilityDropdown({
       )}
 
       {!menuOpen && notifNotice && (
-        <div className="absolute right-0 top-full mt-2 z-40 w-[min(90vw,24rem)] px-3.5 py-2.5 rounded-xl bg-emerald-100/95 dark:bg-[#262626] text-[11px] text-emerald-900 dark:text-[#F4F1EA] shadow-md flex flex-wrap items-center justify-end gap-2 text-right">
+        <div className="absolute right-0 top-full mt-2 z-40 w-[min(90vw,24rem)] px-3.5 py-2.5 rounded-xl bg-emerald-100/95 dark:bg-night-card text-[11px] text-emerald-900 dark:text-cream shadow-md flex flex-wrap items-center justify-end gap-2 text-right">
           <span>{notifNotice.text}</span>
           {notifNotice.needsStandaloneTab && (
             <a
               href={standaloneNotifyUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#1E3A29] text-white dark:bg-[#F4F1EA] dark:text-[#181818] font-semibold hover:opacity-90 transition-opacity whitespace-nowrap"
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-pine-dark text-white dark:bg-cream dark:text-night font-semibold hover:opacity-90 transition-opacity whitespace-nowrap"
             >
               <span>Відкрити вкладку</span>
               <ExternalLink className="w-3 h-3" strokeWidth={2} />

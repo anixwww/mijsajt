@@ -85,18 +85,18 @@ export function PWAInstallGuideModal({
       aria-labelledby="pwa-install-guide-title"
     >
       <div
-        className="w-full max-w-md rounded-2xl bg-[#F9F9F5] dark:bg-[#202020] p-5 sm:p-6 shadow-2xl space-y-4 text-left"
+        className="w-full max-w-md rounded-2xl bg-paper dark:bg-night-panel p-5 sm:p-6 shadow-2xl space-y-4 text-left"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-3">
           <div>
             <h3
               id="pwa-install-guide-title"
-              className="text-base sm:text-lg font-semibold text-[#141413] dark:text-[#F4F1EA]"
+              className="text-base sm:text-lg font-semibold text-ink dark:text-cream"
             >
               Встановити як додаток
             </h3>
-            <p className="text-xs text-[#5C5C58] dark:text-[#A6A196] mt-0.5">
+            <p className="text-xs text-ink-muted dark:text-sandstone mt-0.5">
               Швидкий запуск із робочого столу та читання без інтернету.
             </p>
           </div>
@@ -104,30 +104,30 @@ export function PWAInstallGuideModal({
             type="button"
             onClick={onClose}
             aria-label="Закрити"
-            className="w-8 h-8 rounded-lg inline-flex items-center justify-center text-[#5C5C58] dark:text-[#A6A196] hover:bg-[#EAE7DF] dark:hover:bg-[#323232] cursor-pointer shrink-0"
+            className="w-8 h-8 rounded-lg inline-flex items-center justify-center text-ink-muted dark:text-sandstone hover:bg-paper-sand dark:hover:bg-night-elevated cursor-pointer shrink-0"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {isInIframe && (
-          <div className="rounded-xl bg-[#EAE7DF]/80 dark:bg-[#262626] p-3.5">
-            <p className="text-xs text-[#141413] dark:text-[#F4F1EA] leading-relaxed">
+          <div className="rounded-xl bg-paper-sand/80 dark:bg-night-card p-3.5">
+            <p className="text-xs text-ink dark:text-cream leading-relaxed">
               Браузер обмежує встановлення всередині вікна перегляду. Натисніть «Відкрити у браузері» нижче, щоб відкрити сайт без обмежень.
             </p>
           </div>
         )}
 
         {isIOS ? (
-          <div className="rounded-xl bg-white dark:bg-[#262626] p-4 space-y-2.5 text-xs sm:text-sm text-[#141413] dark:text-[#F4F1EA]">
-            <div className="flex items-center gap-2 font-semibold text-[#2B5434] dark:text-[#E5E5E5]">
+          <div className="rounded-xl bg-white dark:bg-night-card p-4 space-y-2.5 text-xs sm:text-sm text-ink dark:text-cream">
+            <div className="flex items-center gap-2 font-semibold text-pine dark:text-silver">
               <Smartphone className="w-4 h-4 shrink-0" />
               <span>iPhone та iPad (Safari)</span>
             </div>
-            <ol className="space-y-1.5 text-xs text-[#454541] dark:text-[#C4C1B8] list-decimal list-inside leading-relaxed">
+            <ol className="space-y-1.5 text-xs text-[#454541] dark:text-parchment list-decimal list-inside leading-relaxed">
               <li>
                 Натисніть кнопку{' '}
-                <span className="inline-flex items-center gap-1 font-semibold text-[#141413] dark:text-white">
+                <span className="inline-flex items-center gap-1 font-semibold text-ink dark:text-white">
                   Поділитися <Share className="w-3.5 h-3.5 inline" />
                 </span>{' '}
                 на панелі Safari.
@@ -137,34 +137,34 @@ export function PWAInstallGuideModal({
             </ol>
           </div>
         ) : isMacSafari ? (
-          <div className="rounded-xl bg-white dark:bg-[#262626] p-4 space-y-2.5 text-xs sm:text-sm text-[#141413] dark:text-[#F4F1EA]">
-            <div className="flex items-center gap-2 font-semibold text-[#2B5434] dark:text-[#E5E5E5]">
+          <div className="rounded-xl bg-white dark:bg-night-card p-4 space-y-2.5 text-xs sm:text-sm text-ink dark:text-cream">
+            <div className="flex items-center gap-2 font-semibold text-pine dark:text-silver">
               <Laptop className="w-4 h-4 shrink-0" />
               <span>Mac (Safari)</span>
             </div>
-            <ol className="space-y-1.5 text-xs text-[#454541] dark:text-[#C4C1B8] list-decimal list-inside leading-relaxed">
+            <ol className="space-y-1.5 text-xs text-[#454541] dark:text-parchment list-decimal list-inside leading-relaxed">
               <li>У верхньому меню Safari натисніть «Файл» → «Додати до Dock» (або іконку «Поділитися»).</li>
               <li>Підтвердьте назву «Андрій Даньків» і натисніть «Додати».</li>
             </ol>
           </div>
         ) : isAndroid ? (
-          <div className="rounded-xl bg-white dark:bg-[#262626] p-4 space-y-2.5 text-xs sm:text-sm text-[#141413] dark:text-[#F4F1EA]">
-            <div className="flex items-center gap-2 font-semibold text-[#2B5434] dark:text-[#E5E5E5]">
+          <div className="rounded-xl bg-white dark:bg-night-card p-4 space-y-2.5 text-xs sm:text-sm text-ink dark:text-cream">
+            <div className="flex items-center gap-2 font-semibold text-pine dark:text-silver">
               <Smartphone className="w-4 h-4 shrink-0" />
               <span>Android (Chrome / Edge / Samsung)</span>
             </div>
-            <ol className="space-y-1.5 text-xs text-[#454541] dark:text-[#C4C1B8] list-decimal list-inside leading-relaxed">
+            <ol className="space-y-1.5 text-xs text-[#454541] dark:text-parchment list-decimal list-inside leading-relaxed">
               <li>Натисніть меню браузера (три крапки у верхньому куті).</li>
               <li>Оберіть «Додати на головний екран» або «Встановити додаток».</li>
             </ol>
           </div>
         ) : (
-          <div className="rounded-xl bg-white dark:bg-[#262626] p-4 space-y-2.5 text-xs sm:text-sm text-[#141413] dark:text-[#F4F1EA]">
-            <div className="flex items-center gap-2 font-semibold text-[#2B5434] dark:text-[#E5E5E5]">
+          <div className="rounded-xl bg-white dark:bg-night-card p-4 space-y-2.5 text-xs sm:text-sm text-ink dark:text-cream">
+            <div className="flex items-center gap-2 font-semibold text-pine dark:text-silver">
               <Laptop className="w-4 h-4 shrink-0" />
               <span>Комп’ютер (Chrome / Edge / Safari)</span>
             </div>
-            <ol className="space-y-1.5 text-xs text-[#454541] dark:text-[#C4C1B8] list-decimal list-inside leading-relaxed">
+            <ol className="space-y-1.5 text-xs text-[#454541] dark:text-parchment list-decimal list-inside leading-relaxed">
               <li>Натисніть іконку встановлення справа в адресному рядку браузера або відкрийте меню «⋮».</li>
               <li>Оберіть «Встановити Андрій Даньків» — ярлик з’явиться на робочому столі.</li>
             </ol>
@@ -226,11 +226,11 @@ export function PWAInstallButton({ compact = false }: { compact?: boolean }) {
         onClick={() => void handleClick()}
         aria-label="Встановити додаток на пристрій"
         title="Встановити сайт на робочий стіл або головний екран"
-        className={`touch-surface inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#EAE7DF] dark:bg-[#262626] px-3 py-2 text-[11px] sm:text-xs font-medium text-[#141413] dark:text-[#F4F1EA] hover:text-[#2C5937] dark:hover:text-[#F5F5F5] transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
+        className={`touch-surface inline-flex items-center justify-center gap-1.5 rounded-xl bg-paper-sand dark:bg-night-card px-3 py-2 text-[11px] sm:text-xs font-medium text-ink dark:text-cream hover:text-pine dark:hover:text-[#F5F5F5] transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
           compact ? 'min-h-[38px] sm:min-h-[40px]' : 'min-h-[40px]'
         }`}
       >
-        <Download className="w-3.5 h-3.5 text-[#2C5937] dark:text-[#E5E5E5] shrink-0" strokeWidth={1.9} />
+        <Download className="w-3.5 h-3.5 text-pine dark:text-silver shrink-0" strokeWidth={1.9} />
         <span>Встановити</span>
       </button>
 

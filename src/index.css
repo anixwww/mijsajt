@@ -96,10 +96,42 @@
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
-@theme {
+@theme inline {
   --font-serif: "Inter Variable", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-sans: "Inter Variable", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  --color-ink: #141413;
+  --color-ink-muted: #5C5C58;
+  --color-ink-subtle: #787872;
+  --color-cream: #F4F1EA;
+  --color-cream-soft: #EDEAE1;
+  --color-paper: #FAF9F5;
+  --color-paper-warm: #EFECE6;
+  --color-paper-sand: #EAE7DF;
+  --color-paper-oat: #F5F4EE;
+  --color-paper-stone: #DCD8CD;
+  --color-night: #181818;
+  --color-night-deep: #1B1B1B;
+  --color-night-panel: #202020;
+  --color-night-card: #262626;
+  --color-night-lift: #2A2A2A;
+  --color-night-surface: #2C2C2C;
+  --color-night-hover: #2E2E2E;
+  --color-night-elevated: #323232;
+  --color-night-soft: #383838;
+  --color-night-muted: #3D3D3D;
+  --color-silver: #E5E5E5;
+  --color-sandstone: #A6A196;
+  --color-sandstone-light: #A8A49B;
+  --color-stone-warm: #8E8B82;
+  --color-parchment: #C4BFB4;
+  --color-pine: #2C5937;
+  --color-pine-deep: #1E563B;
+  --color-pine-dark: #1E3A29;
+  --color-pine-night: #111E16;
+  --color-cinema-red: #E50914;
+  --color-cinema-red-hover: #C80812;
 }
 
 :root,
@@ -175,7 +207,7 @@ html.dark {
   }
 
   .btn-editorial-ink {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold tracking-[0.01em] text-white bg-[#141413] dark:bg-[#F4F1EA] dark:text-[#181818] hover:text-white dark:hover:text-white active:scale-[0.97] rounded-lg shadow-[0_6px_16px_-10px_rgba(20,20,19,0.5)] transition-all duration-150 whitespace-nowrap shrink-0 cursor-pointer disabled:opacity-55 disabled:pointer-events-none;
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold tracking-[0.01em] text-white bg-ink dark:bg-cream dark:text-night hover:text-white dark:hover:text-white active:scale-[0.97] rounded-lg shadow-[0_6px_16px_-10px_rgba(20,20,19,0.5)] transition-all duration-150 whitespace-nowrap shrink-0 cursor-pointer disabled:opacity-55 disabled:pointer-events-none;
   }
 
   .btn-editorial-ink:hover {
@@ -191,15 +223,15 @@ html.dark {
   }
 
   .btn-editorial-secondary {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2 text-xs font-medium text-[#141413] dark:text-[#F4F1EA] bg-[#EFECE6] dark:bg-[#2C2C2C] hover:bg-[#E4E0D6] dark:hover:bg-[#363636] active:scale-[0.97] rounded-lg transition-all duration-150 whitespace-nowrap shrink-0 cursor-pointer disabled:opacity-55 disabled:pointer-events-none;
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 text-xs font-medium text-ink dark:text-cream bg-paper-warm dark:bg-night-surface hover:bg-paper-sand dark:hover:bg-night-soft active:scale-[0.97] rounded-lg transition-all duration-150 whitespace-nowrap shrink-0 cursor-pointer disabled:opacity-55 disabled:pointer-events-none;
   }
 
   .btn-editorial-icon {
-    @apply inline-flex items-center justify-center w-10 h-10 text-[#141413] dark:text-[#F4F1EA] bg-[#EFECE6] dark:bg-[#2C2C2C] hover:bg-[#141413] dark:hover:bg-[#F4F1EA] hover:text-white dark:hover:text-[#181818] active:scale-[0.94] rounded-xl transition-all duration-150 shrink-0 cursor-pointer;
+    @apply inline-flex items-center justify-center w-10 h-10 text-ink dark:text-cream bg-paper-warm dark:bg-night-surface hover:bg-ink dark:hover:bg-cream hover:text-white dark:hover:text-night active:scale-[0.94] rounded-xl transition-all duration-150 shrink-0 cursor-pointer;
   }
 
   .input-editorial {
-    @apply w-full px-3.5 py-2.5 text-sm text-[#141413] dark:text-[#F4F1EA] placeholder:text-[#787872] dark:placeholder:text-[#7E7B73] bg-[#EFECE6] dark:bg-[#262626] rounded-lg focus:bg-white dark:focus:bg-[#323232] focus:outline-none transition-colors duration-150;
+    @apply w-full px-3.5 py-2.5 text-sm text-ink dark:text-cream placeholder:text-ink-subtle dark:placeholder:text-ink-subtle bg-paper-warm dark:bg-night-card rounded-lg focus:bg-white dark:focus:bg-night-elevated focus:outline-none transition-colors duration-150;
   }
 }
 

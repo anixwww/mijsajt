@@ -745,7 +745,7 @@ export const PoetrySection = memo(function PoetrySection({
             aria-pressed={immersionMode}
             aria-label="Вийти із занурення в простір"
             title="Повернути елементи керування"
-            className="fixed top-4 right-4 sm:top-6 sm:right-6 z-50 inline-flex items-center justify-center w-10 h-10 bg-transparent border-0 shadow-none ring-0 p-0 text-[#F4F1EA] active:scale-[0.94] cursor-pointer"
+            className="fixed top-4 right-4 sm:top-6 sm:right-6 z-50 inline-flex items-center justify-center w-10 h-10 bg-transparent border-0 shadow-none ring-0 p-0 text-cream active:scale-[0.94] cursor-pointer"
           >
             {renderImmersionIcon(true)}
           </m.button>
@@ -781,7 +781,7 @@ export const PoetrySection = memo(function PoetrySection({
           <div
             role="tablist"
             aria-label="Джерело віршів"
-            className="inline-flex items-center gap-0.5 sm:gap-1 p-1 rounded-xl bg-[#EAE7DF] dark:bg-[#262626] min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="inline-flex items-center gap-0.5 sm:gap-1 p-1 rounded-xl bg-paper-sand dark:bg-night-card min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
             <button
               type="button"
@@ -791,7 +791,7 @@ export const PoetrySection = memo(function PoetrySection({
               className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-medium whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
                 poemSourceTab === 'author'
                   ? 'bg-pear-pine-gradient text-white font-semibold shadow-2xs'
-                  : 'text-[#5C5C58] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-[#F4F1EA]'
+                  : 'text-ink-muted dark:text-sandstone hover:text-ink dark:hover:text-cream'
               }`}
             >
               <span>Мої вірші</span>
@@ -805,7 +805,7 @@ export const PoetrySection = memo(function PoetrySection({
               className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-medium whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
                 poemSourceTab === 'community'
                   ? 'bg-pear-pine-gradient text-white font-semibold shadow-2xs'
-                  : 'text-[#5C5C58] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-[#F4F1EA]'
+                  : 'text-ink-muted dark:text-sandstone hover:text-ink dark:hover:text-cream'
               }`}
             >
               <span>Стрічка</span>
@@ -819,7 +819,7 @@ export const PoetrySection = memo(function PoetrySection({
               className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-medium whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
                 poemSourceTab === 'weekly'
                   ? 'bg-pear-pine-gradient text-white font-semibold shadow-2xs'
-                  : 'text-[#5C5C58] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-[#F4F1EA]'
+                  : 'text-ink-muted dark:text-sandstone hover:text-ink dark:hover:text-cream'
               }`}
             >
               <span>Вірш тижня</span>
@@ -832,9 +832,9 @@ export const PoetrySection = memo(function PoetrySection({
               onClick={handleOpenSubmitModal}
               title="Запропонувати вірш"
               aria-label="Запропонувати вірш"
-              className="w-10 h-10 inline-flex items-center justify-center rounded-xl bg-[#EAE7DF] dark:bg-[#262626] hover:bg-[#E2DFD5] dark:hover:bg-[#323232] text-[#141413] dark:text-[#F4F1EA] active:scale-[0.95] transition-all cursor-pointer shrink-0"
+              className="w-10 h-10 inline-flex items-center justify-center rounded-xl bg-paper-sand dark:bg-night-card hover:bg-paper-sand dark:hover:bg-night-elevated text-ink dark:text-cream active:scale-[0.95] transition-all cursor-pointer shrink-0"
             >
-              <Send className="w-4 h-4 text-[#2C5937] dark:text-[#E5E5E5] shrink-0" strokeWidth={1.85} />
+              <Send className="w-4 h-4 text-pine dark:text-silver shrink-0" strokeWidth={1.85} />
             </button>
 
             <button
@@ -941,8 +941,8 @@ export const PoetrySection = memo(function PoetrySection({
                             hasCustomSurface
                               ? 'bg-transparent'
                               : isHomeSurfaceTab
-                                ? 'bg-white dark:bg-[#2B2B2B] shadow-[0_18px_42px_-22px_rgba(24,48,33,0.28)] dark:shadow-[0_20px_46px_-20px_rgba(0,0,0,0.82)]'
-                                : 'bg-white dark:bg-[#262626]'
+                                ? 'bg-white dark:bg-night-lift shadow-[0_18px_42px_-22px_rgba(24,48,33,0.28)] dark:shadow-[0_20px_46px_-20px_rgba(0,0,0,0.82)]'
+                                : 'bg-white dark:bg-night-card'
                           }`
                     }`}
                   >
@@ -1004,14 +1004,14 @@ export const PoetrySection = memo(function PoetrySection({
                               : undefined
                           }
                           className={`mb-5 pb-3.5 border-b flex flex-wrap items-center justify-between gap-3 ${
-                            activeTextColor ? '' : 'border-[#E6E3DA] dark:border-[#343434]'
+                            activeTextColor ? '' : 'border-paper-sand dark:border-night-elevated'
                           }`}
                         >
                           <div className="min-w-0 space-y-0.5">
                             <div
                               style={activeTextColor ? { color: activeTextColor } : undefined}
                               className={`inline-flex items-center gap-1.5 text-xs font-semibold ${
-                                activeTextColor ? '' : 'text-[#2C5937] dark:text-[#BCD369]'
+                                activeTextColor ? '' : 'text-pine dark:text-[#BCD369]'
                               }`}
                             >
                               <Award className="w-3.5 h-3.5 shrink-0" strokeWidth={1.9} />
@@ -1024,7 +1024,7 @@ export const PoetrySection = memo(function PoetrySection({
                             <p
                               style={activeTextColor ? { color: activeTextColor, opacity: 0.78 } : undefined}
                               className={`text-xs font-mono tabular-nums ${
-                                activeTextColor ? '' : 'text-[#5C5C58] dark:text-[#A8A49B]'
+                                activeTextColor ? '' : 'text-ink-muted dark:text-sandstone-light'
                               }`}
                             >
                               Період: {periodText}
@@ -1045,7 +1045,7 @@ export const PoetrySection = memo(function PoetrySection({
                               <span
                                 style={activeTextColor ? { color: activeTextColor, opacity: 0.8 } : undefined}
                                 className={`px-1.5 text-[11px] font-mono tabular-nums ${
-                                  activeTextColor ? '' : 'text-[#5C5C58] dark:text-[#A8A49B]'
+                                  activeTextColor ? '' : 'text-ink-muted dark:text-sandstone-light'
                                 }`}
                               >
                                 {safeWeeklyIndex + 1}/{weeklySorted.length}
@@ -1073,7 +1073,7 @@ export const PoetrySection = memo(function PoetrySection({
                               : undefined
                         }
                         className={`mb-3 flex flex-wrap items-center justify-between gap-2 text-xs font-medium ${
-                          immersionMode || activeTextColor ? '' : 'text-[#5C5C58] dark:text-[#A8A49B]'
+                          immersionMode || activeTextColor ? '' : 'text-ink-muted dark:text-sandstone-light'
                         }`}
                       >
                         <span className="inline-flex items-center gap-2">
@@ -1102,7 +1102,7 @@ export const PoetrySection = memo(function PoetrySection({
                             <Star className="w-3.5 h-3.5 fill-[#FACC15] text-[#EAB308]" strokeWidth={1.75} />
                             <strong
                               style={activeTextColor ? { color: activeTextColor } : undefined}
-                              className={activeTextColor ? 'font-semibold' : 'text-[#141413] dark:text-[#F4F1EA] font-semibold'}
+                              className={activeTextColor ? 'font-semibold' : 'text-ink dark:text-cream font-semibold'}
                             >
                               {item.ratingAverage.toFixed(1)}
                             </strong>
@@ -1120,7 +1120,7 @@ export const PoetrySection = memo(function PoetrySection({
                               : undefined
                         }
                         className={`text-2xl md:text-[30px] font-semibold tracking-[-0.02em] leading-[1.2] mb-5 ${
-                          immersionMode || activeTextColor ? '' : 'text-[#141413] dark:text-[#F4F1EA]'
+                          immersionMode || activeTextColor ? '' : 'text-ink dark:text-cream'
                         }`}
                       >
                         {item.title}
@@ -1135,7 +1135,7 @@ export const PoetrySection = memo(function PoetrySection({
                               : undefined
                         }
                         className={`whitespace-pre-wrap ${
-                          immersionMode || activeTextColor ? '' : 'text-[#141413] dark:text-[#E5E2DA]'
+                          immersionMode || activeTextColor ? '' : 'text-ink dark:text-[#E5E2DA]'
                         } ${
                           item.fontSize === 'sm'
                             ? 'text-sm md:text-base'
@@ -1175,7 +1175,7 @@ export const PoetrySection = memo(function PoetrySection({
                                 : undefined
                           }
                           className={`italic text-sm mt-6 ${
-                            immersionMode || activeTextColor ? '' : 'text-[#5C5C58] dark:text-[#A8A49B]'
+                            immersionMode || activeTextColor ? '' : 'text-ink-muted dark:text-sandstone-light'
                           } ${
                             item.textAlign === 'center'
                               ? 'text-center'
@@ -1204,7 +1204,7 @@ export const PoetrySection = memo(function PoetrySection({
                           <p
                             style={activeTextColor ? { color: activeTextColor, opacity: 0.78 } : undefined}
                             className={`text-xs leading-relaxed ${
-                              activeTextColor ? '' : 'text-[#5C5C58] dark:text-[#A8A49B]'
+                              activeTextColor ? '' : 'text-ink-muted dark:text-sandstone-light'
                             }`}
                           >
                             Наприкінці тижня ({periodText}) вірш із найвищою оцінкою зі Стрічки буде автоматично скопійовано та зафіксовано тут.
@@ -1230,7 +1230,7 @@ export const PoetrySection = memo(function PoetrySection({
                               style={copiedId !== item.id && hasCustomSurface ? actionIconStyle : undefined}
                               className={`btn-editorial-icon ${
                                 copiedId === item.id
-                                  ? 'bg-emerald-50 dark:bg-[#323232] text-emerald-800 dark:text-[#E5E5E5]'
+                                  ? 'bg-emerald-50 dark:bg-night-elevated text-emerald-800 dark:text-silver'
                                   : ''
                               }`}
                             >
@@ -1256,7 +1256,7 @@ export const PoetrySection = memo(function PoetrySection({
                               onClick={() => handleOpenPublishedFromModal(targetLinkId)}
                               style={activeTextColor ? { color: activeTextColor } : undefined}
                               className={`text-xs font-medium underline underline-offset-4 opacity-85 hover:opacity-100 transition-opacity cursor-pointer ${
-                                activeTextColor ? '' : 'text-[#2C5937] dark:text-[#E5E5E5]'
+                                activeTextColor ? '' : 'text-pine dark:text-silver'
                               }`}
                             >
                               {isFixedSnapshot ? 'До вірша в Стрічці' : 'Оцінити в Стрічці'}
@@ -1271,19 +1271,19 @@ export const PoetrySection = memo(function PoetrySection({
             );
           })()
         ) : (
-          <div className="perf-card rounded-2xl p-6 sm:p-10 bg-white dark:bg-[#2B2B2B] shadow-[0_18px_42px_-22px_rgba(24,48,33,0.28)] dark:shadow-[0_20px_46px_-20px_rgba(0,0,0,0.82)] text-center space-y-3">
-            <div className="inline-flex items-center justify-center w-11 h-11 rounded-xl bg-[#EAE7DF] dark:bg-[#323232] text-[#2C5937] dark:text-[#BCD369] mx-auto">
+          <div className="perf-card rounded-2xl p-6 sm:p-10 bg-white dark:bg-night-lift shadow-[0_18px_42px_-22px_rgba(24,48,33,0.28)] dark:shadow-[0_20px_46px_-20px_rgba(0,0,0,0.82)] text-center space-y-3">
+            <div className="inline-flex items-center justify-center w-11 h-11 rounded-xl bg-paper-sand dark:bg-night-elevated text-pine dark:text-[#BCD369] mx-auto">
               <Award className="w-5 h-5" strokeWidth={1.8} />
             </div>
-            <h3 className="text-lg sm:text-xl font-semibold text-[#141413] dark:text-[#F4F1EA]">
+            <h3 className="text-lg sm:text-xl font-semibold text-ink dark:text-cream">
               Вірш тижня ще формується
             </h3>
             {weeklyCurrentPeriod?.periodLabel && (
-              <p className="text-xs font-mono text-[#5C5C58] dark:text-[#A8A49B] tabular-nums">
+              <p className="text-xs font-mono text-ink-muted dark:text-sandstone-light tabular-nums">
                 Період: {weeklyCurrentPeriod.periodLabel}
               </p>
             )}
-            <p className="text-sm text-[#5C5C58] dark:text-[#A8A49B] max-w-md mx-auto leading-relaxed">
+            <p className="text-sm text-ink-muted dark:text-sandstone-light max-w-md mx-auto leading-relaxed">
               Щопонеділка найкращий вірш зі Стрічки за підсумками оцінок читачів автоматично копіюється та фіксується у цьому вікні.
             </p>
             <div className="pt-2">
@@ -1340,8 +1340,8 @@ export const PoetrySection = memo(function PoetrySection({
                       hasCustomSurface
                         ? 'bg-transparent'
                         : isHomeSurfaceTab
-                          ? 'bg-white dark:bg-[#2B2B2B] shadow-[0_18px_42px_-22px_rgba(24,48,33,0.28)] dark:shadow-[0_20px_46px_-20px_rgba(0,0,0,0.82)]'
-                          : 'bg-white dark:bg-[#262626]'
+                          ? 'bg-white dark:bg-night-lift shadow-[0_18px_42px_-22px_rgba(24,48,33,0.28)] dark:shadow-[0_20px_46px_-20px_rgba(0,0,0,0.82)]'
+                          : 'bg-white dark:bg-night-card'
                     }`
               }`}
             >
@@ -1412,7 +1412,7 @@ export const PoetrySection = memo(function PoetrySection({
                           : undefined
                     }
                     className={`mb-3 flex flex-wrap items-center gap-2 text-xs font-medium ${
-                      immersionMode || activeTextColor ? '' : 'text-[#5C5C58] dark:text-[#A8A49B]'
+                      immersionMode || activeTextColor ? '' : 'text-ink-muted dark:text-sandstone-light'
                     }`}
                   >
                     {currentPoem.isCommunity && (
@@ -1460,7 +1460,7 @@ export const PoetrySection = memo(function PoetrySection({
                         : undefined
                   }
                   className={`text-2xl md:text-[30px] font-semibold tracking-[-0.02em] leading-[1.2] mb-5 ${
-                    immersionMode || activeTextColor ? '' : 'text-[#141413] dark:text-[#F4F1EA]'
+                    immersionMode || activeTextColor ? '' : 'text-ink dark:text-cream'
                   }`}
                 >
                   {currentPoem.title}
@@ -1475,7 +1475,7 @@ export const PoetrySection = memo(function PoetrySection({
                         : undefined
                   }
                   className={`whitespace-pre-wrap ${
-                    immersionMode || activeTextColor ? '' : 'text-[#141413] dark:text-[#E5E2DA]'
+                    immersionMode || activeTextColor ? '' : 'text-ink dark:text-[#E5E2DA]'
                   } ${
                     currentPoem.fontSize === 'sm'
                       ? 'text-sm md:text-base'
@@ -1521,7 +1521,7 @@ export const PoetrySection = memo(function PoetrySection({
                           : undefined
                     }
                     className={`italic text-sm mt-6 ${
-                      immersionMode || activeTextColor ? '' : 'text-[#5C5C58] dark:text-[#A8A49B]'
+                      immersionMode || activeTextColor ? '' : 'text-ink-muted dark:text-sandstone-light'
                     } ${
                       currentPoem.textAlign === 'center'
                         ? 'text-center'
@@ -1595,13 +1595,13 @@ export const PoetrySection = memo(function PoetrySection({
                       <div
                         style={activeTextColor ? { color: activeTextColor, opacity: 0.85 } : undefined}
                         className={`flex items-center gap-2 text-xs font-mono tabular-nums ${
-                          activeTextColor ? '' : 'text-[#5C5C58] dark:text-[#A8A49B]'
+                          activeTextColor ? '' : 'text-ink-muted dark:text-sandstone-light'
                         }`}
                       >
                         {pendingRating !== null && currentPoem.userRating === null ? (
                           <span
                             style={activeTextColor ? { color: activeTextColor } : undefined}
-                            className={`font-semibold ${activeTextColor ? '' : 'text-[#2C5937] dark:text-[#E5E5E5]'}`}
+                            className={`font-semibold ${activeTextColor ? '' : 'text-pine dark:text-silver'}`}
                           >
                             Обрано · {pendingRating.toFixed(1)} / 5.0
                           </span>
@@ -1610,7 +1610,7 @@ export const PoetrySection = memo(function PoetrySection({
                             <Star className="w-3 h-3 fill-[#FACC15] text-[#EAB308]" strokeWidth={1.75} />
                             <strong
                               style={activeTextColor ? { color: activeTextColor } : undefined}
-                              className={`font-semibold ${activeTextColor ? '' : 'text-[#141413] dark:text-[#F4F1EA]'}`}
+                              className={`font-semibold ${activeTextColor ? '' : 'text-ink dark:text-cream'}`}
                             >
                               {currentPoem.ratingAverage.toFixed(1)}
                             </strong>
@@ -1625,7 +1625,7 @@ export const PoetrySection = memo(function PoetrySection({
                             <span aria-hidden="true" className="opacity-50">·</span>
                             <span
                               style={activeTextColor ? { color: activeTextColor } : undefined}
-                              className={`font-medium ${activeTextColor ? '' : 'text-[#1E563B] dark:text-[#E5E5E5]'}`}
+                              className={`font-medium ${activeTextColor ? '' : 'text-pine-deep dark:text-silver'}`}
                             >
                               Ваша: {currentPoem.userRating.toFixed(1)}
                             </span>
@@ -1639,13 +1639,13 @@ export const PoetrySection = memo(function PoetrySection({
                         <span
                           style={activeTextColor ? { color: activeTextColor, opacity: 0.88 } : undefined}
                           className={`inline-flex items-center gap-1 text-xs font-mono tabular-nums ${
-                            activeTextColor ? '' : 'text-[#5C5C58] dark:text-[#A8A49B]'
+                            activeTextColor ? '' : 'text-ink-muted dark:text-sandstone-light'
                           }`}
                         >
                           <Star className="w-3.5 h-3.5 fill-[#FACC15] text-[#EAB308]" strokeWidth={1.75} />
                           <strong
                             style={activeTextColor ? { color: activeTextColor } : undefined}
-                            className={activeTextColor ? 'font-semibold' : 'text-[#141413] dark:text-[#F4F1EA] font-semibold'}
+                            className={activeTextColor ? 'font-semibold' : 'text-ink dark:text-cream font-semibold'}
                           >
                             {currentPoem.ratingAverage.toFixed(1)}
                           </strong>
@@ -1665,7 +1665,7 @@ export const PoetrySection = memo(function PoetrySection({
                     className={`text-xs font-medium ${
                       ratingFeedback.isError
                         ? 'text-rose-700 dark:text-rose-400'
-                        : 'text-[#1E563B] dark:text-[#E5E5E5]'
+                        : 'text-pine-deep dark:text-silver'
                     }`}
                   >
                     {ratingFeedback.text}
@@ -1725,7 +1725,7 @@ export const PoetrySection = memo(function PoetrySection({
                       }
                       className={`btn-editorial-icon ${
                         copiedId === currentPoem.id
-                          ? 'bg-emerald-50 dark:bg-[#323232] text-emerald-800 dark:text-[#E5E5E5] hover:bg-emerald-100 dark:hover:bg-[#3D3D3D] hover:text-emerald-900 dark:hover:text-[#FFFFFF]'
+                          ? 'bg-emerald-50 dark:bg-night-elevated text-emerald-800 dark:text-silver hover:bg-emerald-100 dark:hover:bg-night-muted hover:text-emerald-900 dark:hover:text-[#FFFFFF]'
                           : ''
                       }`}
                     >
@@ -1792,7 +1792,7 @@ export const PoetrySection = memo(function PoetrySection({
                               transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
                               role="listbox"
                               aria-label="Оберіть порядок віршів"
-                              className="absolute left-0 bottom-12 w-44 z-30 overflow-hidden rounded-xl bg-white dark:bg-[#202020] shadow-[0_14px_34px_-14px_rgba(20,20,19,0.22)] dark:shadow-[0_16px_36px_-12px_rgba(0,0,0,0.72)]"
+                              className="absolute left-0 bottom-12 w-44 z-30 overflow-hidden rounded-xl bg-white dark:bg-night-panel shadow-[0_14px_34px_-14px_rgba(20,20,19,0.22)] dark:shadow-[0_16px_36px_-12px_rgba(0,0,0,0.72)]"
                             >
                               <div className="p-1 space-y-0.5">
                                 {(
@@ -1815,7 +1815,7 @@ export const PoetrySection = memo(function PoetrySection({
                                       className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs text-left transition-colors duration-150 cursor-pointer ${
                                         selected
                                           ? 'bg-pear-pine-gradient text-white font-semibold'
-                                          : 'font-medium text-[#5C5C58] dark:text-[#C4BFB4] hover:text-[#141413] dark:hover:text-[#F4F1EA] hover:bg-[#F3F1EB] dark:hover:bg-[#323232]'
+                                          : 'font-medium text-ink-muted dark:text-parchment hover:text-ink dark:hover:text-cream hover:bg-paper-warm dark:hover:bg-night-elevated'
                                       }`}
                                     >
                                       <span>{option.label}</span>
@@ -1841,7 +1841,7 @@ export const PoetrySection = memo(function PoetrySection({
                     className={`inline-flex items-center gap-1.5 h-10 px-3 rounded-xl font-mono text-xs font-medium tabular-nums select-none shrink-0 ${
                       hasCustomSurface
                         ? ''
-                        : 'bg-[#EFECE6] dark:bg-[#2C2C2C] text-[#141413]/80 dark:text-[#F4F1EA]/85'
+                        : 'bg-paper-warm dark:bg-night-surface text-ink/80 dark:text-cream/85'
                     }`}
                     title="Кількість переглядів"
                     aria-label={`Переглядів: ${currentPoem.viewsCount}`}
@@ -1856,7 +1856,7 @@ export const PoetrySection = memo(function PoetrySection({
                     <p
                       style={activeTextColor ? { color: activeTextColor, opacity: 0.88 } : undefined}
                       className={`text-xs sm:text-sm ${
-                        activeTextColor ? '' : 'text-[#5C5C58] dark:text-[#A8A49B]'
+                        activeTextColor ? '' : 'text-ink-muted dark:text-sandstone-light'
                       }`}
                     >
                       Щоб залишити оцінку або відгук
@@ -1905,7 +1905,7 @@ export const PoetrySection = memo(function PoetrySection({
                           <button
                             type="button"
                             onClick={() => setPendingRating(null)}
-                            className="touch-surface sm:order-1 inline-flex items-center justify-center min-h-[44px] sm:min-h-[40px] px-3.5 py-2 text-xs font-medium text-[#5C5C58] dark:text-[#A8A49B] hover:text-[#141413] dark:hover:text-[#F4F1EA] hover:bg-[#F7F6F2] dark:hover:bg-[#323232] rounded-xl transition-colors duration-150 whitespace-nowrap shrink-0 cursor-pointer"
+                            className="touch-surface sm:order-1 inline-flex items-center justify-center min-h-[44px] sm:min-h-[40px] px-3.5 py-2 text-xs font-medium text-ink-muted dark:text-sandstone-light hover:text-ink dark:hover:text-cream hover:bg-paper dark:hover:bg-night-elevated rounded-xl transition-colors duration-150 whitespace-nowrap shrink-0 cursor-pointer"
                           >
                             Скасувати
                           </button>
@@ -1913,7 +1913,7 @@ export const PoetrySection = memo(function PoetrySection({
                           <button
                             type="button"
                             onClick={() => setCommentsOpen(true)}
-                            className="touch-surface sm:order-2 sm:ml-auto flex-1 sm:flex-none inline-flex items-center justify-center gap-2 min-h-[44px] sm:min-h-[40px] px-4 py-2 text-xs font-medium text-[#141413] dark:text-[#F4F1EA] bg-transparent hover:bg-[#F7F6F2] dark:hover:bg-[#323232] active:scale-[0.97] rounded-xl transition-all duration-150 whitespace-nowrap shrink-0 cursor-pointer"
+                            className="touch-surface sm:order-2 sm:ml-auto flex-1 sm:flex-none inline-flex items-center justify-center gap-2 min-h-[44px] sm:min-h-[40px] px-4 py-2 text-xs font-medium text-ink dark:text-cream bg-transparent hover:bg-paper dark:hover:bg-night-elevated active:scale-[0.97] rounded-xl transition-all duration-150 whitespace-nowrap shrink-0 cursor-pointer"
                           >
                             <MessageSquare className="w-3.5 h-3.5"strokeWidth={1.75} />
                             <span>Додати коментар</span>
@@ -1971,7 +1971,7 @@ export const PoetrySection = memo(function PoetrySection({
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.16 }}
-                className="fixed inset-0 z-[60] bg-black/85 backdrop-blur-xs flex flex-col items-center justify-center p-4 sm:p-6"
+                className="fixed inset-0 z-[60] bg-black/90 flex flex-col items-center justify-center p-4 sm:p-6"
                 onClick={() => setZoomedPhotoUrl(null)}
                 role="dialog"
                 aria-modal="true"

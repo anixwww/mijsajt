@@ -328,7 +328,7 @@ export function PoemSoundCloudPlayer({
       className={`rounded-2xl p-3.5 sm:p-4 space-y-3 transition-colors ${
         hasCustomBackground
           ? ''
-          : 'bg-[#F5F4EE] dark:bg-[#1E1E1E]'
+          : 'bg-paper-oat dark:bg-night-panel'
       }`}
     >
       <div className="flex items-center gap-3">
@@ -368,7 +368,7 @@ export function PoemSoundCloudPlayer({
             className={`w-10 h-10 rounded-lg shrink-0 flex items-center justify-center ${
               hasCustomBackground
                 ? ''
-                : 'bg-[#EAE7DF] dark:bg-[#2E2E2E] text-[#5C5C58] dark:text-[#C4BFB4]'
+                : 'bg-paper-sand dark:bg-night-hover text-ink-muted dark:text-parchment'
             }`}
           >
             <Music2 className="w-4 h-4" strokeWidth={1.65} />
@@ -379,7 +379,7 @@ export function PoemSoundCloudPlayer({
           <p
             style={textColor ? { color: textColor } : undefined}
             className={`text-sm font-semibold truncate leading-snug ${
-              textColor ? '' : 'text-[#141413] dark:text-[#F4F1EA]'
+              textColor ? '' : 'text-ink dark:text-cream'
             }`}
           >
             {activeTrack.title}
@@ -387,7 +387,7 @@ export function PoemSoundCloudPlayer({
           <p
             style={textColor ? { color: textColor, opacity: 0.78 } : undefined}
             className={`text-xs truncate ${
-              textColor ? '' : 'text-[#5C5C58] dark:text-[#A8A49B]'
+              textColor ? '' : 'text-ink-muted dark:text-sandstone-light'
             }`}
           >
             {activeTrack.artist} · SoundCloud
@@ -411,7 +411,7 @@ export function PoemSoundCloudPlayer({
                 className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
                   hasCustomBackground
                     ? 'hover:bg-black/10'
-                    : 'text-[#5C5C58] dark:text-[#A8A49B] hover:text-[#141413] dark:hover:text-[#F4F1EA] hover:bg-[#EAE7DF] dark:hover:bg-[#323232]'
+                    : 'text-ink-muted dark:text-sandstone-light hover:text-ink dark:hover:text-cream hover:bg-paper-sand dark:hover:bg-night-elevated'
                 }`}
               >
                 <ChevronLeft className="w-4 h-4" strokeWidth={1.75} />
@@ -427,7 +427,7 @@ export function PoemSoundCloudPlayer({
                 className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
                   hasCustomBackground
                     ? 'hover:bg-black/10'
-                    : 'text-[#5C5C58] dark:text-[#A8A49B] hover:text-[#141413] dark:hover:text-[#F4F1EA] hover:bg-[#EAE7DF] dark:hover:bg-[#323232]'
+                    : 'text-ink-muted dark:text-sandstone-light hover:text-ink dark:hover:text-cream hover:bg-paper-sand dark:hover:bg-night-elevated'
                 }`}
               >
                 <ChevronRight className="w-4 h-4" strokeWidth={1.75} />
@@ -445,7 +445,7 @@ export function PoemSoundCloudPlayer({
               className={`p-2 rounded-lg transition-colors ${
                 hasCustomBackground
                   ? 'hover:bg-black/10'
-                  : 'text-[#5C5C58] dark:text-[#A8A49B] hover:text-[#141413] dark:hover:text-[#F4F1EA] hover:bg-[#EAE7DF] dark:hover:bg-[#323232]'
+                  : 'text-ink-muted dark:text-sandstone-light hover:text-ink dark:hover:text-cream hover:bg-paper-sand dark:hover:bg-night-elevated'
               }`}
             >
               <ExternalLink className="w-4 h-4" strokeWidth={1.75} />
@@ -459,7 +459,7 @@ export function PoemSoundCloudPlayer({
           <span
             style={textColor ? { color: textColor, opacity: 0.78 } : undefined}
             className={`font-mono text-[11px] tabular-nums w-10 ${
-              textColor ? '' : 'text-[#5C5C58] dark:text-[#A8A49B]'
+              textColor ? '' : 'text-ink-muted dark:text-sandstone-light'
             }`}
           >
             {formatDurationMs(positionMs)}
@@ -479,7 +479,7 @@ export function PoemSoundCloudPlayer({
           <span
             style={textColor ? { color: textColor, opacity: 0.78 } : undefined}
             className={`font-mono text-[11px] tabular-nums w-10 text-right ${
-              textColor ? '' : 'text-[#5C5C58] dark:text-[#A8A49B]'
+              textColor ? '' : 'text-ink-muted dark:text-sandstone-light'
             }`}
           >
             {formatDurationMs(durationMs)}
@@ -503,12 +503,12 @@ export function PoemSoundCloudPlayer({
               ? isDarkBackground
                 ? 'bg-white/15 font-semibold'
                 : 'bg-black/10 font-semibold'
-              : 'bg-[#EAE7DF] dark:bg-[#2B2B2B] font-semibold';
+              : 'bg-paper-sand dark:bg-night-lift font-semibold';
             const idleRowClass = hasCustomBackground
               ? isDarkBackground
                 ? 'hover:bg-white/10'
                 : 'hover:bg-black/5'
-              : 'hover:bg-[#EAE7DF]/60 dark:hover:bg-[#262626]';
+              : 'hover:bg-paper-sand/60 dark:hover:bg-night-card';
             return (
               <button
                 key={`${item.id}-${idx}`}

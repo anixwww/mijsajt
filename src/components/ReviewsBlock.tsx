@@ -52,7 +52,7 @@ function ReviewAvatar({ photoUrl, name }: { photoUrl?: string; name: string }) {
     );
   }
   return (
-    <span className="w-5 h-5 rounded-full bg-[#EFECE6] dark:bg-[#323232] flex items-center justify-center text-[#5C5C58] dark:text-[#A8A49B] shrink-0">
+    <span className="w-5 h-5 rounded-full bg-paper-warm dark:bg-night-elevated flex items-center justify-center text-ink-muted dark:text-sandstone-light shrink-0">
       <User className="w-3 h-3" />
     </span>
   );
@@ -115,25 +115,25 @@ const ReviewCard = memo(function ReviewCard({
     <div
       className={
         compact
-          ? 'p-3.5 bg-[#FAF9F5] dark:bg-[#262626] rounded-xl space-y-1.5'
-          : 'p-4 bg-white dark:bg-[#262626] rounded-xl space-y-2'
+          ? 'p-3.5 bg-paper dark:bg-night-card rounded-xl space-y-1.5'
+          : 'p-4 bg-white dark:bg-night-card rounded-xl space-y-2'
       }
     >
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0 flex-1">
           <ReviewAvatar photoUrl={rev.authorPhotoUrl} name={rev.authorName} />
           <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-            <span className="text-xs font-semibold text-[#141413] dark:text-[#F4F1EA] truncate max-w-full">
+            <span className="text-xs font-semibold text-ink dark:text-cream truncate max-w-full">
               {rev.authorName}
             </span>
             <UserRankBadges badges={rev.authorBadges} size="xs" />
           </div>
         </div>
 
-        <div className="flex items-center gap-2 text-[11px] text-[#5C5C58] dark:text-[#A8A49B] font-mono tabular-nums">
+        <div className="flex items-center gap-2 text-[11px] text-ink-muted dark:text-sandstone-light font-mono tabular-nums">
           {typeof rev.rating === 'number' && (
             <>
-              <span className="inline-flex items-center gap-1 text-[#141413] dark:text-[#F4F1EA] font-medium">
+              <span className="inline-flex items-center gap-1 text-ink dark:text-cream font-medium">
                 <Star className="w-3 h-3 fill-[#FACC15] text-[#EAB308]" strokeWidth={1.75} />
                 <span>{rev.rating.toFixed(1)}</span>
               </span>
@@ -154,7 +154,7 @@ const ReviewCard = memo(function ReviewCard({
                 onClick={() => onStartEdit(rev)}
                 title="Редагувати коментар"
                 aria-label="Редагувати коментар"
-                className="p-1 rounded text-[#7A7870] hover:text-[#141413] dark:text-[#A6A196] dark:hover:text-[#F4F1EA] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                className="p-1 rounded text-ink-subtle hover:text-ink dark:text-sandstone dark:hover:text-cream hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
               >
                 <Pencil className="w-3 h-3" />
               </button>
@@ -163,7 +163,7 @@ const ReviewCard = memo(function ReviewCard({
                 onClick={() => onToggleConfirmDelete(rev.id)}
                 title="Видалити коментар"
                 aria-label="Видалити коментар"
-                className="p-1 rounded text-[#7A7870] hover:text-rose-600 dark:text-[#A6A196] dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer"
+                className="p-1 rounded text-ink-subtle hover:text-rose-600 dark:text-sandstone dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer"
               >
                 <Trash2 className="w-3 h-3" />
               </button>
@@ -220,7 +220,7 @@ const ReviewCard = memo(function ReviewCard({
               type="button"
               disabled={editSubmitting}
               onClick={onCancelEdit}
-              className="px-3 py-1.5 rounded-lg text-xs font-medium text-[#7A7870] dark:text-[#A6A196] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+              className="px-3 py-1.5 rounded-lg text-xs font-medium text-ink-subtle dark:text-sandstone hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
             >
               Скасувати
             </button>
@@ -239,7 +239,7 @@ const ReviewCard = memo(function ReviewCard({
           </div>
         </form>
       ) : (
-        <p className="text-sm text-[#444440] dark:text-[#C5C1B8] leading-relaxed whitespace-pre-wrap">
+        <p className="text-sm text-[#444440] dark:text-parchment leading-relaxed whitespace-pre-wrap">
           {rev.comment}
         </p>
       )}
@@ -304,7 +304,7 @@ function ReviewRow({
   );
 }
 
-export function ReviewsBlock({
+export const ReviewsBlock = memo(function ReviewsBlock({
   targetType,
   targetId,
   ratingAverage,
@@ -637,18 +637,18 @@ export function ReviewsBlock({
       {!hideRatingSummary && (
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
-            <MessageSquare className="w-4 h-4 text-[#2C5937] dark:text-[#E5E5E5]" strokeWidth={1.75} />
-            <h4 className="font-serif text-2xl font-semibold tracking-[-0.01em] text-[#141413] dark:text-[#F4F1EA]">
+            <MessageSquare className="w-4 h-4 text-pine dark:text-silver" strokeWidth={1.75} />
+            <h4 className="font-serif text-2xl font-semibold tracking-[-0.01em] text-ink dark:text-cream">
               Оцінки та відгуки
             </h4>
           </div>
 
-          <div className="flex items-center gap-1.5 text-xs font-mono text-[#5C5C58] dark:text-[#A8A49B] tabular-nums">
+          <div className="flex items-center gap-1.5 text-xs font-mono text-ink-muted dark:text-sandstone-light tabular-nums">
             {ratingCount > 0 ? (
               <>
                 <Star className="w-3.5 h-3.5 fill-[#FACC15] text-[#EAB308]" strokeWidth={1.75} />
                 <span>
-                  <strong className="text-[#141413] dark:text-[#F4F1EA] font-semibold">{ratingAverage.toFixed(1)}</strong> / 5.0 · {ratingCount}
+                  <strong className="text-ink dark:text-cream font-semibold">{ratingAverage.toFixed(1)}</strong> / 5.0 · {ratingCount}
                 </span>
               </>
             ) : (
@@ -663,11 +663,11 @@ export function ReviewsBlock({
         <div
           className={
             compact
-              ? 'px-4 py-4 rounded-xl bg-[#F7F6F2] dark:bg-[#262626] flex flex-col items-center text-center gap-3'
-              : 'p-5 bg-white dark:bg-[#262626] rounded-2xl flex flex-col items-center text-center gap-3'
+              ? 'px-4 py-4 rounded-xl bg-paper dark:bg-night-card flex flex-col items-center text-center gap-3'
+              : 'p-5 bg-white dark:bg-night-card rounded-2xl flex flex-col items-center text-center gap-3'
           }
         >
-          <p className="text-xs sm:text-sm text-[#444440] dark:text-[#C5C1B8]">
+          <p className="text-xs sm:text-sm text-[#444440] dark:text-parchment">
             Щоб залишити оцінку або відгук
           </p>
           <button
@@ -684,26 +684,26 @@ export function ReviewsBlock({
       ) : (
         <form
           onSubmit={handleSubmit}
-          className={compact ? 'space-y-3' : 'p-5 bg-white dark:bg-[#262626] rounded-2xl space-y-4'}
+          className={compact ? 'space-y-3' : 'p-5 bg-white dark:bg-night-card rounded-2xl space-y-4'}
         >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2 flex-wrap flex-1 min-w-[200px]">
-              <label htmlFor={`guest-name-${targetId}`} className="text-xs font-medium text-[#5C5C58] dark:text-[#A8A49B] shrink-0">
+              <label htmlFor={`guest-name-${targetId}`} className="text-xs font-medium text-ink-muted dark:text-sandstone-light shrink-0">
                 Від імені:
               </label>
-              <strong className="text-xs font-semibold text-[#141413] dark:text-[#F4F1EA]">{guestUser.displayName}</strong>
+              <strong className="text-xs font-semibold text-ink dark:text-cream">{guestUser.displayName}</strong>
               <UserRankBadges badges={guestUser.badges} size="xs" />
             </div>
 
             {userHasRated && typeof userRatingValue === 'number' && (
-              <span className="inline-flex items-center gap-1.5 text-xs font-mono text-[#1E563B] dark:text-[#E5E5E5] tabular-nums">
+              <span className="inline-flex items-center gap-1.5 text-xs font-mono text-pine-deep dark:text-silver tabular-nums">
                 <Check className="w-3.5 h-3.5" strokeWidth={2} />
                 <span>Ваша оцінка: {userRatingValue.toFixed(1)}</span>
               </span>
             )}
           </div>
 
-          <div className="rounded-xl bg-[#F3F1EC] dark:bg-[#2E2E2E] focus-within:ring-1 focus-within:ring-[#2C5937]/30 dark:focus-within:ring-white/25 transition-all">
+          <div className="rounded-xl bg-paper-warm dark:bg-night-hover focus-within:ring-1 focus-within:ring-pine/30 dark:focus-within:ring-white/25 transition-all">
             <textarea
               rows={2}
               maxLength={1500}
@@ -714,13 +714,13 @@ export function ReviewsBlock({
                   ? 'Додайте коментар до вашої оцінки (або підтвердьте саму оцінку)...'
                   : 'Напишіть коментар...'
               }
-              className="w-full bg-transparent px-3.5 pt-3 pb-1 text-sm text-[#141413] dark:text-[#F4F1EA] placeholder:text-[#7A7870] dark:placeholder:text-[#8E8A80] focus:outline-none resize-none"
+              className="w-full bg-transparent px-3.5 pt-3 pb-1 text-sm text-ink dark:text-cream placeholder:text-ink-subtle dark:placeholder:text-[#8E8A80] focus:outline-none resize-none"
             />
             <div className="flex items-center justify-end px-2.5 pb-2">
               <button
                 type="submit"
                 disabled={!canSubmit}
-                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[11px] font-semibold bg-[#2C5937] text-white dark:bg-[#F4F1EA] dark:text-[#141413] hover:opacity-90 active:scale-[0.97] transition-all cursor-pointer disabled:opacity-35 disabled:pointer-events-none whitespace-nowrap shrink-0"
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[11px] font-semibold bg-pine text-white dark:bg-cream dark:text-ink hover:opacity-90 active:scale-[0.97] transition-all cursor-pointer disabled:opacity-35 disabled:pointer-events-none whitespace-nowrap shrink-0"
               >
                 {hasSelectedRating && !hasComment ? (
                   <Check className="w-3 h-3" strokeWidth={2.2} />
@@ -735,7 +735,7 @@ export function ReviewsBlock({
           {statusMessage && (
             <p
               className={`text-xs font-medium ${
-                statusMessage.isError ? 'text-rose-700 dark:text-rose-400' : 'text-emerald-800 dark:text-[#E5E5E5]'
+                statusMessage.isError ? 'text-rose-700 dark:text-rose-400' : 'text-emerald-800 dark:text-silver'
               }`}
             >
               {statusMessage.text}
@@ -810,4 +810,4 @@ export function ReviewsBlock({
         ))}
     </div>
   );
-}
+});

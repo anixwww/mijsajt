@@ -132,7 +132,7 @@ function TrackArtwork({
         loading="lazy"
         decoding="async"
         onError={() => setFailed(true)}
-        className={`${dimClass} object-cover shrink-0 bg-[#262626]`}
+        className={`${dimClass} object-cover shrink-0 bg-night-card`}
       />
     );
   }
@@ -140,7 +140,7 @@ function TrackArtwork({
   return (
     <div
       aria-hidden="true"
-      className={`${dimClass} shrink-0 flex items-center justify-center bg-[#EBE7DF] dark:bg-[#323232] text-[#5C5C58] dark:text-[#C4BFB4]`}
+      className={`${dimClass} shrink-0 flex items-center justify-center bg-paper-sand dark:bg-night-elevated text-ink-muted dark:text-parchment`}
     >
       <Music2 className={iconClass} strokeWidth={1.65} />
     </div>
@@ -430,7 +430,7 @@ export const RadioSection = memo(function RadioSection({
       <div
         role="tablist"
         aria-label="Хвилі радіостанції"
-        className="inline-flex items-center gap-1 p-1 bg-[#EAE7DF] dark:bg-[#262626] rounded-xl"
+        className="inline-flex items-center gap-1 p-1 bg-paper-sand dark:bg-night-card rounded-xl"
       >
         {RADIO_STATIONS.map((station) => {
           const active = radioViewMode === 'stream' && activeStation === station.id;
@@ -449,8 +449,8 @@ export const RadioSection = memo(function RadioSection({
               }}
               className={`touch-surface px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-150 whitespace-nowrap shrink-0 cursor-pointer inline-flex items-center gap-2 ${
                 active
-                  ? 'bg-white dark:bg-[#323232] text-[#141413] dark:text-[#F4F1EA] shadow-xs'
-                  : 'text-[#5C5C58] dark:text-[#C4BFB4] hover:text-[#141413] dark:hover:text-[#F4F1EA]'
+                  ? 'bg-white dark:bg-night-elevated text-ink dark:text-cream shadow-xs'
+                  : 'text-ink-muted dark:text-parchment hover:text-ink dark:hover:text-cream'
               }`}
             >
               <span>{station.label}</span>
@@ -477,8 +477,8 @@ export const RadioSection = memo(function RadioSection({
         aria-pressed={radioViewMode === 'saved'}
         className={`touch-surface px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-150 whitespace-nowrap shrink-0 cursor-pointer inline-flex items-center gap-2 ${
           radioViewMode === 'saved'
-            ? 'bg-[#2C5937] text-white dark:bg-[#F4F1EA] dark:text-[#141413] shadow-xs'
-            : 'bg-[#EAE7DF] dark:bg-[#262626] text-[#141413] dark:text-[#F4F1EA] hover:bg-[#E1DDD3] dark:hover:bg-[#323232]'
+            ? 'bg-pine text-white dark:bg-cream dark:text-ink shadow-xs'
+            : 'bg-paper-sand dark:bg-night-card text-ink dark:text-cream hover:bg-paper-stone dark:hover:bg-night-elevated'
         }`}
       >
         <ListMusic className="w-4 h-4 shrink-0" strokeWidth={1.85} />
@@ -497,7 +497,7 @@ export const RadioSection = memo(function RadioSection({
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1
           id="radio-section-heading"
-          className="text-3xl sm:text-4xl font-semibold tracking-tight text-[#141413] dark:text-[#F4F1EA]"
+          className="text-3xl sm:text-4xl font-semibold tracking-tight text-ink dark:text-cream"
         >
           Радіо
         </h1>
@@ -512,7 +512,7 @@ export const RadioSection = memo(function RadioSection({
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-          className="relative overflow-hidden rounded-[28px] bg-gradient-to-b from-[#EFECE4] via-[#EAE6DC] to-[#E2DDD1] dark:from-[#262626] dark:via-[#222222] dark:to-[#1C1C1C] px-6 py-10 sm:px-12 sm:py-14 shadow-[0_24px_60px_-32px_rgba(20,30,22,0.2)] dark:shadow-[0_28px_70px_-30px_rgba(0,0,0,0.8)]"
+          className="relative overflow-hidden rounded-[28px] bg-gradient-to-b from-paper-warm via-[#EAE6DC] to-[#E2DDD1] dark:from-night-card dark:via-night-panel dark:to-night-deep px-6 py-10 sm:px-12 sm:py-14 shadow-[0_24px_60px_-32px_rgba(20,30,22,0.2)] dark:shadow-[0_28px_70px_-30px_rgba(0,0,0,0.8)]"
         >
           {/* Soft ambient lighting */}
           <div
@@ -537,7 +537,7 @@ export const RadioSection = memo(function RadioSection({
             aria-hidden="true"
             viewBox="0 0 64 64"
             fill="none"
-            className="pointer-events-none absolute top-4 left-4 sm:top-5 sm:left-5 w-11 h-11 text-[#2C5937]/18 dark:text-white/15"
+            className="pointer-events-none absolute top-4 left-4 sm:top-5 sm:left-5 w-11 h-11 text-pine/18 dark:text-white/15"
           >
             <path
               d="M6 44C7 24 19 11 42 7"
@@ -564,7 +564,7 @@ export const RadioSection = memo(function RadioSection({
             aria-hidden="true"
             viewBox="0 0 64 64"
             fill="none"
-            className="pointer-events-none absolute bottom-4 right-4 sm:bottom-5 sm:right-5 w-11 h-11 rotate-180 text-[#2C5937]/18 dark:text-white/15"
+            className="pointer-events-none absolute bottom-4 right-4 sm:bottom-5 sm:right-5 w-11 h-11 rotate-180 text-pine/18 dark:text-white/15"
           >
             <path
               d="M6 44C7 24 19 11 42 7"
@@ -595,7 +595,7 @@ export const RadioSection = memo(function RadioSection({
               </p>
               <p className="text-[15px] sm:text-[17px] leading-[1.75] text-[#141A16] dark:text-[#F1EFE7] font-medium">
                 Тільки ти і потік музики, який не припиняється.{' '}
-                <span className="text-[#2C5937] dark:text-[#E5E5E5] italic">
+                <span className="text-pine dark:text-silver italic">
                   Занурення гарантую!
                 </span>
               </p>
@@ -603,12 +603,12 @@ export const RadioSection = memo(function RadioSection({
 
             {/* Editorial hairline divider */}
             <div aria-hidden="true" className="my-5 flex items-center justify-center gap-3 w-36">
-              <span className="h-px flex-1 bg-gradient-to-r from-transparent to-[#2C5937]/30 dark:to-white/25" />
-              <span className="w-1.5 h-1.5 rotate-45 bg-[#2C5937]/45 dark:bg-white/45" />
-              <span className="h-px flex-1 bg-gradient-to-l from-transparent to-[#2C5937]/30 dark:to-white/25" />
+              <span className="h-px flex-1 bg-gradient-to-r from-transparent to-pine/30 dark:to-white/25" />
+              <span className="w-1.5 h-1.5 rotate-45 bg-pine/45 dark:bg-white/45" />
+              <span className="h-px flex-1 bg-gradient-to-l from-transparent to-pine/30 dark:to-white/25" />
             </div>
 
-            <p className="text-xs sm:text-sm tracking-[0.015em] text-[#5C5C58] dark:text-[#C4BFB4] mb-7">
+            <p className="text-xs sm:text-sm tracking-[0.015em] text-ink-muted dark:text-parchment mb-7">
               На вибір дві хвилі — інді та електронна.
             </p>
 
@@ -703,9 +703,9 @@ export const RadioSection = memo(function RadioSection({
       {!isOnline && (
         <div
           role="status"
-          className="rounded-2xl bg-[#EAE7DF]/90 dark:bg-[#262626] px-4 py-3 flex items-center gap-3 text-xs sm:text-sm text-[#3F453E] dark:text-[#D4D4D4]"
+          className="rounded-2xl bg-paper-sand/90 dark:bg-night-card px-4 py-3 flex items-center gap-3 text-xs sm:text-sm text-[#3F453E] dark:text-[#D4D4D4]"
         >
-          <WifiOff className="w-4 h-4 text-[#2B5434] dark:text-[#E5E5E5] shrink-0" />
+          <WifiOff className="w-4 h-4 text-pine dark:text-silver shrink-0" />
           <span>
             Для потокового радіо SoundCloud потрібне підключення до інтернету. Збережені вірші, проза та блог доступні офлайн.
           </span>
@@ -754,7 +754,7 @@ export const RadioSection = memo(function RadioSection({
             <p
               className={`text-xs font-medium ${
                 adminMessage.type === 'ok'
-                  ? 'text-[#2B5434] dark:text-[#E5E5E5]'
+                  ? 'text-pine dark:text-silver'
                   : 'text-rose-700 dark:text-rose-400'
               }`}
             >
@@ -773,7 +773,7 @@ export const RadioSection = memo(function RadioSection({
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.2 }}
-            className="rounded-2xl bg-[#202020] text-[#F4F1EA] p-5 sm:p-7 shadow-[0_18px_40px_-24px_rgba(0,0,0,0.65)] space-y-6"
+            className="rounded-2xl bg-night-panel text-cream p-5 sm:p-7 shadow-[0_18px_40px_-24px_rgba(0,0,0,0.65)] space-y-6"
           >
             {/* Active Track Header */}
             <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-5">
@@ -783,19 +783,19 @@ export const RadioSection = memo(function RadioSection({
                 size="lg"
               />
               <div className="min-w-0 flex-1 space-y-1.5">
-                <div className="flex flex-wrap items-center gap-2 text-[11px] font-mono uppercase tracking-[0.12em] text-[#E5E5E5]">
+                <div className="flex flex-wrap items-center gap-2 text-[11px] font-mono uppercase tracking-[0.12em] text-silver">
                   <span>
                     {playbackScope === 'saved' ? 'Мій список' : activeStationLabel}
                   </span>
                   <span className="text-[#666666]">·</span>
-                  <span className="tabular-nums text-[#D8D3C8]">
+                  <span className="tabular-nums text-paper-stone">
                     {String(currentIndex + 1).padStart(2, '0')} /{' '}
                     {String(activePlaybackList.length).padStart(2, '0')}
                   </span>
                   {isPlaying && (
                     <>
                       <span className="text-[#666666]">·</span>
-                      <span className="inline-flex items-center gap-1.5 text-[#E5E5E5]">
+                      <span className="inline-flex items-center gap-1.5 text-silver">
                         <LiveRadioEqualizer isPlaying={isPlaying} tone="accent" size="sm" />
                         <span>В ефірі</span>
                       </span>
@@ -824,7 +824,7 @@ export const RadioSection = memo(function RadioSection({
                         className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono tabular-nums transition-colors cursor-pointer disabled:opacity-60 ${
                           activeTrack.isLiked
                             ? 'bg-rose-500/20 text-rose-400 hover:bg-rose-500/30'
-                            : 'bg-white/8 text-[#D6D3CB] hover:bg-white/15 hover:text-white'
+                            : 'bg-white/8 text-paper-stone hover:bg-white/15 hover:text-white'
                         }`}
                       >
                         <Heart
@@ -841,7 +841,7 @@ export const RadioSection = memo(function RadioSection({
                         href={activeSafeHref}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-xs font-medium text-[#E5E5E5] hover:text-white transition-colors"
+                        className="inline-flex items-center gap-1 text-xs font-medium text-silver hover:text-white transition-colors"
                       >
                         <span>Відкрити на SoundCloud</span>
                         <ExternalLink className="w-3.5 h-3.5" />
@@ -866,10 +866,10 @@ export const RadioSection = memo(function RadioSection({
                   style={{
                     background: `linear-gradient(to right, #E5E5E5 ${progressPercent}%, rgba(255,255,255,0.14) ${progressPercent}%)`,
                   }}
-                  className="w-full h-1.5 rounded-full appearance-none cursor-pointer accent-[#E5E5E5] disabled:opacity-50"
+                  className="w-full h-1.5 rounded-full appearance-none cursor-pointer accent-silver disabled:opacity-50"
                 />
               </div>
-              <div className="flex items-center justify-between font-mono text-[11px] text-[#C4BFB4] tabular-nums">
+              <div className="flex items-center justify-between font-mono text-[11px] text-parchment tabular-nums">
                 <span>{formatDurationMs(positionMs)}</span>
                 <span>{durationMs > 0 ? formatDurationMs(durationMs) : '--:--'}</span>
               </div>
@@ -883,7 +883,7 @@ export const RadioSection = memo(function RadioSection({
                   onClick={onPrevTrack}
                   disabled={tracks.length === 0}
                   aria-label="Попередній трек"
-                  className="w-10 h-10 rounded-full flex items-center justify-center bg-white/8 hover:bg-white/15 text-[#F4F1EA] transition-colors cursor-pointer disabled:opacity-40"
+                  className="w-10 h-10 rounded-full flex items-center justify-center bg-white/8 hover:bg-white/15 text-cream transition-colors cursor-pointer disabled:opacity-40"
                 >
                   <SkipBack className="w-4 h-4" />
                 </button>
@@ -908,7 +908,7 @@ export const RadioSection = memo(function RadioSection({
                   onClick={onNextTrack}
                   disabled={tracks.length === 0}
                   aria-label="Наступний трек"
-                  className="w-10 h-10 rounded-full flex items-center justify-center bg-white/8 hover:bg-white/15 text-[#F4F1EA] transition-colors cursor-pointer disabled:opacity-40"
+                  className="w-10 h-10 rounded-full flex items-center justify-center bg-white/8 hover:bg-white/15 text-cream transition-colors cursor-pointer disabled:opacity-40"
                 >
                   <SkipForward className="w-4 h-4" />
                 </button>
@@ -934,7 +934,7 @@ export const RadioSection = memo(function RadioSection({
                   max={100}
                   value={isMuted ? 0 : volume}
                   onChange={(e) => onVolumeChange(Number(e.target.value))}
-                  className="w-24 sm:w-28 h-1.5 rounded-full appearance-none bg-white/15 accent-[#E5E5E5] cursor-pointer"
+                  className="w-24 sm:w-28 h-1.5 rounded-full appearance-none bg-white/15 accent-silver cursor-pointer"
                 />
               </div>
             </div>
@@ -947,7 +947,7 @@ export const RadioSection = memo(function RadioSection({
                     <button
                       type="button"
                       onClick={onToggleDirectEmbed}
-                      className="underline font-semibold text-[#E5E5E5] hover:text-white cursor-pointer"
+                      className="underline font-semibold text-silver hover:text-white cursor-pointer"
                     >
                       {showDirectEmbed ? 'Сховати плеєр SoundCloud' : 'Відкрити плеєр SoundCloud'}
                     </button>
@@ -982,7 +982,7 @@ export const RadioSection = memo(function RadioSection({
               <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-black/[0.06] dark:border-white/[0.06]">
                 <div className="flex items-center gap-2">
                   <Heart className="w-4 h-4 text-rose-500 fill-rose-500" strokeWidth={1.8} />
-                  <h3 className="text-sm font-semibold text-[#141413] dark:text-[#F4F1EA]">
+                  <h3 className="text-sm font-semibold text-ink dark:text-cream">
                     Мій список вподобаних пісень
                   </h3>
                 </div>
@@ -992,7 +992,7 @@ export const RadioSection = memo(function RadioSection({
                     setLocalViewMode('stream');
                     onChangePlaybackScope?.('repertoire');
                   }}
-                  className="text-xs font-medium text-[#5C5C58] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-white transition-colors cursor-pointer whitespace-nowrap shrink-0"
+                  className="text-xs font-medium text-ink-muted dark:text-sandstone hover:text-ink dark:hover:text-white transition-colors cursor-pointer whitespace-nowrap shrink-0"
                 >
                   Повернутись до ефіру
                 </button>
@@ -1001,13 +1001,13 @@ export const RadioSection = memo(function RadioSection({
               {savedTracks.length === 0 ? (
                 <div className="px-6 py-10 text-center space-y-2">
                   <Heart
-                    className="w-6 h-6 text-[#787872] dark:text-[#A6A196] mx-auto"
+                    className="w-6 h-6 text-ink-subtle dark:text-sandstone mx-auto"
                     strokeWidth={1.6}
                   />
-                  <p className="text-sm font-medium text-[#141413] dark:text-[#F4F1EA]">
+                  <p className="text-sm font-medium text-ink dark:text-cream">
                     Ваш список поки порожній
                   </p>
-                  <p className="text-xs text-[#5C5C58] dark:text-[#A6A196] max-w-sm mx-auto">
+                  <p className="text-xs text-ink-muted dark:text-sandstone max-w-sm mx-auto">
                     Натискайте серце на плеєрі під час прослуховування — улюблені пісні автоматично збиратимуться тут у ваш персональний плейлист.
                   </p>
                 </div>
@@ -1024,8 +1024,8 @@ export const RadioSection = memo(function RadioSection({
                         key={track.id}
                         className={`flex items-center gap-3 px-4 py-2.5 transition-colors ${
                           isCurrent
-                            ? 'bg-[#EAE7DF]/70 dark:bg-[#323232]'
-                            : 'hover:bg-[#FAF9F5] dark:hover:bg-[#2C2C2C]'
+                            ? 'bg-paper-sand/70 dark:bg-night-elevated'
+                            : 'hover:bg-paper dark:hover:bg-night-surface'
                         }`}
                       >
                         <button
@@ -1036,8 +1036,8 @@ export const RadioSection = memo(function RadioSection({
                           <span
                             className={`w-6 font-mono text-xs tabular-nums shrink-0 ${
                               isCurrent
-                                ? 'text-[#2B5434] dark:text-[#E5E5E5] font-semibold'
-                                : 'text-[#787872] dark:text-[#C4BFB4]'
+                                ? 'text-pine dark:text-silver font-semibold'
+                                : 'text-ink-subtle dark:text-parchment'
                             }`}
                           >
                             {String(idx + 1).padStart(2, '0')}
@@ -1047,13 +1047,13 @@ export const RadioSection = memo(function RadioSection({
                             <p
                               className={`text-sm truncate ${
                                 isCurrent
-                                  ? 'font-semibold text-[#141413] dark:text-white'
-                                  : 'font-medium text-[#141413] dark:text-[#F4F1EA]'
+                                  ? 'font-semibold text-ink dark:text-white'
+                                  : 'font-medium text-ink dark:text-cream'
                               }`}
                             >
                               {track.title}
                             </p>
-                            <p className="text-xs text-[#5C5C58] dark:text-[#A6A196] truncate">
+                            <p className="text-xs text-ink-muted dark:text-sandstone truncate">
                               {track.artist} · {stationLabel}
                             </p>
                           </div>
@@ -1077,7 +1077,7 @@ export const RadioSection = memo(function RadioSection({
                             rel="noopener noreferrer"
                             aria-label={`Відкрити ${track.title} на SoundCloud`}
                             title="Відкрити на SoundCloud"
-                            className="p-2 rounded-lg text-[#5C5C58] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-white hover:bg-[#EAE7DF] dark:hover:bg-[#3A3A3A] transition-colors shrink-0"
+                            className="p-2 rounded-lg text-ink-muted dark:text-sandstone hover:text-ink dark:hover:text-white hover:bg-paper-sand dark:hover:bg-night-soft transition-colors shrink-0"
                           >
                             <ExternalLink className="w-3.5 h-3.5" />
                           </a>

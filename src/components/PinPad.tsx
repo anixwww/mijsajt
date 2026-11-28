@@ -103,10 +103,10 @@ export function PinPad({
               className={`w-3.5 h-3.5 rounded-full transition-all duration-150 ${
                 filled
                   ? loading
-                    ? 'bg-[#2C5937] dark:bg-[#6EE7B7] scale-110 animate-pulse'
+                    ? 'bg-pine dark:bg-[#6EE7B7] scale-110 animate-pulse'
                     : errorTrigger > 0 && value.length === 0
                       ? 'bg-rose-500 dark:bg-rose-400 scale-105'
-                      : 'bg-[#141413] dark:bg-[#F4F1EA] scale-110 shadow-xs'
+                      : 'bg-ink dark:bg-cream scale-110 shadow-xs'
                   : 'border-2 border-[#D2CCC0] dark:border-[#4A4A48] bg-transparent'
               }`}
             />
@@ -122,7 +122,7 @@ export function PinPad({
             type="button"
             disabled={isBlocked}
             onClick={() => appendDigit(digit)}
-            className="min-h-[54px] rounded-2xl bg-white dark:bg-[#2A2A2A] hover:bg-[#F2EFE8] dark:hover:bg-[#343434] active:scale-[0.94] text-[22px] font-medium tabular-nums text-[#141413] dark:text-[#F4F1EA] shadow-[0_2px_6px_-2px_rgba(20,20,19,0.08)] dark:shadow-[0_2px_8px_-2px_rgba(0,0,0,0.45)] transition-all duration-100 flex items-center justify-center cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#141413]/40 dark:focus-visible:ring-[#F4F1EA]/40"
+            className="min-h-[54px] rounded-2xl bg-white dark:bg-night-lift hover:bg-paper-warm dark:hover:bg-night-elevated active:scale-[0.94] text-[22px] font-medium tabular-nums text-ink dark:text-cream shadow-[0_2px_6px_-2px_rgba(20,20,19,0.08)] dark:shadow-[0_2px_8px_-2px_rgba(0,0,0,0.45)] transition-all duration-100 flex items-center justify-center cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40 dark:focus-visible:ring-cream/40"
           >
             {digit}
           </button>
@@ -134,7 +134,7 @@ export function PinPad({
             type="button"
             disabled={isBlocked}
             onClick={onLeftAction}
-            className="min-h-[54px] rounded-2xl text-xs font-medium text-[#5C5C58] dark:text-[#C4BFB4] hover:text-[#141413] dark:hover:text-[#F4F1EA] hover:bg-[#EFECE6]/70 dark:hover:bg-[#2C2C2C] active:scale-[0.95] transition-all duration-100 flex items-center justify-center cursor-pointer disabled:opacity-45"
+            className="min-h-[54px] rounded-2xl text-xs font-medium text-ink-muted dark:text-parchment hover:text-ink dark:hover:text-cream hover:bg-paper-warm/70 dark:hover:bg-night-surface active:scale-[0.95] transition-all duration-100 flex items-center justify-center cursor-pointer disabled:opacity-45"
           >
             {leftActionLabel}
           </button>
@@ -144,7 +144,7 @@ export function PinPad({
             disabled={isBlocked}
             onClick={handleClear}
             aria-label="Очистити ПІН-код"
-            className="min-h-[54px] rounded-2xl text-xs font-medium text-[#5C5C58] dark:text-[#C4BFB4] hover:text-[#141413] dark:hover:text-[#F4F1EA] hover:bg-[#EFECE6]/70 dark:hover:bg-[#2C2C2C] active:scale-[0.95] transition-all duration-100 flex items-center justify-center cursor-pointer disabled:opacity-45"
+            className="min-h-[54px] rounded-2xl text-xs font-medium text-ink-muted dark:text-parchment hover:text-ink dark:hover:text-cream hover:bg-paper-warm/70 dark:hover:bg-night-surface active:scale-[0.95] transition-all duration-100 flex items-center justify-center cursor-pointer disabled:opacity-45"
           >
             Скинути
           </button>
@@ -157,7 +157,7 @@ export function PinPad({
           type="button"
           disabled={isBlocked}
           onClick={() => appendDigit('0')}
-          className="min-h-[54px] rounded-2xl bg-white dark:bg-[#2A2A2A] hover:bg-[#F2EFE8] dark:hover:bg-[#343434] active:scale-[0.94] text-[22px] font-medium tabular-nums text-[#141413] dark:text-[#F4F1EA] shadow-[0_2px_6px_-2px_rgba(20,20,19,0.08)] dark:shadow-[0_2px_8px_-2px_rgba(0,0,0,0.45)] transition-all duration-100 flex items-center justify-center cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#141413]/40 dark:focus-visible:ring-[#F4F1EA]/40"
+          className="min-h-[54px] rounded-2xl bg-white dark:bg-night-lift hover:bg-paper-warm dark:hover:bg-night-elevated active:scale-[0.94] text-[22px] font-medium tabular-nums text-ink dark:text-cream shadow-[0_2px_6px_-2px_rgba(20,20,19,0.08)] dark:shadow-[0_2px_8px_-2px_rgba(0,0,0,0.45)] transition-all duration-100 flex items-center justify-center cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40 dark:focus-visible:ring-cream/40"
         >
           0
         </button>
@@ -168,7 +168,7 @@ export function PinPad({
           disabled={isBlocked || value.length === 0}
           onClick={handleBackspace}
           aria-label="Стерти останню цифру"
-          className="min-h-[54px] rounded-2xl text-[#5C5C58] dark:text-[#C4BFB4] hover:text-[#141413] dark:hover:text-[#F4F1EA] hover:bg-[#EFECE6]/70 dark:hover:bg-[#2C2C2C] active:scale-[0.93] transition-all duration-100 flex items-center justify-center cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#141413]/40 dark:focus-visible:ring-[#F4F1EA]/40"
+          className="min-h-[54px] rounded-2xl text-ink-muted dark:text-parchment hover:text-ink dark:hover:text-cream hover:bg-paper-warm/70 dark:hover:bg-night-surface active:scale-[0.93] transition-all duration-100 flex items-center justify-center cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40 dark:focus-visible:ring-cream/40"
         >
           <Delete className="w-5 h-5" strokeWidth={1.85} />
         </button>

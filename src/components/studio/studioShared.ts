@@ -30,13 +30,13 @@ export function formatFileSize(bytes?: number): string {
 }
 
 export const STUDIO_INPUT_CLASS =
-  'w-full px-3 py-2 text-sm bg-[#EFECE6] dark:bg-[#1B1B1B] rounded-lg text-[#141413] dark:text-[#EDEAE1] placeholder:text-[#787872] dark:placeholder:text-[#7E7B73] focus:bg-[#FAF9F5] dark:focus:bg-[#323232] focus:outline-none transition-colors';
+  'w-full px-3 py-2 text-sm bg-paper-warm dark:bg-night-deep rounded-lg text-ink dark:text-cream-soft placeholder:text-ink-subtle dark:placeholder:text-ink-subtle focus:bg-paper dark:focus:bg-night-elevated focus:outline-none transition-colors';
 
 export const STUDIO_INPUT_SM_CLASS =
-  'w-full px-3 py-1.5 text-xs bg-[#EFECE6] dark:bg-[#1B1B1B] rounded-lg text-[#141413] dark:text-[#EDEAE1] placeholder:text-[#787872] dark:placeholder:text-[#7E7B73] focus:bg-[#FAF9F5] dark:focus:bg-[#323232] focus:outline-none transition-colors';
+  'w-full px-3 py-1.5 text-xs bg-paper-warm dark:bg-night-deep rounded-lg text-ink dark:text-cream-soft placeholder:text-ink-subtle dark:placeholder:text-ink-subtle focus:bg-paper dark:focus:bg-night-elevated focus:outline-none transition-colors';
 
 export const STUDIO_LABEL_CLASS =
-  'block text-xs font-medium text-[#5C5C58] dark:text-[#A6A196] mb-1.5';
+  'block text-xs font-medium text-ink-muted dark:text-sandstone mb-1.5';
 
 export type GetAuthHeadersFn = (
   extra?: Record<string, string>
