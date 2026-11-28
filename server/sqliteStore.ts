@@ -207,6 +207,7 @@ function runOneTimeMigrationIfNeeded(db: DatabaseSync): void {
       proseTelegramDiscountPercent: rawStore?.proseTelegramDiscountPercent ?? seeded.proseTelegramDiscountPercent,
       telegramChannelId: rawStore?.telegramChannelId ?? '',
       storeAuthDiscountPercent: 0,
+      showVisitorCounter: rawStore?.showVisitorCounter ?? seeded.showVisitorCounter ?? false,
       blog: rawStore?.blog ?? seeded.blog,
       products: rawStore?.products ?? seeded.products,
       orders: [], // handled via orders_records table

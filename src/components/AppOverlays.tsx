@@ -79,6 +79,7 @@ export interface AppOverlaysProps {
   handleHomeActionMonobankUpdated: (title: string) => void;
   handleHomeActionInterviewsUpdated: (title: string) => void;
   handleHomeRepeatersUpdated: (nextRepeaters: HomeRepeatersConfig) => void;
+  handleShowVisitorCounterUpdated?: (show: boolean) => void;
 }
 
 export const AppOverlays = memo(function AppOverlays({
@@ -118,6 +119,7 @@ export const AppOverlays = memo(function AppOverlays({
   handleHomeActionMonobankUpdated,
   handleHomeActionInterviewsUpdated,
   handleHomeRepeatersUpdated,
+  handleShowVisitorCounterUpdated,
 }: AppOverlaysProps) {
   const catalog = useCatalogStore((s) => s.catalog);
 
@@ -281,6 +283,7 @@ export const AppOverlays = memo(function AppOverlays({
             onHomeActionMonobankUpdated={handleHomeActionMonobankUpdated}
             onHomeActionInterviewsUpdated={handleHomeActionInterviewsUpdated}
             onHomeRepeatersUpdated={handleHomeRepeatersUpdated}
+            onShowVisitorCounterUpdated={handleShowVisitorCounterUpdated}
           />
         </Suspense>
       )}

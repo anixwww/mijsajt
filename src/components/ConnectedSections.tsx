@@ -198,6 +198,7 @@ export interface AuthorStudioModalConnectedProps {
   onHomeActionMonobankUpdated: (title: string) => void;
   onHomeActionInterviewsUpdated: (title: string) => void;
   onHomeRepeatersUpdated: (nextRepeaters: HomeRepeatersConfig) => void;
+  onShowVisitorCounterUpdated?: (show: boolean) => void;
 }
 
 export const AuthorStudioModalConnected = memo(function AuthorStudioModalConnected({
@@ -222,6 +223,7 @@ export const AuthorStudioModalConnected = memo(function AuthorStudioModalConnect
   onHomeActionMonobankUpdated,
   onHomeActionInterviewsUpdated,
   onHomeRepeatersUpdated,
+  onShowVisitorCounterUpdated,
 }: AuthorStudioModalConnectedProps) {
   const allRadioTracks = useAllRadioTracks();
   const notifyTracksUpdated = useRadioStore((s) => s.handlers.notifyTracksUpdated);
@@ -269,6 +271,8 @@ export const AuthorStudioModalConnected = memo(function AuthorStudioModalConnect
       onHomeActionInterviewsUpdated={onHomeActionInterviewsUpdated}
       homeRepeaters={homeViewData?.homeRepeaters}
       onHomeRepeatersUpdated={onHomeRepeatersUpdated}
+      showVisitorCounter={homeViewData?.showVisitorCounter ?? false}
+      onShowVisitorCounterUpdated={onShowVisitorCounterUpdated}
       radioTracks={allRadioTracks}
       onRadioTracksChanged={notifyTracksUpdated}
       uniqueVisitors={uniqueVisitors}

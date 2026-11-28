@@ -1,4 +1,5 @@
 import type { AnalyticsClickCategory, AnalyticsDwellCategory } from '../types.ts';
+import { useCatalogStore } from '../store/useCatalogStore.ts';
 
 interface QueuedEvent {
   type: 'click' | 'dwell' | 'exit';
@@ -157,16 +158,24 @@ export function setActiveMoment(moment: {
   exitTrackedForHide = false;
 }
 
-const VISIT_TRACKED_KEY = 'dankiv_visit_tracked_v1';
+let lastTrackedKyivDate = '';
+
+function getClientKyivDateKey(): string {
+  try {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Europe/Kyiv',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(new Date());
+  } catch {
+    return new Date().toISOString().slice(0, 10);
+  }
+}
 
 function trackSessionVisit(entrySection?: string): void {
   if (typeof window === 'undefined') return;
-  try {
-    if (sessionStorage.getItem(VISIT_TRACKED_KEY) === '1') return;
-    sessionStorage.setItem(VISIT_TRACKED_KEY, '1');
-  } catch {
-    // Ignore storage unavailability
-  }
+  lastTrackedKyivDate = getClientKyivDateKey();
 
   const sessionId = getSessionId();
   const payload = JSON.stringify({
@@ -180,9 +189,25 @@ function trackSessionVisit(entrySection?: string): void {
     headers: { 'Content-Type': 'application/json' },
     body: payload,
     keepalive: true,
-  }).catch(() => {
-    // Ignore transient network errors
-  });
+  })
+    .then((res) => (res.ok ? res.json() : null))
+    .then((data: { uniqueVisitors?: unknown; todayUniqueVisitors?: unknown } | null) => {
+      if (!data) return;
+      const unique =
+        typeof data.uniqueVisitors === 'number' && Number.isFinite(data.uniqueVisitors)
+          ? data.uniqueVisitors
+          : null;
+      const today =
+        typeof data.todayUniqueVisitors === 'number' && Number.isFinite(data.todayUniqueVisitors)
+          ? data.todayUniqueVisitors
+          : null;
+      if (unique !== null && today !== null) {
+        useCatalogStore.getState().setLiveVisitorCounts(unique, today);
+      }
+    })
+    .catch(() => {
+      // Ignore transient network errors
+    });
 }
 
 export function initBehaviorAnalytics(entrySection?: string): () => void {
@@ -214,6 +239,9 @@ export function initBehaviorAnalytics(entrySection?: string): () => void {
       exitTrackedForHide = false;
       if (currentMoment) {
         currentMoment.startedAtMs = Date.now();
+      }
+      if (getClientKyivDateKey() !== lastTrackedKyivDate) {
+        trackSessionVisit(entrySection);
       }
     }
   };

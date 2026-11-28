@@ -506,6 +506,8 @@ export interface HomePayload {
   proseTelegramDiscountPercent?: number;
   storeAuthDiscountPercent?: number;
   uniqueVisitors: number;
+  todayUniqueVisitors?: number;
+  showVisitorCounter?: boolean;
 }
 
 export interface TelegramSubscriptionState {
@@ -559,7 +561,7 @@ export interface WeeklyPoemWinner {
   periodEnd: string;
   periodLabel: string;
   selectedAt: string;
-  sourcePoemId: string;
+  sourcePoemId?: string;
   sourceSubmissionId?: string;
   authorUid?: string;
   authorName: string;
@@ -589,7 +591,7 @@ export interface WeeklyProseWinner {
   periodEnd: string;
   periodLabel: string;
   selectedAt: string;
-  sourceProseId: string;
+  sourceProseId?: string;
   sourceSubmissionId?: string;
   authorUid?: string;
   authorName: string;
@@ -885,6 +887,7 @@ export interface SiteAnalyticsData {
   exitsByMoment: Record<string, AnalyticsExitStat>;
   recentEvents: BehaviorEventRecord[];
   visitRecords?: VisitLogEntry[];
+  pwaInstallsCount?: number;
 }
 
 export interface VisitBreakdownItem {
@@ -950,6 +953,7 @@ export interface AuthorAnalyticsReport {
     week: VisitPeriodReport;
     month: VisitPeriodReport;
   };
+  pwaInstallsCount: number;
   clicks: AnalyticsClickStat[];
   dwell: (AnalyticsDwellStat & { avgSeconds: number })[];
   exits: (AnalyticsExitStat & { sharePercent: number })[];

@@ -11,3 +11,4 @@ public/assets/aistudio/
 data/
 data/store.json
 data/uploads/
+.aistudio/

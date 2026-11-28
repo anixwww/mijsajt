@@ -418,6 +418,33 @@ export function BehaviorAnalyticsTab({ getAdminToken, uniqueVisitors }: Behavior
         </div>
       </div>
 
+      {/* PWA Installs & Repeat Visits Strip */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="bg-paper dark:bg-night-card rounded-xl p-4 flex items-center justify-between">
+          <div>
+            <p className="text-xs font-medium text-ink-muted dark:text-sandstone-light">
+              Встановлень додатку на робочий стіл (PWA)
+            </p>
+            <p className="font-mono text-2xl font-semibold text-ink dark:text-cream tabular-nums mt-1">
+              {report.pwaInstallsCount}
+            </p>
+          </div>
+          <Laptop className="w-8 h-8 text-pine dark:text-silver opacity-75" strokeWidth={1.5} />
+        </div>
+
+        <div className="bg-paper dark:bg-night-card rounded-xl p-4 flex items-center justify-between">
+          <div>
+            <p className="text-xs font-medium text-ink-muted dark:text-sandstone-light">
+              Повторність входу (повторні візити сьогодні)
+            </p>
+            <p className="font-mono text-2xl font-semibold text-pine-dark dark:text-silver tabular-nums mt-1">
+              {visits.day.returningVisitors}
+            </p>
+          </div>
+          <UserCheck className="w-8 h-8 text-pine-dark dark:text-silver opacity-75" strokeWidth={1.5} />
+        </div>
+      </div>
+
       {/* Interactive Period Visit Trend Chart */}
       <section className="bg-paper dark:bg-night-card rounded-xl p-5 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">

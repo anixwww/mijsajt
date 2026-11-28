@@ -17,6 +17,7 @@ import {
   type ReactNode,
 } from 'react';
 import { useViewportActivity } from '../hooks/useViewportActivity.ts';
+import { useCatalogStore } from '../store/useCatalogStore.ts';
 import {
   getEffectivePriceUah,
   isPhysicalProduct,
@@ -716,6 +717,9 @@ export const HomeShowcaseSection = memo(function HomeShowcaseSection({
   }, [blog, repeatersConfig.blogMode, repeatersConfig.blogLimit]);
 
   const [feedbackFilter, setFeedbackFilter] = useState<FeedbackFilter>('all');
+  const uniqueVisitors = useCatalogStore((s) => s.uniqueVisitors);
+  const todayUniqueVisitors = useCatalogStore((s) => s.todayUniqueVisitors);
+  const showVisitorCounter = useCatalogStore((s) => s.homeShell?.showVisitorCounter ?? false);
 
   // Build dynamic slides for Вірші, Проза, Блог, Крамниця
   const poemSlides: VitrineSlide[] = useMemo(() => {
@@ -1246,7 +1250,7 @@ export const HomeShowcaseSection = memo(function HomeShowcaseSection({
   );
 
   return (
-    <div className="relative z-10 w-full max-w-4xl mx-auto px-4 sm:px-6 pt-1 pb-24 sm:pb-28 space-y-6 sm:space-y-8">
+    <div className="relative z-10 w-full max-w-4xl mx-auto px-4 sm:px-6 pt-1 pb-20 sm:pb-24 space-y-6 sm:space-y-8">
       {/* 1. Four Electronic Glass Vitrines: Вірші · Проза · Блог · Крамниця */}
       <section aria-label="Електронні вітрини розділів Вірші, Проза, Блог та Крамниця">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
@@ -1405,6 +1409,18 @@ export const HomeShowcaseSection = memo(function HomeShowcaseSection({
           </div>
         )}
       </section>
+
+      {showVisitorCounter && (
+        <div className="flex justify-center pt-1">
+          <p
+            aria-label={`Відвідувачів за сьогодні: ${todayUniqueVisitors}, за весь час: ${uniqueVisitors}`}
+            className="inline-flex items-center justify-center gap-3 text-[11px] leading-none text-ink/40 dark:text-cream/40 tabular-nums select-none"
+          >
+            <span>Відвідувачів за сьогодні: {todayUniqueVisitors}</span>
+            <span>За весь час: {uniqueVisitors}</span>
+          </p>
+        </div>
+      )}
     </div>
   );
 });

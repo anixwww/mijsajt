@@ -707,6 +707,7 @@ export function registerAuthorRoutes(app: express.Express): void {
         topExit: exits[0] || null,
       },
       visits: buildVisitStatisticsReport(db),
+      pwaInstallsCount: analytics.pwaInstallsCount || 0,
       clicks,
       dwell,
       exits,
@@ -714,6 +715,14 @@ export function registerAuthorRoutes(app: express.Express): void {
     };
 
     res.json(report);
+  });
+
+  app.post('/api/analytics/pwa-install', (_req: Request, res: Response) => {
+    const db = ensureDatabase();
+    if (!db.analytics) db.analytics = createEmptyAnalytics();
+    db.analytics.pwaInstallsCount = (db.analytics.pwaInstallsCount || 0) + 1;
+    saveDatabase(db, { bumpCatalogRevision: false, flushDelayMs: 0, slices: ['analytics'] });
+    res.json({ ok: true, pwaInstallsCount: db.analytics.pwaInstallsCount });
   });
 
   app.delete('/api/author/analytics', (_req: Request, res: Response) => {
@@ -3505,6 +3514,7 @@ export function registerAuthorRoutes(app: express.Express): void {
       homeRepeaters,
       proseAuthDiscountPercent,
       proseTelegramDiscountPercent,
+      showVisitorCounter,
     } = req.body as {
       heroLeadText?: string;
       authorAboutText?: string;
@@ -3526,6 +3536,7 @@ export function registerAuthorRoutes(app: express.Express): void {
       homeRepeaters?: unknown;
       proseAuthDiscountPercent?: number;
       proseTelegramDiscountPercent?: number;
+      showVisitorCounter?: boolean;
     };
 
     if (proseAuthDiscountPercent !== undefined) {
@@ -3546,6 +3557,10 @@ export function registerAuthorRoutes(app: express.Express): void {
         return;
       }
       db.proseTelegramDiscountPercent = Math.max(0, Math.min(90, Math.round(parsedTgDiscount)));
+    }
+
+    if (showVisitorCounter !== undefined) {
+      db.showVisitorCounter = Boolean(showVisitorCounter);
     }
 
     if (homeActionAboutTitle !== undefined) {
@@ -3858,6 +3873,7 @@ export function registerAuthorRoutes(app: express.Express): void {
       proseAuthDiscountPercent: db.proseAuthDiscountPercent,
       proseTelegramDiscountPercent: db.proseTelegramDiscountPercent ?? 50,
       storeAuthDiscountPercent: 0,
+      showVisitorCounter: db.showVisitorCounter ?? false,
     });
   });
 

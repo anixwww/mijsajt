@@ -532,6 +532,10 @@ export default function App() {
     (nextRepeaters: HomeRepeatersConfig) => updateHomeFields({ homeRepeaters: nextRepeaters }),
     [updateHomeFields]
   );
+  const handleShowVisitorCounterUpdated = useCallback(
+    (show: boolean) => updateHomeFields({ showVisitorCounter: show }),
+    [updateHomeFields]
+  );
 
   const handleAddToCart = useCallback(
     (productId: string) => {
@@ -908,6 +912,7 @@ export default function App() {
             handleHomeActionMonobankUpdated={handleHomeActionMonobankUpdated}
             handleHomeActionInterviewsUpdated={handleHomeActionInterviewsUpdated}
             handleHomeRepeatersUpdated={handleHomeRepeatersUpdated}
+            handleShowVisitorCounterUpdated={handleShowVisitorCounterUpdated}
           />
         </div>
       </MotionConfig>

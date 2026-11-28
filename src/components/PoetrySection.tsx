@@ -1626,7 +1626,7 @@ export const PoetrySection = memo(function PoetrySection({
                     />
                   )}
 
-                  <div className="flex flex-wrap items-center justify-between gap-3 py-1">
+                  <div className="flex flex-wrap items-center justify-between gap-2.5 py-1">
                   {/* Direct Rating Integrated Inside the Poem (authorized) OR Sign-in Notice (guests) */}
                   {guestUser ? (
                     <div className="flex flex-wrap items-center gap-3">
@@ -1707,6 +1707,25 @@ export const PoetrySection = memo(function PoetrySection({
                       )}
                     </div>
                   )}
+
+                  {/* Views Badge Aligned With Rating */}
+                  <div
+                    style={
+                      hasCustomSurface
+                        ? actionIconStyle
+                        : undefined
+                    }
+                    className={`inline-flex items-center gap-1.5 h-8 px-2.5 rounded-xl font-mono text-xs font-medium tabular-nums select-none shrink-0 ${
+                      hasCustomSurface
+                        ? ''
+                        : 'bg-paper-warm dark:bg-night-surface text-ink/80 dark:text-cream/85'
+                    }`}
+                    title="Кількість переглядів"
+                    aria-label={`Переглядів: ${currentPoem.viewsCount}`}
+                  >
+                    <PoemViewsIcon className="w-3.5 h-3.5 shrink-0 opacity-85" />
+                    <span>{currentPoem.viewsCount}</span>
+                  </div>
                 </div>
 
 
@@ -1884,25 +1903,6 @@ export const PoetrySection = memo(function PoetrySection({
                         </AnimatePresence>
                       </div>
                     )}
-                  </div>
-
-                  {/* Redesigned Views Badge Aligned With Action Controls */}
-                  <div
-                    style={
-                      hasCustomSurface
-                        ? actionIconStyle
-                        : undefined
-                    }
-                    className={`inline-flex items-center gap-1.5 h-10 px-3 rounded-xl font-mono text-xs font-medium tabular-nums select-none shrink-0 ${
-                      hasCustomSurface
-                        ? ''
-                        : 'bg-paper-warm dark:bg-night-surface text-ink/80 dark:text-cream/85'
-                    }`}
-                    title="Кількість переглядів"
-                    aria-label={`Переглядів: ${currentPoem.viewsCount}`}
-                  >
-                    <PoemViewsIcon className="w-4 h-4 shrink-0 opacity-85" />
-                    <span>{currentPoem.viewsCount}</span>
                   </div>
                 </div>
 

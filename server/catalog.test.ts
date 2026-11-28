@@ -2,7 +2,7 @@ import assert from 'node:assert';
 import http from 'node:http';
 import test from 'node:test';
 import express from 'express';
-import { ensureDatabase } from './db.ts';
+import { ensureDatabase, visitorIpSet } from './db.ts';
 import {
   CATALOG_TEXT_MAX_CHARS,
   computeLeaderboardRankings,
@@ -263,5 +263,118 @@ test('Admin accounts are excluded from activity leaderboard and never receive ac
     } else {
       process.env.ADMIN_EMAILS = prevAdminEmails;
     }
+  }
+});
+
+test('Visitor tracking records unique human visitors for today and all time while skipping bots', async () => {
+  const db = ensureDatabase();
+  const originalHashes = [...db.visitorIpHashes];
+  const originalRecords = [...(db.analytics.visitRecords || [])];
+  db.visitorIpHashes = [];
+  db.analytics.visitRecords = [];
+  visitorIpSet.clear();
+
+  const app = express();
+  app.set('trust proxy', 1);
+  app.use(express.json());
+  registerCatalogRoutes(app);
+  const server = http.createServer(app);
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', () => resolve()));
+
+  try {
+    const address = server.address();
+    assert.ok(address && typeof address === 'object');
+    const baseUrl = `http://127.0.0.1:${address.port}`;
+
+    // 1. Bot request should not increment unique human counters
+    const botRes = await fetch(`${baseUrl}/api/visitors/track`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'Googlebot/2.1',
+        'X-Forwarded-For': '203.0.113.10',
+      },
+      body: JSON.stringify({ sessionId: 'bot-s1', entrySection: 'home' }),
+    });
+    assert.strictEqual(botRes.status, 200);
+    const botJson = (await botRes.json()) as {
+      uniqueVisitors: number;
+      todayUniqueVisitors: number;
+      isNewVisitor: boolean;
+    };
+    assert.strictEqual(botJson.uniqueVisitors, 0);
+    assert.strictEqual(botJson.todayUniqueVisitors, 0);
+    assert.strictEqual(botJson.isNewVisitor, false);
+
+    // 2. First human visitor increments both counters to 1
+    const v1Res = await fetch(`${baseUrl}/api/visitors/track`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'Mozilla/5.0 Chrome/120.0.0.0',
+        'X-Forwarded-For': '203.0.113.11',
+      },
+      body: JSON.stringify({ sessionId: 'human-s1', entrySection: 'home' }),
+    });
+    const v1Json = (await v1Res.json()) as {
+      uniqueVisitors: number;
+      todayUniqueVisitors: number;
+      isNewVisitor: boolean;
+    };
+    assert.strictEqual(v1Json.uniqueVisitors, 1);
+    assert.strictEqual(v1Json.todayUniqueVisitors, 1);
+    assert.strictEqual(v1Json.isNewVisitor, true);
+
+    // 3. Repeat visit from same IP does not inflate counters
+    const v1RepeatRes = await fetch(`${baseUrl}/api/visitors/track`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'Mozilla/5.0 Chrome/120.0.0.0',
+        'X-Forwarded-For': '203.0.113.11',
+      },
+      body: JSON.stringify({ sessionId: 'human-s1-tab2', entrySection: 'poetry' }),
+    });
+    const v1RepeatJson = (await v1RepeatRes.json()) as {
+      uniqueVisitors: number;
+      todayUniqueVisitors: number;
+      isNewVisitor: boolean;
+    };
+    assert.strictEqual(v1RepeatJson.uniqueVisitors, 1);
+    assert.strictEqual(v1RepeatJson.todayUniqueVisitors, 1);
+    assert.strictEqual(v1RepeatJson.isNewVisitor, false);
+
+    // 4. Second distinct human visitor increments both to 2 and /api/home reflects them
+    const v2Res = await fetch(`${baseUrl}/api/visitors/track`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'Mozilla/5.0 Safari/605.1.15',
+        'X-Forwarded-For': '203.0.113.12',
+      },
+      body: JSON.stringify({ sessionId: 'human-s2', entrySection: 'home' }),
+    });
+    const v2Json = (await v2Res.json()) as {
+      uniqueVisitors: number;
+      todayUniqueVisitors: number;
+      isNewVisitor: boolean;
+    };
+    assert.strictEqual(v2Json.uniqueVisitors, 2);
+    assert.strictEqual(v2Json.todayUniqueVisitors, 2);
+    assert.strictEqual(v2Json.isNewVisitor, true);
+
+    const homeRes = await fetch(`${baseUrl}/api/home`);
+    const homeJson = (await homeRes.json()) as {
+      uniqueVisitors: number;
+      todayUniqueVisitors: number;
+    };
+    assert.strictEqual(homeJson.uniqueVisitors, 2);
+    assert.strictEqual(homeJson.todayUniqueVisitors, 2);
+  } finally {
+    db.visitorIpHashes = originalHashes;
+    db.analytics.visitRecords = originalRecords;
+    visitorIpSet.clear();
+    for (const h of originalHashes) visitorIpSet.add(h);
+    await new Promise<void>((resolve) => server.close(() => resolve()));
   }
 });

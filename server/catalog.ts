@@ -49,7 +49,11 @@ import {
   getFirstFormattedExcerptLine,
   preserveFormattedText,
 } from '../src/utils/textFormatting.ts';
-import { recordSiteVisit } from '../src/api/visitAnalytics.ts';
+import {
+  getVisitorCounts,
+  parseUserAgentSummary,
+  recordSiteVisit,
+} from '../src/api/visitAnalytics.ts';
 import { ensureWeeklyWinnersUpToDate, getWeekPeriodForDate, recordWeeklyVoteLog } from './weeklyHighlights.ts';
 import { selectRadioStationRepertoire, type RadioRepertoireBucket } from '../src/utils/radioRepertoire.ts';
 import {
@@ -189,7 +193,7 @@ export function computeLeaderboardRankings(db: SiteDatabase) {
   }
 
   const activityRanked = [...db.guestAccounts]
-    .filter((acc) => Boolean(acc.displayName) && !isAdminEmailAddress(acc.email))
+    .filter((acc) => Boolean(acc.displayName) && !isAdminEmailAddress(acc.email) && !(acc.uid && adminUids.has(acc.uid)) && !(acc.googleUid && adminUids.has(acc.googleUid)))
     .map((acc) => {
       const commentsCount = db.reviews.reduce((sum, rev) => {
         if (!rev.comment || !rev.comment.trim()) return sum;
@@ -1988,7 +1992,8 @@ export function registerCatalogRoutes(app: express.Express): void {
       proseAuthDiscountPercent: db.proseAuthDiscountPercent ?? 0,
       proseTelegramDiscountPercent: db.proseTelegramDiscountPercent ?? 50,
       storeAuthDiscountPercent: 0,
-      uniqueVisitors: db.visitorIpHashes.length,
+      showVisitorCounter: db.showVisitorCounter ?? false,
+      ...getVisitorCounts(db),
     });
   });
 
@@ -2061,6 +2066,7 @@ export function registerCatalogRoutes(app: express.Express): void {
       proseAuthDiscountPercent: db.proseAuthDiscountPercent ?? 0,
       proseTelegramDiscountPercent: db.proseTelegramDiscountPercent ?? 50,
       storeAuthDiscountPercent: 0,
+      showVisitorCounter: db.showVisitorCounter ?? false,
       poems: db.poems.map((poem) =>
         truncatePoemForCatalog(
           enrichPoem(poem, db, effectiveIpHash, optionalAuth?.account, badgeLookup, photoLookup)
@@ -2087,7 +2093,7 @@ export function registerCatalogRoutes(app: express.Express): void {
       weeklyProse: [...(db.weeklyProse || [])].sort((a, b) => b.periodStart.localeCompare(a.periodStart)),
       weeklyCurrentPeriod: getWeekPeriodForDate(),
       recentFeedback: buildRecentFeedback(db, 20, badgeLookup, photoLookup),
-      uniqueVisitors: db.visitorIpHashes.length,
+      ...getVisitorCounts(db),
     });
   });
 
@@ -2347,6 +2353,15 @@ export function registerCatalogRoutes(app: express.Express): void {
   // Track/refresh unique visitor count and detailed session visit
   app.post('/api/visitors/track', (req: Request, res: Response) => {
     const db = ensureDatabase();
+    const uaSummary = parseUserAgentSummary(req.headers['user-agent']);
+    if (uaSummary.deviceType === 'bot') {
+      res.json({
+        ...getVisitorCounts(db),
+        isNewVisitor: false,
+      });
+      return;
+    }
+
     const ipHash = getClientIpHash(req);
     let isNewVisitor = false;
 
@@ -2371,11 +2386,15 @@ export function registerCatalogRoutes(app: express.Express): void {
     });
 
     if (isNewVisitor || visitRecorded) {
-      saveDatabase(db, { bumpCatalogRevision: false, flushDelayMs: 5000, slices: ['community', 'analytics'] });
+      saveDatabase(db, {
+        bumpCatalogRevision: false,
+        flushDelayMs: isNewVisitor ? 0 : 1500,
+        slices: ['community', 'analytics'],
+      });
     }
 
     res.json({
-      uniqueVisitors: db.visitorIpHashes.length,
+      ...getVisitorCounts(db),
       isNewVisitor,
     });
   });

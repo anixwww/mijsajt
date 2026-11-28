@@ -85,6 +85,7 @@ export function createEmptyAnalytics(): SiteAnalyticsData {
     exitsByMoment: {},
     recentEvents: [],
     visitRecords: [],
+    pwaInstallsCount: 0,
   };
 }
 
@@ -120,6 +121,14 @@ export function bumpCatalogRevision(): number {
 
 export function syncRuntimeSets(db: SiteDatabase): void {
   visitorIpSet = new Set(db.visitorIpHashes);
+  if (Array.isArray(db.analytics?.visitRecords)) {
+    for (const rec of db.analytics.visitRecords) {
+      if (rec?.ipHash && rec.deviceType !== 'bot' && !visitorIpSet.has(rec.ipHash)) {
+        visitorIpSet.add(rec.ipHash);
+        db.visitorIpHashes.push(rec.ipHash);
+      }
+    }
+  }
   seenAnalyticsSessionsSet = new Set(db.analytics.seenSessionIds);
 }
 

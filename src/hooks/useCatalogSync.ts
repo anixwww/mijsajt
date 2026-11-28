@@ -29,6 +29,7 @@ export function useCatalogSync({ initialSection, getGuestToken }: UseCatalogSync
   const setLoading = useCatalogStore((s) => s.setLoading);
   const setLoadError = useCatalogStore((s) => s.setLoadError);
   const setUniqueVisitors = useCatalogStore((s) => s.setUniqueVisitors);
+  const setTodayUniqueVisitors = useCatalogStore((s) => s.setTodayUniqueVisitors);
   const setNewWorkNotification = useUiStore((s) => s.setNewWorkNotification);
   const guestUid = useAuthStore((s) => s.guestUser?.uid ?? null);
 
@@ -76,8 +77,13 @@ export function useCatalogSync({ initialSection, getGuestToken }: UseCatalogSync
         writeCachedHomeShell(data);
         void saveOfflineCatalog(data);
         void warmOfflineMediaCache(collectCatalogMediaUrls(data));
-        if (typeof data.uniqueVisitors === 'number') {
-          setUniqueVisitors(data.uniqueVisitors);
+        if (!useCatalogStore.getState().hasLiveVisitorCounts) {
+          if (typeof data.uniqueVisitors === 'number') {
+            setUniqueVisitors(data.uniqueVisitors);
+          }
+          if (typeof data.todayUniqueVisitors === 'number') {
+            setTodayUniqueVisitors(data.todayUniqueVisitors);
+          }
         }
 
         // Check for newly published works & notify subscribed readers
@@ -200,8 +206,15 @@ export function useCatalogSync({ initialSection, getGuestToken }: UseCatalogSync
         if (cachedCatalog) {
           setCatalog((prev) => prev ?? cachedCatalog);
           setHomeShell((prev) => prev ?? cachedCatalog);
-          if (typeof cachedCatalog.uniqueVisitors === 'number') {
-            setUniqueVisitors((prev) => (prev > 1 ? prev : cachedCatalog.uniqueVisitors!));
+          if (!useCatalogStore.getState().hasLiveVisitorCounts) {
+            if (typeof cachedCatalog.uniqueVisitors === 'number') {
+              setUniqueVisitors((prev) => (prev > 0 ? prev : cachedCatalog.uniqueVisitors!));
+            }
+            if (typeof cachedCatalog.todayUniqueVisitors === 'number') {
+              setTodayUniqueVisitors((prev) =>
+                prev > 0 ? prev : cachedCatalog.todayUniqueVisitors!
+              );
+            }
           }
           setLoadError(null);
         } else {
@@ -219,7 +232,16 @@ export function useCatalogSync({ initialSection, getGuestToken }: UseCatalogSync
     })();
     catalogPromiseRef.current = task;
     return task;
-  }, [getGuestToken, setCatalog, setHomeShell, setLoadError, setLoading, setNewWorkNotification, setUniqueVisitors]);
+  }, [
+    getGuestToken,
+    setCatalog,
+    setHomeShell,
+    setLoadError,
+    setLoading,
+    setNewWorkNotification,
+    setTodayUniqueVisitors,
+    setUniqueVisitors,
+  ]);
 
   useEffect(() => {
     let active = true;
@@ -227,8 +249,13 @@ export function useCatalogSync({ initialSection, getGuestToken }: UseCatalogSync
       if (!active || !cached) return;
       setCatalog((prev) => prev ?? cached);
       setHomeShell((prev) => prev ?? cached);
-      if (typeof cached.uniqueVisitors === 'number') {
-        setUniqueVisitors((prev) => (prev > 1 ? prev : cached.uniqueVisitors!));
+      if (!useCatalogStore.getState().hasLiveVisitorCounts) {
+        if (typeof cached.uniqueVisitors === 'number') {
+          setUniqueVisitors((prev) => (prev > 0 ? prev : cached.uniqueVisitors!));
+        }
+        if (typeof cached.todayUniqueVisitors === 'number') {
+          setTodayUniqueVisitors((prev) => (prev > 0 ? prev : cached.todayUniqueVisitors!));
+        }
       }
       setLoading(false);
       setLoadError(null);
@@ -236,7 +263,7 @@ export function useCatalogSync({ initialSection, getGuestToken }: UseCatalogSync
     return () => {
       active = false;
     };
-  }, [setCatalog, setHomeShell, setLoadError, setLoading, setUniqueVisitors]);
+  }, [setCatalog, setHomeShell, setLoadError, setLoading, setTodayUniqueVisitors, setUniqueVisitors]);
 
   useEffect(() => {
     if (!catalog) return;
@@ -332,8 +359,13 @@ export function useCatalogSync({ initialSection, getGuestToken }: UseCatalogSync
           if (cancelled) return;
           setHomeShell(data);
           writeCachedHomeShell(data);
-          if (typeof data.uniqueVisitors === 'number') {
-            setUniqueVisitors(data.uniqueVisitors);
+          if (!useCatalogStore.getState().hasLiveVisitorCounts) {
+            if (typeof data.uniqueVisitors === 'number') {
+              setUniqueVisitors(data.uniqueVisitors);
+            }
+            if (typeof data.todayUniqueVisitors === 'number') {
+              setTodayUniqueVisitors(data.todayUniqueVisitors);
+            }
           }
           setLoadError(null);
           setLoading(false);

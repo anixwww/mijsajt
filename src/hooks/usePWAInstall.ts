@@ -59,6 +59,7 @@ export function usePWAInstall() {
       window.__dankivDeferredInstallPrompt = null;
       setIsInstalled(true);
       setDeferredPrompt(null);
+      fetch('/api/analytics/pwa-install', { method: 'POST' }).catch(() => {});
     };
 
     const mediaQuery = window.matchMedia('(display-mode: standalone)');
@@ -87,6 +88,7 @@ export function usePWAInstall() {
         window.__dankivDeferredInstallPrompt = null;
         setIsInstalled(true);
         setDeferredPrompt(null);
+        fetch('/api/analytics/pwa-install', { method: 'POST' }).catch(() => {});
         return true;
       }
       return false;

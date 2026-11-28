@@ -229,6 +229,7 @@ export function recordSiteVisit(
   const records = db.analytics.visitRecords;
   const now = new Date();
   const nowMs = now.getTime();
+  const todayDateKey = getKyivDateKey(now);
   const source = options?.source ?? 'api';
   const cleanSessionId =
     typeof options?.sessionId === 'string' && options.sessionId.trim()
@@ -238,7 +239,9 @@ export function recordSiteVisit(
   const referrerHost = normalizeReferrerHost(options?.referrer, req);
 
   if (cleanSessionId) {
-    const existingBySession = records.find((r) => r.sessionId === cleanSessionId);
+    const existingBySession = records.find(
+      (r) => r.sessionId === cleanSessionId && r.dateKey === todayDateKey
+    );
     if (existingBySession) {
       let mutated = false;
       if (existingBySession.entrySection === 'home' && entrySection !== 'home') {
@@ -262,7 +265,7 @@ export function recordSiteVisit(
       if (Number.isFinite(recMs) && nowMs - recMs > SESSION_UPGRADE_WINDOW_MS) {
         break;
       }
-      if (rec.ipHash === ipHash && !rec.sessionId) {
+      if (rec.ipHash === ipHash && !rec.sessionId && rec.dateKey === todayDateKey) {
         const uaUpgrade = parseUserAgentSummary(req.headers['user-agent']);
         rec.sessionId = cleanSessionId;
         rec.deviceType = uaUpgrade.deviceType;
@@ -559,4 +562,24 @@ export function buildVisitStatisticsReport(db: SiteDatabase): {
     week: buildDailyReport('week', 'За тиждень (7 днів)', 7),
     month: buildDailyReport('month', 'За місяць (30 днів)', 30),
   };
+}
+
+export function getVisitorCounts(db: SiteDatabase): {
+  uniqueVisitors: number;
+  todayUniqueVisitors: number;
+} {
+  const todayKey = getKyivDateKey(new Date());
+  const todayIps = new Set<string>();
+  const records = Array.isArray(db.analytics?.visitRecords) ? db.analytics.visitRecords : [];
+  for (const entry of records) {
+    if (entry.dateKey === todayKey && entry.deviceType !== 'bot' && entry.ipHash) {
+      todayIps.add(entry.ipHash);
+    }
+  }
+  const todayUniqueVisitors = todayIps.size;
+  const uniqueVisitors = Math.max(
+    Array.isArray(db.visitorIpHashes) ? db.visitorIpHashes.length : 0,
+    todayUniqueVisitors
+  );
+  return { uniqueVisitors, todayUniqueVisitors };
 }

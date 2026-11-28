@@ -302,6 +302,7 @@ export interface SiteDatabase {
   proseTelegramDiscountPercent: number;
   telegramChannelId?: string;
   storeAuthDiscountPercent: number;
+  showVisitorCounter: boolean;
   blog: RawBlogPost[];
   products: RawStoreProduct[];
   orders: OrderRecord[];
@@ -396,6 +397,7 @@ export const INITIAL_DATABASE: SiteDatabase = {
   proseTelegramDiscountPercent: 50,
   telegramChannelId: '',
   storeAuthDiscountPercent: 0,
+  showVisitorCounter: false,
   blog: [],
   products: [],
   orders: [],

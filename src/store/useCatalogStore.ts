@@ -47,6 +47,8 @@ export function writeCachedHomeShell(payload: HomePayload): void {
       proseAuthDiscountPercent: payload.proseAuthDiscountPercent,
       storeAuthDiscountPercent: payload.storeAuthDiscountPercent,
       uniqueVisitors: payload.uniqueVisitors,
+      todayUniqueVisitors: payload.todayUniqueVisitors,
+      showVisitorCounter: payload.showVisitorCounter,
     };
     localStorage.setItem(HOME_SHELL_STORAGE_KEY, JSON.stringify(compact));
   } catch {
@@ -60,6 +62,8 @@ interface CatalogState {
   loading: boolean;
   loadError: string | null;
   uniqueVisitors: number;
+  todayUniqueVisitors: number;
+  hasLiveVisitorCounts: boolean;
   setHomeShell: (
     shell: HomePayload | null | ((prev: HomePayload | null) => HomePayload | null)
   ) => void;
@@ -69,6 +73,8 @@ interface CatalogState {
   setLoading: (loading: boolean) => void;
   setLoadError: (err: string | null | ((prev: string | null) => string | null)) => void;
   setUniqueVisitors: (count: number | ((prev: number) => number)) => void;
+  setTodayUniqueVisitors: (count: number | ((prev: number) => number)) => void;
+  setLiveVisitorCounts: (uniqueVisitors: number, todayUniqueVisitors: number) => void;
   updatePoem: (poem: Poem) => void;
   updateProse: (prose: ProseWork) => void;
   updateBlogPost: (post: BlogPost) => void;
@@ -88,7 +94,9 @@ export const useCatalogStore = create<CatalogState>((set) => ({
   catalog: null,
   loading: !initialHomeShell,
   loadError: null,
-  uniqueVisitors: initialHomeShell?.uniqueVisitors ?? 1,
+  uniqueVisitors: initialHomeShell?.uniqueVisitors ?? 0,
+  todayUniqueVisitors: initialHomeShell?.todayUniqueVisitors ?? 0,
+  hasLiveVisitorCounts: false,
 
   setHomeShell: (shell) =>
     set((state) => ({
@@ -107,6 +115,26 @@ export const useCatalogStore = create<CatalogState>((set) => ({
     set((state) => ({
       uniqueVisitors: typeof count === 'function' ? count(state.uniqueVisitors) : count,
     })),
+  setTodayUniqueVisitors: (count) =>
+    set((state) => ({
+      todayUniqueVisitors: typeof count === 'function' ? count(state.todayUniqueVisitors) : count,
+    })),
+  setLiveVisitorCounts: (uniqueVisitors, todayUniqueVisitors) =>
+    set((state) => {
+      const nextShell = state.homeShell
+        ? { ...state.homeShell, uniqueVisitors, todayUniqueVisitors }
+        : state.homeShell;
+      if (nextShell) writeCachedHomeShell(nextShell);
+      return {
+        uniqueVisitors,
+        todayUniqueVisitors,
+        hasLiveVisitorCounts: true,
+        homeShell: nextShell,
+        catalog: state.catalog
+          ? { ...state.catalog, uniqueVisitors, todayUniqueVisitors }
+          : state.catalog,
+      };
+    }),
   updatePoem: (updatedPoem) =>
     set((state) => ({
       catalog: state.catalog

@@ -91,6 +91,8 @@ interface AuthorStudioModalProps {
   onHomeActionInterviewsUpdated: (title: string) => void;
   homeRepeaters?: HomeRepeatersConfig;
   onHomeRepeatersUpdated?: (next: HomeRepeatersConfig) => void;
+  showVisitorCounter?: boolean;
+  onShowVisitorCounterUpdated?: (show: boolean) => void;
   radioTracks?: RadioTrack[];
   onRadioTracksChanged?: (
     tracks: RadioTrack[],
@@ -161,6 +163,8 @@ export const AuthorStudioModal = memo(function AuthorStudioModal({
   onHomeActionInterviewsUpdated,
   homeRepeaters,
   onHomeRepeatersUpdated,
+  showVisitorCounter,
+  onShowVisitorCounterUpdated,
   radioTracks: externalRadioTracks,
   onRadioTracksChanged,
   uniqueVisitors,
@@ -661,6 +665,8 @@ export const AuthorStudioModal = memo(function AuthorStudioModal({
                 homeActionInterviewsTitle={homeActionInterviewsTitle}
                 homeRepeaters={homeRepeaters}
                 onHomeRepeatersUpdated={onHomeRepeatersUpdated}
+                showVisitorCounter={showVisitorCounter}
+                onShowVisitorCounterUpdated={onShowVisitorCounterUpdated}
                 onHeroLeadUpdated={onHeroLeadUpdated}
                 onAuthorAboutUpdated={onAuthorAboutUpdated}
                 onAuthorPhotoUpdated={onAuthorPhotoUpdated}

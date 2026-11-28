@@ -50,6 +50,8 @@ interface StudioHomeTabProps {
   homeActionMonobankTitle: string;
   homeActionInterviewsTitle: string;
   homeRepeaters?: HomeRepeatersConfig;
+  showVisitorCounter?: boolean;
+  onShowVisitorCounterUpdated?: (show: boolean) => void;
   onHeroLeadUpdated: (text: string) => void;
   onAuthorAboutUpdated: (text: string) => void;
   onAuthorPhotoUpdated: (url: string) => void;
@@ -97,6 +99,8 @@ export function StudioHomeTab({
   homeActionMonobankTitle,
   homeActionInterviewsTitle,
   homeRepeaters,
+  showVisitorCounter,
+  onShowVisitorCounterUpdated,
   onHeroLeadUpdated,
   onAuthorAboutUpdated,
   onAuthorPhotoUpdated,
@@ -154,6 +158,7 @@ export function StudioHomeTab({
   const [contactTitleDraft, setContactTitleDraft] = useState(homeActionContactTitle);
   const [monobankTitleDraft, setMonobankTitleDraft] = useState(homeActionMonobankTitle);
   const [interviewsTitleDraft, setInterviewsTitleDraft] = useState(homeActionInterviewsTitle);
+  const [showVisitorCounterDraft, setShowVisitorCounterDraft] = useState(showVisitorCounter ?? false);
   const [repeatersDraft, setRepeatersDraft] = useState<HomeRepeatersConfig>(() =>
     normalizeHomeRepeatersConfig(homeRepeaters)
   );
@@ -197,6 +202,9 @@ export function StudioHomeTab({
   useEffect(() => {
     setRepeatersDraft(normalizeHomeRepeatersConfig(homeRepeaters));
   }, [homeRepeaters]);
+  useEffect(() => {
+    setShowVisitorCounterDraft(showVisitorCounter ?? false);
+  }, [showVisitorCounter]);
 
   const unreadCount = contactMessages.filter((m) => !m.read).length;
 
@@ -244,6 +252,7 @@ export function StudioHomeTab({
           homeActionContactTitle: contactTitleDraft,
           homeActionMonobankTitle: monobankTitleDraft,
           homeActionInterviewsTitle: interviewsTitleDraft,
+          showVisitorCounter: showVisitorCounterDraft,
         }),
       });
       const data = await response.json();
@@ -271,7 +280,11 @@ export function StudioHomeTab({
         setInterviewsTitleDraft(data.homeActionInterviewsTitle);
         onHomeActionInterviewsUpdated(data.homeActionInterviewsTitle);
       }
-      setFeedback('Тексти та назви кнопок на головній оновлено.');
+      if (typeof data.showVisitorCounter === 'boolean') {
+        setShowVisitorCounterDraft(data.showVisitorCounter);
+        onShowVisitorCounterUpdated?.(data.showVisitorCounter);
+      }
+      setFeedback('Налаштування головної сторінки оновлено.');
     } catch {
       setFeedback('Помилка з’єднання із сервером.');
     }
@@ -750,6 +763,29 @@ export function StudioHomeTab({
                   className={STUDIO_INPUT_CLASS}
                 />
               </div>
+            </div>
+          </div>
+
+          {/* Світч лічильника відвідувачів на головній */}
+          <div className="pt-2 border-t border-paper-sand dark:border-night-elevated">
+            <div className="flex items-center justify-between gap-4 p-4 rounded-xl bg-paper dark:bg-night-card">
+              <div className="space-y-1 min-w-0 flex-1">
+                <p className="text-xs font-semibold text-ink dark:text-cream-soft">
+                  Відображення лічильника відвідувачів на головній сторінці
+                </p>
+                <p className="text-[11px] text-ink-muted dark:text-sandstone leading-relaxed">
+                  Показувати внизу головної сторінки рядок: «Відвідувачів за сьогодні: X За весь час: Y» (за замовчуванням вимкнено).
+                </p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                <input
+                  type="checkbox"
+                  checked={showVisitorCounterDraft}
+                  onChange={(e) => setShowVisitorCounterDraft(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-paper-sand peer-focus:outline-none rounded-full peer dark:bg-night-elevated peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pine dark:peer-checked:bg-silver" />
+              </label>
             </div>
           </div>
 
