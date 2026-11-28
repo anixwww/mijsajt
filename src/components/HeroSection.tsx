@@ -1102,6 +1102,9 @@ export const HeroSection = memo(function HeroSection({
                     <img
                       src={guestUser.photoUrl}
                       alt={guestUser.displayName}
+                      width={16}
+                      height={16}
+                      decoding="async"
                       referrerPolicy="no-referrer"
                       className="w-4 h-4 rounded-full object-cover shrink-0"
                     />
@@ -1190,6 +1193,8 @@ export const HeroSection = memo(function HeroSection({
                   titleFallback="Андрій Даньків"
                   priority
                   transparentBg
+                  width={1200}
+                  height={800}
                   aspectClassName="w-full h-full"
                   className="w-full h-full"
                   onImageError={() => handleMarkPhotoFailed(currentGalleryPhoto)}

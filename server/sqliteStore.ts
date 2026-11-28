@@ -11,6 +11,30 @@ const STORE_JSON_PATH = path.join(DATA_DIR, 'store.json');
 const PENDING_INVOICES_PATH = path.join(DATA_DIR, 'pending-invoices.json');
 const RATE_LIMITS_PATH = path.join(DATA_DIR, 'rate-limits.json');
 
+export type DbSliceKey =
+  | 'meta'
+  | 'poems'
+  | 'prose'
+  | 'blog'
+  | 'products'
+  | 'radio'
+  | 'community'
+  | 'analytics';
+
+export const ALL_DB_SLICES: readonly DbSliceKey[] = [
+  'meta',
+  'poems',
+  'prose',
+  'blog',
+  'products',
+  'radio',
+  'community',
+  'analytics',
+];
+
+const lastSavedSliceHashes = new Map<DbSliceKey, string>();
+const lastSavedOrderJsonByCode = new Map<string, string>();
+
 let dbInstance: DatabaseSync | null = null;
 
 export function getSqliteDb(): DatabaseSync {
@@ -131,16 +155,18 @@ function runOneTimeMigrationIfNeeded(db: DatabaseSync): void {
     const nowMs = Date.now();
     for (const order of mergedOrders) {
       if (!order?.orderCode) continue;
+      const orderJson = JSON.stringify(order);
       insertOrderStmt.run(
         order.orderCode,
         order.guestUid || null,
         order.buyerEmailHash || null,
         order.payment?.status || null,
         order.payment?.transactionId || null,
-        JSON.stringify(order),
+        orderJson,
         order.createdAt || new Date().toISOString(),
         nowMs
       );
+      lastSavedOrderJsonByCode.set(order.orderCode, orderJson);
     }
 
     // Slice up SiteDatabase into modular slices to prevent big JSON rewrites
@@ -284,11 +310,12 @@ function runOneTimeMigrationIfNeeded(db: DatabaseSync): void {
       VALUES (?, ?, ?, ?)
     `);
 
-    for (const sk of sliceKeys) {
+    for (const sk of ALL_DB_SLICES) {
       const payload = getSlicePayload(sk, fullDb);
       const json = JSON.stringify(payload);
       const hash = crypto.createHash('sha256').update(json).digest('hex');
       insertSliceStmt.run(sk, json, hash, nowMs);
+      lastSavedSliceHashes.set(sk, hash);
     }
 
     // Migrate pending invoices if any
@@ -379,11 +406,19 @@ function runOneTimeMigrationIfNeeded(db: DatabaseSync): void {
 
 export function loadSiteDatabaseFromSqlite(): SiteDatabase {
   const db = getSqliteDb();
-  const selectSlices = db.prepare('SELECT slice_key, payload_json FROM db_slices');
-  const rows = selectSlices.all() as Array<{ slice_key: string; payload_json: string }>;
+  const selectSlices = db.prepare('SELECT slice_key, payload_json, content_hash FROM db_slices');
+  const rows = selectSlices.all() as Array<{
+    slice_key: string;
+    payload_json: string;
+    content_hash: string;
+  }>;
 
   const merged: Record<string, unknown> = {};
+  lastSavedSliceHashes.clear();
   for (const row of rows) {
+    if (ALL_DB_SLICES.includes(row.slice_key as DbSliceKey) && row.content_hash) {
+      lastSavedSliceHashes.set(row.slice_key as DbSliceKey, row.content_hash);
+    }
     try {
       const parsed = JSON.parse(row.payload_json);
       if (parsed && typeof parsed === 'object') {
@@ -398,10 +433,14 @@ export function loadSiteDatabaseFromSqlite(): SiteDatabase {
   const selectOrders = db.prepare('SELECT payload_json FROM orders_records ORDER BY created_at DESC');
   const orderRows = selectOrders.all() as Array<{ payload_json: string }>;
   const orders: OrderRecord[] = [];
+  lastSavedOrderJsonByCode.clear();
   for (const orow of orderRows) {
     try {
       const order = JSON.parse(orow.payload_json) as OrderRecord;
-      if (order?.orderCode) orders.push(order);
+      if (order?.orderCode) {
+        orders.push(order);
+        lastSavedOrderJsonByCode.set(order.orderCode, JSON.stringify(order));
+      }
     } catch {
       // Ignore
     }
@@ -415,81 +454,151 @@ export function loadSiteDatabaseFromSqlite(): SiteDatabase {
   } as SiteDatabase;
 }
 
-export function saveSiteDatabaseToSqlite(dbObj: SiteDatabase): void {
+export interface SaveSqliteOptions {
+  dirtySlices?: ReadonlySet<DbSliceKey>;
+  dirtyOrderCodes?: ReadonlySet<string> | 'all';
+}
+
+function getSlicePayload(key: DbSliceKey, dbObj: SiteDatabase): unknown {
+  switch (key) {
+    case 'meta':
+      return {
+        heroLeadText: dbObj.heroLeadText,
+        authorAboutText: dbObj.authorAboutText,
+        authorPhotoUrl: dbObj.authorPhotoUrl,
+        authorPhotos: dbObj.authorPhotos,
+        socialLinks: dbObj.socialLinks,
+        monobankJarUrl: dbObj.monobankJarUrl,
+        monobankJarWatermark: dbObj.monobankJarWatermark,
+        monobankModalTitle: dbObj.monobankModalTitle,
+        monobankModalSubtitle: dbObj.monobankModalSubtitle,
+        monobankCardLabel: dbObj.monobankCardLabel,
+        monobankModalText: dbObj.monobankModalText,
+        monobankEmptyText: dbObj.monobankEmptyText,
+        contactEmail: dbObj.contactEmail,
+        interviews: dbObj.interviews,
+        homeActionAboutTitle: dbObj.homeActionAboutTitle,
+        homeActionContactTitle: dbObj.homeActionContactTitle,
+        homeActionMonobankTitle: dbObj.homeActionMonobankTitle,
+        homeActionInterviewsTitle: dbObj.homeActionInterviewsTitle,
+        homeRepeaters: dbObj.homeRepeaters,
+        telegramChannelId: dbObj.telegramChannelId,
+        storeAuthDiscountPercent: dbObj.storeAuthDiscountPercent,
+        proseAuthDiscountPercent: dbObj.proseAuthDiscountPercent,
+        proseTelegramDiscountPercent: dbObj.proseTelegramDiscountPercent,
+      };
+    case 'poems':
+      return {
+        poems: dbObj.poems,
+        poemSubmissions: dbObj.poemSubmissions,
+        poemVotes: dbObj.poemVotes,
+        poemViews: dbObj.poemViews,
+        weeklyPoems: dbObj.weeklyPoems,
+        weeklyVoteLog: dbObj.weeklyVoteLog,
+      };
+    case 'prose':
+      return {
+        prose: dbObj.prose,
+        proseSubmissions: dbObj.proseSubmissions,
+        proseTags: dbObj.proseTags,
+        proseVotes: dbObj.proseVotes,
+        weeklyProse: dbObj.weeklyProse,
+      };
+    case 'blog':
+      return { blog: dbObj.blog, blogViews: dbObj.blogViews };
+    case 'products':
+      return {
+        products: dbObj.products,
+        productVotes: dbObj.productVotes,
+        reviews: dbObj.reviews,
+        recentRatings: dbObj.recentRatings,
+      };
+    case 'radio':
+      return {
+        radioTracks: dbObj.radioTracks,
+        monthlySelections: dbObj.monthlySelections,
+        weeklyMusicSelections: dbObj.weeklyMusicSelections,
+      };
+    case 'community':
+      return {
+        guestAccounts: dbObj.guestAccounts,
+        donations: dbObj.donations,
+        feedback: dbObj.feedback,
+        chatMessages: dbObj.chatMessages,
+        contactMessages: dbObj.contactMessages,
+        visitorIpHashes: dbObj.visitorIpHashes,
+      };
+    case 'analytics':
+      return { analytics: dbObj.analytics };
+  }
+}
+
+export function saveSiteDatabaseToSqlite(
+  dbObj: SiteDatabase,
+  options?: SaveSqliteOptions
+): void {
   const db = getSqliteDb();
   const nowMs = Date.now();
 
-  const getSlicePayload = (key: string, dbObj: SiteDatabase): unknown => {
-    switch (key) {
-      case 'meta':
-        return {
-          heroLeadText: dbObj.heroLeadText,
-          authorAboutText: dbObj.authorAboutText,
-          authorPhotoUrl: dbObj.authorPhotoUrl,
-          authorPhotos: dbObj.authorPhotos,
-          socialLinks: dbObj.socialLinks,
-          monobankJarUrl: dbObj.monobankJarUrl,
-          monobankJarWatermark: dbObj.monobankJarWatermark,
-          monobankModalTitle: dbObj.monobankModalTitle,
-          monobankModalSubtitle: dbObj.monobankModalSubtitle,
-          monobankCardLabel: dbObj.monobankCardLabel,
-          monobankModalText: dbObj.monobankModalText,
-          monobankEmptyText: dbObj.monobankEmptyText,
-          contactEmail: dbObj.contactEmail,
-          interviews: dbObj.interviews,
-          homeActionAboutTitle: dbObj.homeActionAboutTitle,
-          homeActionContactTitle: dbObj.homeActionContactTitle,
-          homeActionMonobankTitle: dbObj.homeActionMonobankTitle,
-          homeActionInterviewsTitle: dbObj.homeActionInterviewsTitle,
-          homeRepeaters: dbObj.homeRepeaters,
-          telegramChannelId: dbObj.telegramChannelId,
-          storeAuthDiscountPercent: dbObj.storeAuthDiscountPercent,
-          proseAuthDiscountPercent: dbObj.proseAuthDiscountPercent,
-          proseTelegramDiscountPercent: dbObj.proseTelegramDiscountPercent,
-        };
-      case 'poems':
-        return {
-          poems: dbObj.poems,
-          poemSubmissions: dbObj.poemSubmissions,
-          poemVotes: dbObj.poemVotes,
-          poemViews: dbObj.poemViews,
-          weeklyPoems: dbObj.weeklyPoems,
-          weeklyVoteLog: dbObj.weeklyVoteLog,
-        };
-      case 'prose':
-        return {
-          prose: dbObj.prose,
-          proseSubmissions: dbObj.proseSubmissions,
-          proseTags: dbObj.proseTags,
-          proseVotes: dbObj.proseVotes,
-          weeklyProse: dbObj.weeklyProse,
-        };
-      case 'blog':
-        return { blog: dbObj.blog, blogViews: dbObj.blogViews };
-      case 'products':
-        return { products: dbObj.products, productVotes: dbObj.productVotes, reviews: dbObj.reviews, recentRatings: dbObj.recentRatings };
-      case 'radio':
-        return { radioTracks: dbObj.radioTracks, monthlySelections: dbObj.monthlySelections, weeklyMusicSelections: dbObj.weeklyMusicSelections };
-      case 'community':
-        return {
-          guestAccounts: dbObj.guestAccounts,
-          donations: dbObj.donations,
-          feedback: dbObj.feedback,
-          chatMessages: dbObj.chatMessages,
-          contactMessages: dbObj.contactMessages,
-          visitorIpHashes: dbObj.visitorIpHashes,
-        };
-      case 'analytics':
-        return { analytics: dbObj.analytics };
-      default:
-        return {};
-    }
-  };
+  const targetSlices: readonly DbSliceKey[] =
+    options?.dirtySlices !== undefined
+      ? Array.from(options.dirtySlices)
+      : ALL_DB_SLICES;
 
-  const sliceKeys = ['meta', 'poems', 'prose', 'blog', 'products', 'radio', 'community', 'analytics'];
+  const slicesToWrite: Array<{ key: DbSliceKey; json: string; hash: string }> = [];
   const selectSlice = db.prepare('SELECT content_hash FROM db_slices WHERE slice_key = ?');
-  const updateSlice = db.prepare('INSERT OR REPLACE INTO db_slices (slice_key, payload_json, content_hash, updated_at_ms) VALUES (?, ?, ?, ?)');
 
+  for (const sk of targetSlices) {
+    const payload = getSlicePayload(sk, dbObj);
+    const json = JSON.stringify(payload);
+    const hash = crypto.createHash('sha256').update(json).digest('hex');
+
+    let knownHash = lastSavedSliceHashes.get(sk);
+    if (knownHash === undefined) {
+      const existing = selectSlice.get(sk) as { content_hash?: string } | undefined;
+      knownHash = existing?.content_hash;
+      if (knownHash) {
+        lastSavedSliceHashes.set(sk, knownHash);
+      }
+    }
+    if (knownHash !== hash) {
+      slicesToWrite.push({ key: sk, json, hash });
+    }
+  }
+
+  const ordersToWrite: Array<{ order: OrderRecord; json: string }> = [];
+  const ordersMode = options?.dirtyOrderCodes;
+  const shouldScanAllOrders =
+    ordersMode === 'all' ||
+    (ordersMode === undefined &&
+      Array.isArray(dbObj.orders) &&
+      dbObj.orders.length !== lastSavedOrderJsonByCode.size);
+
+  if (Array.isArray(dbObj.orders) && (shouldScanAllOrders || (ordersMode instanceof Set && ordersMode.size > 0))) {
+    for (const order of dbObj.orders) {
+      if (!order?.orderCode) continue;
+      if (
+        !shouldScanAllOrders &&
+        ordersMode instanceof Set &&
+        !ordersMode.has(order.orderCode) &&
+        lastSavedOrderJsonByCode.has(order.orderCode)
+      ) {
+        continue;
+      }
+      const json = JSON.stringify(order);
+      if (lastSavedOrderJsonByCode.get(order.orderCode) !== json) {
+        ordersToWrite.push({ order, json });
+      }
+    }
+  }
+
+  if (slicesToWrite.length === 0 && ordersToWrite.length === 0) {
+    return;
+  }
+
+  const updateSlice = db.prepare(
+    'INSERT OR REPLACE INTO db_slices (slice_key, payload_json, content_hash, updated_at_ms) VALUES (?, ?, ?, ?)'
+  );
   const insertOrder = db.prepare(`
     INSERT OR REPLACE INTO orders_records (
       order_code, guest_uid, buyer_email_hash, payment_status, transaction_id, payload_json, created_at, updated_at_ms
@@ -498,31 +607,24 @@ export function saveSiteDatabaseToSqlite(dbObj: SiteDatabase): void {
 
   db.exec('BEGIN IMMEDIATE');
   try {
-    for (const sk of sliceKeys) {
-      const payload = getSlicePayload(sk, dbObj);
-      const json = JSON.stringify(payload);
-      const hash = crypto.createHash('sha256').update(json).digest('hex');
-
-      const existing = selectSlice.get(sk) as { content_hash?: string } | undefined;
-      if (!existing || existing.content_hash !== hash) {
-        updateSlice.run(sk, json, hash, nowMs);
-      }
+    for (const entry of slicesToWrite) {
+      updateSlice.run(entry.key, entry.json, entry.hash, nowMs);
+      lastSavedSliceHashes.set(entry.key, entry.hash);
     }
 
-    if (Array.isArray(dbObj.orders)) {
-      for (const order of dbObj.orders) {
-        if (!order?.orderCode) continue;
-        insertOrder.run(
-          order.orderCode,
-          order.guestUid || null,
-          order.buyerEmailHash || null,
-          order.payment?.status || null,
-          order.payment?.transactionId || null,
-          JSON.stringify(order),
-          order.createdAt || new Date().toISOString(),
-          nowMs
-        );
-      }
+    for (const entry of ordersToWrite) {
+      const { order, json } = entry;
+      insertOrder.run(
+        order.orderCode,
+        order.guestUid || null,
+        order.buyerEmailHash || null,
+        order.payment?.status || null,
+        order.payment?.transactionId || null,
+        json,
+        order.createdAt || new Date().toISOString(),
+        nowMs
+      );
+      lastSavedOrderJsonByCode.set(order.orderCode, json);
     }
 
     db.exec('COMMIT');

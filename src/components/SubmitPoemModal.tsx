@@ -700,6 +700,10 @@ export function SubmitPoemModal({
                       <img
                         src={imageUrl}
                         alt="Прев’ю фото до вірша"
+                        width={400}
+                        height={128}
+                        loading="lazy"
+                        decoding="async"
                         className="w-full h-32 object-cover rounded-lg bg-[#EFECE6] dark:bg-[#1B1B1B]"
                       />
                       <div className="flex items-center justify-between gap-2 text-[11px]">
@@ -806,6 +810,10 @@ export function SubmitPoemModal({
                             <img
                               src={trackItem.artworkUrl}
                               alt={trackItem.title}
+                              width={36}
+                              height={36}
+                              loading="lazy"
+                              decoding="async"
                               className="w-9 h-9 rounded-lg object-cover shrink-0 bg-[#EFECE6] dark:bg-[#323232]"
                             />
                           ) : (

@@ -2846,6 +2846,10 @@ export function StudioWorksTab({
                         <img
                           src={pubPoemImageUrl}
                           alt="Фото до вірша"
+                          width={400}
+                          height={144}
+                          loading="lazy"
+                          decoding="async"
                           className="w-full h-36 object-cover block"
                         />
                       </div>
@@ -2969,6 +2973,10 @@ export function StudioWorksTab({
                             <img
                               src={trackItem.artworkUrl}
                               alt={trackItem.title}
+                              width={36}
+                              height={36}
+                              loading="lazy"
+                              decoding="async"
                               className="w-9 h-9 rounded-lg object-cover shrink-0 bg-[#EFECE6] dark:bg-[#323232]"
                             />
                           ) : (
@@ -3188,6 +3196,10 @@ export function StudioWorksTab({
                         <img
                           src={pubPoemImageUrl}
                           alt="Попередній перегляд фото"
+                          width={400}
+                          height={144}
+                          loading="lazy"
+                          decoding="async"
                           className="w-full h-36 object-cover rounded-lg block"
                         />
                       )}
@@ -3463,6 +3475,10 @@ export function StudioWorksTab({
                       <img
                         src={pubBlogCoverImage}
                         alt="Постер рецензії"
+                        width={400}
+                        height={176}
+                        loading="lazy"
+                        decoding="async"
                         className="w-full h-44 object-cover block"
                       />
                     </div>
@@ -3912,6 +3928,10 @@ export function StudioWorksTab({
                             <img
                               src={item.url}
                               alt={item.caption || 'Фото допису'}
+                              width={48}
+                              height={48}
+                              loading="lazy"
+                              decoding="async"
                               className="w-12 h-12 rounded-lg object-cover shrink-0 bg-[#EFECE6] dark:bg-[#323232]"
                             />
                           ) : item.kind === 'youtube' ? (
@@ -3919,6 +3939,10 @@ export function StudioWorksTab({
                               <img
                                 src={item.thumbnailUrl}
                                 alt={item.title}
+                                width={64}
+                                height={48}
+                                loading="lazy"
+                                decoding="async"
                                 className="w-16 h-12 rounded-lg object-cover shrink-0 bg-[#EFECE6] dark:bg-[#323232]"
                               />
                             ) : (
@@ -3930,6 +3954,10 @@ export function StudioWorksTab({
                             <img
                               src={item.artworkUrl}
                               alt={item.title}
+                              width={48}
+                              height={48}
+                              loading="lazy"
+                              decoding="async"
                               className="w-12 h-12 rounded-lg object-cover shrink-0 bg-[#EFECE6] dark:bg-[#323232]"
                             />
                           ) : (

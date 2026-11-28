@@ -41,6 +41,10 @@ function ReviewAvatar({ photoUrl, name }: { photoUrl?: string; name: string }) {
       <img
         src={photoUrl}
         alt={name}
+        width={20}
+        height={20}
+        loading="lazy"
+        decoding="async"
         referrerPolicy="no-referrer"
         onError={() => setFailed(true)}
         className="w-5 h-5 rounded-full object-cover shrink-0"

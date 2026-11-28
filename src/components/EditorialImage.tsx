@@ -9,6 +9,8 @@ interface EditorialImageProps {
   aspectClassName?: string;
   priority?: boolean;
   transparentBg?: boolean;
+  width?: number;
+  height?: number;
   onImageError?: () => void;
 }
 
@@ -20,6 +22,8 @@ export function EditorialImage({
   aspectClassName = 'aspect-[3/4]',
   priority = false,
   transparentBg = false,
+  width,
+  height,
   onImageError,
 }: EditorialImageProps) {
   const [hasError, setHasError] = useState(false);
@@ -52,6 +56,8 @@ export function EditorialImage({
       <img
         src={src}
         alt={alt}
+        width={width}
+        height={height}
         referrerPolicy="no-referrer"
         loading={priority ? 'eager' : 'lazy'}
         fetchPriority={priority ? 'high' : 'auto'}

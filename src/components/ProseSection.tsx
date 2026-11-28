@@ -1358,6 +1358,10 @@ export const ProseSection = memo(function ProseSection({
                     <img
                       src={work.authorPhotoUrl}
                       alt={work.authorName || 'Читач'}
+                      width={20}
+                      height={20}
+                      loading="lazy"
+                      decoding="async"
                       referrerPolicy="no-referrer"
                       className="w-5 h-5 rounded-full object-cover shrink-0"
                     />
@@ -1710,6 +1714,10 @@ export const ProseSection = memo(function ProseSection({
                       <img
                         src={activeWeeklyProse.authorPhotoUrl}
                         alt={activeWeeklyProse.authorName}
+                        width={20}
+                        height={20}
+                        loading="lazy"
+                        decoding="async"
                         referrerPolicy="no-referrer"
                         className="w-5 h-5 rounded-full object-cover shrink-0"
                       />
@@ -1788,6 +1796,10 @@ export const ProseSection = memo(function ProseSection({
                           alt={`Обкладинка: ${activeWeeklyProse.title}${
                             (activeWeeklyProse.moodboardUrls?.length || 0) > 1 ? ` (${mIdx + 1})` : ''
                           }`}
+                          width={800}
+                          height={600}
+                          loading="lazy"
+                          decoding="async"
                           referrerPolicy="no-referrer"
                           className="w-full h-auto block transition-transform duration-300 group-hover:scale-[1.01]"
                         />
@@ -1961,6 +1973,10 @@ export const ProseSection = memo(function ProseSection({
                       <img
                         src={currentWeekLeaderProse.authorPhotoUrl}
                         alt={currentWeekLeaderProse.authorName || 'Читач'}
+                        width={20}
+                        height={20}
+                        loading="lazy"
+                        decoding="async"
                         referrerPolicy="no-referrer"
                         className="w-5 h-5 rounded-full object-cover shrink-0"
                       />
@@ -2302,6 +2318,10 @@ export const ProseSection = memo(function ProseSection({
                       <img
                         src={activeWork.authorPhotoUrl}
                         alt={activeWork.authorName || 'Читач'}
+                        width={20}
+                        height={20}
+                        loading="lazy"
+                        decoding="async"
                         referrerPolicy="no-referrer"
                         className="w-5 h-5 rounded-full object-cover shrink-0"
                       />
@@ -2451,6 +2471,10 @@ export const ProseSection = memo(function ProseSection({
                             alt={`Обкладинка: ${activeWork.title}${
                               (activeWork.moodboardUrls?.length || 0) > 1 ? ` (${mIdx + 1})` : ''
                             }`}
+                            width={800}
+                            height={600}
+                            loading="lazy"
+                            decoding="async"
                             referrerPolicy="no-referrer"
                             className="w-full h-auto block transition-transform duration-300 group-hover:scale-[1.01]"
                           />
@@ -3564,6 +3588,10 @@ export const ProseSection = memo(function ProseSection({
                 <img
                   src={lightboxState.urls[lightboxState.index] || lightboxState.urls[0]}
                   alt={lightboxState.alt}
+                  width={1200}
+                  height={800}
+                  loading="lazy"
+                  decoding="async"
                   referrerPolicy="no-referrer"
                   onClick={(e) => e.stopPropagation()}
                   className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl"

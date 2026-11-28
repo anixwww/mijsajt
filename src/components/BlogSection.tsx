@@ -146,7 +146,10 @@ function FilmPosterFrame({
         <img
           src={src}
           alt={alt}
+          width={640}
+          height={420}
           loading="lazy"
+          decoding="async"
           referrerPolicy="no-referrer"
           onError={() => setFailed(true)}
           className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03] block"
@@ -403,7 +406,10 @@ function BlogSoundCloudTrackCard({
           <img
             src={safeArtwork}
             alt={track.title}
+            width={44}
+            height={44}
             loading="lazy"
+            decoding="async"
             referrerPolicy="no-referrer"
             onError={() => setArtworkFailed(true)}
             className="w-11 h-11 rounded-lg object-cover shrink-0 bg-[#2E2E32]"
@@ -594,7 +600,10 @@ function BlogYouTubeVideoCard({ video }: { video: BlogYoutubeMediaItem }) {
                 <img
                   src={thumbnailSrc}
                   alt={video.title}
+                  width={640}
+                  height={360}
                   loading="lazy"
+                  decoding="async"
                   referrerPolicy="no-referrer"
                   onError={() => setThumbFailed(true)}
                   className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.02]"
@@ -981,6 +990,10 @@ export const BlogSection = memo(function BlogSection({
           <img
             src={MASTHEAD_IMAGE_URL}
             alt="Кінозал із променем проєктора"
+            width={1200}
+            height={400}
+            loading="lazy"
+            decoding="async"
             referrerPolicy="no-referrer"
             onError={() => setMastheadFailed(true)}
             className="absolute inset-0 w-full h-full object-cover object-center opacity-55 pointer-events-none select-none"
@@ -1627,6 +1640,10 @@ export const BlogSection = memo(function BlogSection({
                       <img
                         src={activeEntry.posterUrl}
                         alt={activeEntry.filmMeta?.filmTitle || activePost.title}
+                        width={960}
+                        height={540}
+                        loading="lazy"
+                        decoding="async"
                         referrerPolicy="no-referrer"
                         className="w-full h-full object-cover block"
                       />
@@ -1869,7 +1886,10 @@ export const BlogSection = memo(function BlogSection({
                                   <img
                                     src={block.item.url}
                                     alt={block.item.caption || activePost.title}
+                                    width={800}
+                                    height={540}
                                     loading="lazy"
+                                    decoding="async"
                                     referrerPolicy="no-referrer"
                                     className="w-full max-h-[540px] object-contain mx-auto block"
                                   />
@@ -2048,6 +2068,10 @@ export const BlogSection = memo(function BlogSection({
                 <img
                   src={zoomedPhoto.url}
                   alt={zoomedPhoto.caption || 'Кадр з фільму'}
+                  width={1200}
+                  height={800}
+                  loading="lazy"
+                  decoding="async"
                   referrerPolicy="no-referrer"
                   onClick={(e) => e.stopPropagation()}
                   className="max-w-full max-h-[82vh] object-contain rounded-xl shadow-2xl"

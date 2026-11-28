@@ -25,6 +25,10 @@ function ChatAvatar({ photoUrl }: { photoUrl?: string }) {
       <img
         src={photoUrl}
         alt=""
+        width={32}
+        height={32}
+        loading="lazy"
+        decoding="async"
         referrerPolicy="no-referrer"
         onError={() => setFailed(true)}
         className="w-full h-full object-cover"
@@ -653,6 +657,7 @@ export function GlobalChatModal({
           window.clearInterval(pingTimerRef.current);
         }
         pingTimerRef.current = window.setInterval(() => {
+          if (document.visibilityState === 'hidden') return;
           if (socket.readyState === WebSocket.OPEN) {
             socket.send(JSON.stringify({ type: 'ping' }));
           }

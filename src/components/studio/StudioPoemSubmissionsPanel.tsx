@@ -493,6 +493,10 @@ export function StudioPoemSubmissionsPanel({
                       <img
                         src={sub.authorPhotoUrl}
                         alt={sub.authorName}
+                        width={28}
+                        height={28}
+                        loading="lazy"
+                        decoding="async"
                         referrerPolicy="no-referrer"
                         className="w-7 h-7 rounded-full object-cover shrink-0"
                       />
@@ -810,6 +814,10 @@ export function StudioPoemSubmissionsPanel({
                             <img
                               src={draft.imageUrl}
                               alt={draft.title}
+                              width={400}
+                              height={112}
+                              loading="lazy"
+                              decoding="async"
                               className="w-full h-28 object-cover rounded-lg"
                             />
                             <button
@@ -978,6 +986,10 @@ export function StudioPoemSubmissionsPanel({
                           <img
                             src={sub.imageUrl}
                             alt={sub.title}
+                            width={80}
+                            height={56}
+                            loading="lazy"
+                            decoding="async"
                             className="w-20 h-14 rounded-lg object-cover bg-[#EFECE6] dark:bg-[#1B1B1B]"
                           />
                         )}

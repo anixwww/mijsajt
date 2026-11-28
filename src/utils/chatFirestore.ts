@@ -304,8 +304,7 @@ export async function sendChatMessageDirectToFirestore(params: {
       ? params.authorPhotoUrl.trim().slice(0, 500)
       : undefined;
 
-  const userEmailLower = (currentUser.email || '').trim().toLowerCase();
-  const canSetAdminFlag = Boolean(params.isAdmin && ADMIN_EMAILS.has(userEmailLower));
+  const canSetAdminFlag = Boolean(params.isAdmin && currentUser.emailVerified);
 
   const cleanReply =
     params.replyTo &&

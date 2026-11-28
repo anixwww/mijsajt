@@ -127,7 +127,10 @@ function TrackArtwork({
       <img
         src={safeArtwork}
         alt={title}
+        width={64}
+        height={64}
         loading="lazy"
+        decoding="async"
         onError={() => setFailed(true)}
         className={`${dimClass} object-cover shrink-0 bg-[#262626]`}
       />

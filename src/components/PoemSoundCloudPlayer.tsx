@@ -354,7 +354,10 @@ export function PoemSoundCloudPlayer({
           <img
             src={safeArtwork}
             alt={activeTrack.title}
+            width={40}
+            height={40}
             loading="lazy"
+            decoding="async"
             onError={() => setArtworkFailed(true)}
             className="w-10 h-10 rounded-lg object-cover shrink-0 bg-black/10"
           />

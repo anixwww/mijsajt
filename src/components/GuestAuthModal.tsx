@@ -1146,6 +1146,10 @@ export function GuestAuthModal({
                 <img
                   src={guestUser.photoUrl}
                   alt={guestUser.displayName}
+                  width={44}
+                  height={44}
+                  loading="lazy"
+                  decoding="async"
                   referrerPolicy="no-referrer"
                   className="w-11 h-11 rounded-full object-cover shrink-0 ring-1 ring-black/8 dark:ring-white/12"
                 />
@@ -1853,6 +1857,10 @@ export function GuestAuthModal({
                 <img
                   src={rememberedGuest.photoUrl}
                   alt={rememberedGuest.displayName}
+                  width={56}
+                  height={56}
+                  loading="lazy"
+                  decoding="async"
                   referrerPolicy="no-referrer"
                   className="w-14 h-14 rounded-full object-cover shadow-xs"
                 />
@@ -1929,6 +1937,10 @@ export function GuestAuthModal({
                 <img
                   src={rememberedGuest.photoUrl}
                   alt={rememberedGuest.displayName}
+                  width={40}
+                  height={40}
+                  loading="lazy"
+                  decoding="async"
                   referrerPolicy="no-referrer"
                   className="w-10 h-10 rounded-full object-cover shrink-0"
                 />

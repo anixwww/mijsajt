@@ -88,7 +88,10 @@ function WeeklyTrackThumb({
       <img
         src={safeArt}
         alt={title}
+        width={40}
+        height={40}
         loading="lazy"
+        decoding="async"
         onError={() => setFailed(true)}
         className="w-10 h-10 rounded-lg object-cover shrink-0 bg-[#262626]"
       />
@@ -769,6 +772,10 @@ export function WeeklyMusicBox({
                     <img
                       src={src}
                       alt=""
+                      width={300}
+                      height={300}
+                      loading="lazy"
+                      decoding="async"
                       className="w-full h-full object-cover"
                     />
                     <div className="absolute inset-x-1 bottom-1 flex items-center justify-between gap-1 opacity-90 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
@@ -955,8 +962,11 @@ export function WeeklyMusicBox({
               <img
                 src={photos[0]}
                 alt=""
+                width={800}
+                height={500}
                 loading="lazy"
-                className="w-full max-h-[340px] object-cover transition-transform duration-500 hover:scale-[1.015]"
+                decoding="async"
+                className="w-full aspect-[16/10] max-h-[340px] object-cover transition-transform duration-500 hover:scale-[1.015]"
               />
             </button>
           )}
@@ -973,7 +983,10 @@ export function WeeklyMusicBox({
                   <img
                     src={src}
                     alt=""
+                    width={480}
+                    height={360}
                     loading="lazy"
+                    decoding="async"
                     className="w-full h-full object-cover transition-transform duration-500 hover:scale-[1.03]"
                   />
                 </button>
@@ -995,7 +1008,10 @@ export function WeeklyMusicBox({
                   <img
                     src={src}
                     alt=""
+                    width={400}
+                    height={300}
                     loading="lazy"
+                    decoding="async"
                     className="w-full h-full object-cover transition-transform duration-500 hover:scale-[1.03]"
                   />
                 </button>
@@ -1218,6 +1234,10 @@ export function WeeklyMusicBox({
           <img
             src={photos[lightboxIndex]}
             alt=""
+            width={1200}
+            height={800}
+            loading="lazy"
+            decoding="async"
             onClick={(e) => e.stopPropagation()}
             className="max-w-full max-h-[88vh] rounded-2xl object-contain shadow-2xl"
           />

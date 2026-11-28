@@ -605,6 +605,10 @@ export function SubmitProseModal({
                         <img
                           src={url}
                           alt={`Обкладинка ${idx + 1}`}
+                          width={400}
+                          height={300}
+                          loading="lazy"
+                          decoding="async"
                           className="w-full h-full object-cover"
                         />
                         <button

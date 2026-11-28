@@ -697,6 +697,7 @@ export default function App() {
         };
         void checkReplies();
         fallbackTimer = window.setInterval(() => {
+          if (document.visibilityState === 'hidden') return;
           if (document.visibilityState === 'visible') {
             void checkReplies();
           }
@@ -819,6 +820,7 @@ export default function App() {
     };
     document.addEventListener('visibilitychange', onVisibility);
     const interval = window.setInterval(() => {
+      if (document.visibilityState === 'hidden') return;
       if (document.visibilityState === 'visible') {
         void syncFromApi();
       }
@@ -850,12 +852,13 @@ export default function App() {
       fetch('/api/users/time-heartbeat', {
         method: 'POST',
         headers,
-        body: JSON.stringify({ uid: guestUser.uid, seconds: 30 }),
+        body: JSON.stringify({ uid: guestUser.uid, seconds: 90 }),
       }).catch(() => {});
     };
     const interval = window.setInterval(() => {
+      if (document.visibilityState === 'hidden') return;
       void sendHeartbeat();
-    }, 30000);
+    }, 90000);
     return () => window.clearInterval(interval);
   }, [guestUser?.uid, getGuestToken]);
 
@@ -1112,6 +1115,7 @@ export default function App() {
       }
       if (checkEnabled()) {
         intervalId = window.setInterval(() => {
+          if (document.visibilityState === 'hidden') return;
           if (document.visibilityState === 'visible') {
             void fetchCatalog();
           }

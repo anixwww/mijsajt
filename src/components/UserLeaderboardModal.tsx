@@ -44,6 +44,10 @@ function LeaderboardAvatar({ photoUrl }: { photoUrl?: string }) {
         <img
           src={photoUrl}
           alt=""
+          width={32}
+          height={32}
+          loading="lazy"
+          decoding="async"
           referrerPolicy="no-referrer"
           onError={() => setFailed(true)}
           className="w-full h-full object-cover"
@@ -488,7 +492,15 @@ export function UserLeaderboardModal({
                         </span>
                         <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#323232] flex items-center justify-center overflow-hidden text-[#E5E5E5] font-semibold text-xs shrink-0">
                           {item.photoUrl ? (
-                            <img src={item.photoUrl} alt="" className="w-full h-full object-cover" />
+                            <img
+                              src={item.photoUrl}
+                              alt=""
+                              width={32}
+                              height={32}
+                              loading="lazy"
+                              decoding="async"
+                              className="w-full h-full object-cover"
+                            />
                           ) : (
                             <Heart className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                           )}

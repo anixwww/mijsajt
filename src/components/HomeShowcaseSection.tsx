@@ -238,6 +238,10 @@ function FeedbackAvatar({ photoUrl, name }: { photoUrl?: string; name: string })
       <img
         src={photoUrl}
         alt={name}
+        width={32}
+        height={32}
+        loading="lazy"
+        decoding="async"
         referrerPolicy="no-referrer"
         onError={() => setFailed(true)}
         className="w-8 h-8 rounded-full object-cover shrink-0 bg-[#EAE7DF] dark:bg-[#2F2F2F]"

@@ -973,9 +973,12 @@ export const PoetrySection = memo(function PoetrySection({
                             <img
                               src={item.imageUrl}
                               alt={item.title}
+                              width={800}
+                              height={500}
                               loading="lazy"
+                              decoding="async"
                               referrerPolicy="no-referrer"
-                              className="w-full max-h-[480px] object-cover mx-auto block transition-transform duration-300 group-hover:scale-[1.01]"
+                              className="w-full aspect-[16/10] max-h-[480px] object-cover mx-auto block transition-transform duration-300 group-hover:scale-[1.01]"
                             />
                             <span className="absolute right-3 bottom-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-black/72 text-white text-[11px] font-medium opacity-0 group-hover:opacity-100 transition-opacity">
                               <ZoomIn className="w-3.5 h-3.5" />
@@ -1078,6 +1081,10 @@ export const PoetrySection = memo(function PoetrySection({
                             <img
                               src={item.authorPhotoUrl}
                               alt={authorLabel}
+                              width={20}
+                              height={20}
+                              loading="lazy"
+                              decoding="async"
                               referrerPolicy="no-referrer"
                               className="w-5 h-5 rounded-full object-cover shrink-0"
                             />
@@ -1371,9 +1378,12 @@ export const PoetrySection = memo(function PoetrySection({
                       <img
                         src={currentPoem.imageUrl}
                         alt={currentPoem.title}
+                        width={800}
+                        height={500}
                         loading="lazy"
+                        decoding="async"
                         referrerPolicy="no-referrer"
-                        className="w-full max-h-[480px] object-cover mx-auto block transition-transform duration-300 group-hover:scale-[1.01]"
+                        className="w-full aspect-[16/10] max-h-[480px] object-cover mx-auto block transition-transform duration-300 group-hover:scale-[1.01]"
                       />
                       <span className="absolute right-3 bottom-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-black/72 text-white text-[11px] font-medium opacity-0 group-hover:opacity-100 transition-opacity">
                         <ZoomIn className="w-3.5 h-3.5" />
@@ -1411,6 +1421,10 @@ export const PoetrySection = memo(function PoetrySection({
                           <img
                             src={currentPoem.authorPhotoUrl}
                             alt={currentPoem.authorName || 'Читач'}
+                            width={20}
+                            height={20}
+                            loading="lazy"
+                            decoding="async"
                             referrerPolicy="no-referrer"
                             className="w-5 h-5 rounded-full object-cover shrink-0"
                           />
@@ -1974,6 +1988,10 @@ export const PoetrySection = memo(function PoetrySection({
                 <img
                   src={zoomedPhotoUrl}
                   alt={surfacePoem?.title || 'Фото вірша'}
+                  width={1200}
+                  height={800}
+                  loading="lazy"
+                  decoding="async"
                   referrerPolicy="no-referrer"
                   onClick={(e) => e.stopPropagation()}
                   className="max-w-full max-h-[84vh] object-contain rounded-xl shadow-2xl"

@@ -60,12 +60,38 @@ let providerPromise: Promise<GoogleAuthProvider> | null = null;
 let messagingPromise: Promise<Messaging | null> | null = null;
 let cachedAuthInstance: Auth | null = null;
 
+let appCheckInitialized = false;
+
+export async function initFirebaseAppCheck(): Promise<void> {
+  if (appCheckInitialized || typeof window === 'undefined') return;
+  appCheckInitialized = true;
+  try {
+    const [app, { initializeAppCheck, ReCaptchaV3Provider }] = await Promise.all([
+      getFirebaseApp(),
+      import('firebase/app-check'),
+    ]);
+    const siteKey =
+      (import.meta.env.VITE_FIREBASE_APP_CHECK_SITE_KEY as string | undefined)?.trim() ||
+      firebaseConfig.recaptchaSiteKey?.trim();
+    if (siteKey) {
+      initializeAppCheck(app, {
+        provider: new ReCaptchaV3Provider(siteKey),
+        isTokenAutoRefreshEnabled: true,
+      });
+    }
+  } catch {
+    // App Check optional fallback
+  }
+}
+
 export function getFirebaseApp(): Promise<FirebaseApp> {
   if (!appPromise) {
     appPromise = import('firebase/app')
-      .then(({ getApps, initializeApp }) =>
-        getApps().length > 0 ? getApps()[0] : initializeApp(firebaseConfig)
-      )
+      .then(({ getApps, initializeApp }) => {
+        const app = getApps().length > 0 ? getApps()[0] : initializeApp(firebaseConfig);
+        void initFirebaseAppCheck();
+        return app;
+      })
       .catch((err) => {
         appPromise = null;
         throw err;

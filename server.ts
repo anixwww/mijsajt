@@ -6,6 +6,8 @@ import express, { type Request, type Response } from 'express';
 import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import fs from 'fs';
 import http from 'http';
+import https from 'https';
+import helmet from 'helmet';
 import net from 'net';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -134,6 +136,7 @@ import {
   createPersistentRateLimitStore,
 } from './server/persistentRateLimit.ts';
 import {
+  ALL_DB_SLICES,
   loadSiteDatabaseFromSqlite,
   saveSiteDatabaseToSqlite,
   savePaymentSessionToSqlite,
@@ -142,6 +145,7 @@ import {
   upsertMonobankInvoiceSqlite,
   getMonobankInvoiceSqlite,
   purgeExpiredMonobankInvoicesSqlite,
+  type DbSliceKey,
   type SqliteMonobankInvoice,
 } from './server/sqliteStore.ts';
 import {
@@ -366,7 +370,7 @@ async function verifyFirebaseIdToken(token: string): Promise<VerifiedFirebaseCla
   }
   verifiedFirebaseTokenCache.set(token, {
     claims,
-    expiresAtMs: Math.min(payload.exp * 1000 - 10_000, nowMs + 5 * 60 * 1000),
+    expiresAtMs: Math.min(payload.exp * 1000 - 10_000, nowMs + 30_000),
   });
 
   return claims;
@@ -494,10 +498,12 @@ let visitorIpSet: Set<string> = new Set();
 let seenAnalyticsSessionsSet: Set<string> = new Set();
 let dirsEnsured = false;
 let pendingFlushTimer: ReturnType<typeof setTimeout> | null = null;
-let pendingFlushDelayMs = 150;
-let writeQueue: Promise<void> = Promise.resolve();
+let pendingFlushDeadlineMs = 0;
 let dirtyPendingWrite = false;
 let shutdownHooksRegistered = false;
+const pendingDirtySlices = new Set<DbSliceKey>();
+const pendingDirtyOrderCodes = new Set<string>();
+let pendingAllOrdersDirty = false;
 
 function syncRuntimeSets(db: SiteDatabase): void {
   visitorIpSet = new Set(db.visitorIpHashes);
@@ -522,10 +528,55 @@ function ensureDataDirectories(): void {
 }
 
 function flushDatabaseSync(): void {
-  if (cachedDb && dirtyPendingWrite) {
-    saveSiteDatabaseToSqlite(cachedDb);
-    dirtyPendingWrite = false;
+  if (pendingFlushTimer) {
+    clearTimeout(pendingFlushTimer);
+    pendingFlushTimer = null;
   }
+  pendingFlushDeadlineMs = 0;
+
+  if (!cachedDb || !dirtyPendingWrite) {
+    pendingDirtySlices.clear();
+    pendingDirtyOrderCodes.clear();
+    pendingAllOrdersDirty = false;
+    dirtyPendingWrite = false;
+    return;
+  }
+
+  const slicesSnapshot = new Set(pendingDirtySlices);
+  const ordersSnapshot: ReadonlySet<string> | 'all' = pendingAllOrdersDirty
+    ? 'all'
+    : new Set(pendingDirtyOrderCodes);
+
+  pendingDirtySlices.clear();
+  pendingDirtyOrderCodes.clear();
+  pendingAllOrdersDirty = false;
+  dirtyPendingWrite = false;
+
+  saveSiteDatabaseToSqlite(cachedDb, {
+    dirtySlices: slicesSnapshot,
+    dirtyOrderCodes: ordersSnapshot,
+  });
+}
+
+function registerDatabaseShutdownHooks(): void {
+  if (shutdownHooksRegistered) return;
+  shutdownHooksRegistered = true;
+  const flushOnExit = () => {
+    try {
+      flushDatabaseSync();
+    } catch {
+      // Ignore flush error on process shutdown
+    }
+  };
+  process.once('beforeExit', flushOnExit);
+  process.once('SIGINT', () => {
+    flushOnExit();
+    process.exit(0);
+  });
+  process.once('SIGTERM', () => {
+    flushOnExit();
+    process.exit(0);
+  });
 }
 
 function ensureDatabase(): SiteDatabase {
@@ -536,19 +587,66 @@ function ensureDatabase(): SiteDatabase {
   const db = loadSiteDatabaseFromSqlite();
   cachedDb = db;
   syncRuntimeSets(cachedDb);
+  registerDatabaseShutdownHooks();
   return cachedDb;
 }
 
 function saveDatabase(
   db: SiteDatabase,
-  options?: { bumpCatalogRevision?: boolean; flushDelayMs?: number }
+  options?: {
+    bumpCatalogRevision?: boolean;
+    flushDelayMs?: number;
+    slices?: DbSliceKey[];
+    ordersDirty?: boolean | string[];
+  }
 ): void {
   cachedDb = db;
+  registerDatabaseShutdownHooks();
+
   const shouldBumpRevision = options?.bumpCatalogRevision !== false;
   if (shouldBumpRevision) {
     catalogRevision += 1;
   }
-  saveSiteDatabaseToSqlite(db);
+
+  if (options?.slices && options.slices.length > 0) {
+    for (const sk of options.slices) {
+      pendingDirtySlices.add(sk);
+    }
+  } else if (!options?.ordersDirty) {
+    for (const sk of ALL_DB_SLICES) {
+      pendingDirtySlices.add(sk);
+    }
+  }
+
+  if (options?.ordersDirty === true) {
+    pendingAllOrdersDirty = true;
+  } else if (Array.isArray(options?.ordersDirty)) {
+    for (const code of options.ordersDirty) {
+      if (code) pendingDirtyOrderCodes.add(code);
+    }
+  }
+
+  dirtyPendingWrite = true;
+  const delayMs = Math.max(0, Math.min(5000, options?.flushDelayMs ?? 1200));
+
+  if (delayMs === 0) {
+    flushDatabaseSync();
+    return;
+  }
+
+  const targetDeadlineMs = Date.now() + delayMs;
+  if (!pendingFlushTimer || targetDeadlineMs < pendingFlushDeadlineMs) {
+    if (pendingFlushTimer) {
+      clearTimeout(pendingFlushTimer);
+    }
+    pendingFlushDeadlineMs = targetDeadlineMs;
+    pendingFlushTimer = setTimeout(() => {
+      pendingFlushTimer = null;
+      pendingFlushDeadlineMs = 0;
+      flushDatabaseSync();
+    }, delayMs);
+    pendingFlushTimer.unref();
+  }
 }
 
 function getNormalizedClientIp(req: Request): string {
@@ -979,7 +1077,7 @@ function findOrCreateGoogleGuestAccount(
     if (changed) {
       existing.updatedAt = nowIso;
     }
-    saveDatabase(db, { bumpCatalogRevision: false, flushDelayMs: 500 });
+    saveDatabase(db, { bumpCatalogRevision: false, flushDelayMs: 5000, slices: ['community'] });
     return { account: existing, createdNow: false };
   }
 
@@ -996,7 +1094,7 @@ function findOrCreateGoogleGuestAccount(
     createdAt: nowIso,
   };
   db.guestAccounts.push(created);
-  saveDatabase(db);
+  saveDatabase(db, { flushDelayMs: 1000, slices: ['community'] });
   return { account: created, createdNow: true };
 }
 
@@ -1045,7 +1143,7 @@ async function hydrateAccountLikesFromFirestoreIfNeeded(
     }
   }
   if (profileChanged) {
-    saveDatabase(db);
+    saveDatabase(db, { bumpCatalogRevision: false, flushDelayMs: 2000, slices: ['community'] });
   }
 
   if (fsLikes.found && fsLikes.hasLikedField) {
@@ -1084,7 +1182,7 @@ async function hydrateAccountLikesFromFirestoreIfNeeded(
       account.likedPoemIds = nextLikes;
       account.likedUpdatedAt = fsLikes.updatedAt || new Date().toISOString();
       account.updatedAt = new Date().toISOString();
-      saveDatabase(db);
+      saveDatabase(db, { bumpCatalogRevision: false, flushDelayMs: 2000, slices: ['community'] });
     } else if (!account.likedUpdatedAt && fsLikes.updatedAt) {
       account.likedUpdatedAt = fsLikes.updatedAt;
     }
@@ -1139,7 +1237,7 @@ async function hydrateAccountLikesFromFirestoreIfNeeded(
       account.likedPoemIds = mergedLikes;
       account.likedUpdatedAt = account.likedUpdatedAt || new Date().toISOString();
       account.updatedAt = new Date().toISOString();
-      saveDatabase(db);
+      saveDatabase(db, { bumpCatalogRevision: false, flushDelayMs: 2000, slices: ['community'] });
     }
     syncCloudPoemLikesForUid(firebaseUid, mergedLikes);
     const synced = await syncGuestLikesToFirestore(
@@ -1461,36 +1559,58 @@ function generateHighEntropyOrderCode(db: SiteDatabase): string {
 
 function verifySameOrigin(req: Request): boolean {
   const origin = req.headers.origin;
-  if (!origin) return true;
-  try {
-    const originHost = new URL(origin).host.toLowerCase();
-    const allowedHosts = new Set<string>();
-    const rawForwarded = req.get('x-forwarded-host');
-    const rawHost = req.get('host');
-    if (rawForwarded) {
-      for (const h of rawForwarded.split(',')) {
-        const clean = h.trim().toLowerCase();
-        if (clean) allowedHosts.add(clean);
-      }
-    }
-    if (rawHost) {
-      for (const h of rawHost.split(',')) {
-        const clean = h.trim().toLowerCase();
-        if (clean) allowedHosts.add(clean);
-      }
-    }
-    if (process.env.APP_URL) {
-      try {
-        allowedHosts.add(new URL(process.env.APP_URL).host.toLowerCase());
-      } catch {
-        // Ignore malformed APP_URL
-      }
-    }
-    if (allowedHosts.size === 0) return true;
-    return allowedHosts.has(originHost);
-  } catch {
+  const referer = req.headers.referer;
+  const secFetchSite = req.headers['sec-fetch-site'];
+
+  if (secFetchSite === 'cross-site') {
     return false;
   }
+
+  const allowedHosts = new Set<string>();
+  const rawForwarded = req.get('x-forwarded-host');
+  const rawHost = req.get('host');
+  if (rawForwarded) {
+    for (const h of rawForwarded.split(',')) {
+      const clean = h.trim().toLowerCase();
+      if (clean) allowedHosts.add(clean);
+    }
+  }
+  if (rawHost) {
+    for (const h of rawHost.split(',')) {
+      const clean = h.trim().toLowerCase();
+      if (clean) allowedHosts.add(clean);
+    }
+  }
+  if (process.env.APP_URL) {
+    try {
+      allowedHosts.add(new URL(process.env.APP_URL).host.toLowerCase());
+    } catch {
+      // Ignore
+    }
+  }
+
+  const checkHostMatch = (targetUrlStr: string): boolean => {
+    try {
+      const targetHost = new URL(targetUrlStr).host.toLowerCase();
+      if (allowedHosts.size === 0) return true;
+      return allowedHosts.has(targetHost);
+    } catch {
+      return false;
+    }
+  };
+
+  if (origin) {
+    return checkHostMatch(origin);
+  }
+  if (referer) {
+    return checkHostMatch(referer);
+  }
+
+  // If both Origin and Referer are absent, allow for safe GET/HEAD requests or explicit X-Requested-With
+  if (req.method === 'GET' || req.method === 'HEAD' || req.headers['x-requested-with']) {
+    return true;
+  }
+  return false;
 }
 
 function checkRateLimit(bucketKey: string, maxRequests: number, windowMs: number): { allowed: boolean; retryAfterSec: number } {
@@ -1621,7 +1741,7 @@ function createPendingProseOrder(
   };
 
   db.orders.unshift(pendingOrder);
-  saveDatabase(db);
+  saveDatabase(db, { flushDelayMs: 0, ordersDirty: [pendingOrder.orderCode] });
   return pendingOrder;
 }
 
@@ -1720,7 +1840,7 @@ function finalizeProsePaidOrder(
     }
   }
 
-  saveDatabase(db);
+  saveDatabase(db, { flushDelayMs: 0, slices: ['community'], ordersDirty: [targetOrder.orderCode] });
   return { orderCode, unlockedAccess, orderRecord: targetOrder };
 }
 
@@ -1806,7 +1926,7 @@ function finalizePendingStoreOrder(
     }
   }
 
-  saveDatabase(db);
+  saveDatabase(db, { flushDelayMs: 0, slices: ['community'], ordersDirty: [targetOrder.orderCode] });
   return { orderRecord: targetOrder, unlockedItems };
 }
 
@@ -3209,7 +3329,7 @@ function isPrivateOrReservedIp(ip: string): boolean {
   return true;
 }
 
-async function validateExternalImageUrlForProxy(rawUrl: string): Promise<URL | null> {
+async function validateExternalImageUrlForProxy(rawUrl: string): Promise<{ url: URL; pinIp: string } | null> {
   if (!rawUrl || rawUrl.length > 1000) return null;
   let parsed: URL;
   try {
@@ -3232,21 +3352,83 @@ async function validateExternalImageUrlForProxy(rawUrl: string): Promise<URL | n
     return null;
   }
 
+  let resolvedIp = '';
   if (net.isIP(hostname)) {
-    return isPrivateOrReservedIp(hostname) ? null : parsed;
-  }
-
-  try {
-    const records = await dns.lookup(hostname, { all: true, verbatim: true });
-    if (!records || records.length === 0) return null;
-    if (records.some((rec) => isPrivateOrReservedIp(rec.address))) {
+    if (isPrivateOrReservedIp(hostname)) return null;
+    resolvedIp = hostname;
+  } else {
+    try {
+      const records = await dns.lookup(hostname, { all: true, verbatim: true });
+      if (!records || records.length === 0) return null;
+      for (const rec of records) {
+        if (isPrivateOrReservedIp(rec.address)) return null;
+      }
+      resolvedIp = records[0].address;
+    } catch {
       return null;
     }
-  } catch {
-    return null;
   }
 
-  return parsed;
+  return { url: parsed, pinIp: resolvedIp };
+}
+
+function fetchPinnedImageUrl(
+  targetUrl: URL,
+  pinnedIp: string,
+  maxBytes = 5 * 1024 * 1024
+): Promise<{ status: number; headers: Map<string, string>; buffer: Buffer } | null> {
+  return new Promise((resolve) => {
+    const lib = targetUrl.protocol === 'https:' ? https : http;
+    const req = lib.request(
+      targetUrl,
+      {
+        method: 'GET',
+        headers: {
+          Accept: 'image/jpeg,image/png,image/webp,image/gif,image/avif,*/*;q=0.8',
+          'User-Agent': 'Mozilla/5.0 (compatible; LiteraryImagePalette/1.0)',
+        },
+        lookup: (_hostname, _options, callback) => {
+          callback(null, pinnedIp, net.isIP(pinnedIp));
+        },
+        timeout: 7000,
+      },
+      (res) => {
+        if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+          resolve({
+            status: res.statusCode,
+            headers: new Map([['location', res.headers.location]]),
+            buffer: Buffer.alloc(0),
+          });
+          res.resume();
+          return;
+        }
+        const chunks: Buffer[] = [];
+        let totalLen = 0;
+        res.on('data', (chunk: Buffer) => {
+          totalLen += chunk.length;
+          if (totalLen > maxBytes) {
+            req.destroy();
+            resolve(null);
+            return;
+          }
+          chunks.push(chunk);
+        });
+        res.on('end', () => {
+          const headersMap = new Map<string, string>();
+          for (const [k, v] of Object.entries(res.headers)) {
+            if (typeof v === 'string') headersMap.set(k.toLowerCase(), v);
+          }
+          resolve({ status: res.statusCode || 200, headers: headersMap, buffer: Buffer.concat(chunks) });
+        });
+      }
+    );
+    req.on('error', () => resolve(null));
+    req.on('timeout', () => {
+      req.destroy();
+      resolve(null);
+    });
+    req.end();
+  });
 }
 
 const SOUNDCLOUD_BROWSER_HEADERS = {
@@ -4061,7 +4243,7 @@ async function startServer() {
                 : item
             ),
           }));
-          saveDatabase(db);
+          saveDatabase(db, { slices: ['products'], ordersDirty: true });
           updatedProduct = nextProduct;
         }
       }
@@ -4150,7 +4332,7 @@ async function startServer() {
                 : item
             ),
           }));
-          saveDatabase(db);
+          saveDatabase(db, { slices: ['prose'], ordersDirty: true });
           updatedProse = enrichProseForAuthor(nextWork, db);
         }
       }
@@ -4652,7 +4834,7 @@ async function startServer() {
     auth.account.likedRadioTrackIds = nextLikes;
     auth.account.likedUpdatedAt = new Date().toISOString();
     auth.account.updatedAt = auth.account.likedUpdatedAt;
-    saveDatabase(db);
+    saveDatabase(db, { flushDelayMs: 1500, slices: ['community'] });
 
     if (auth.firebaseClaims && auth.firebaseIdToken) {
       recordCloudRadioLikeState(trackId, auth.firebaseClaims.uid, !alreadyLiked);
@@ -4720,7 +4902,7 @@ async function startServer() {
     });
 
     if (isNewVisitor || visitRecorded) {
-      saveDatabase(db, { bumpCatalogRevision: false, flushDelayMs: 5000 });
+      saveDatabase(db, { bumpCatalogRevision: false, flushDelayMs: 5000, slices: ['community', 'analytics'] });
     }
 
     res.json({
@@ -4739,7 +4921,7 @@ async function startServer() {
       return;
     }
     db.poemViews[id] = (db.poemViews[id] || 0) + 1;
-    saveDatabase(db, { bumpCatalogRevision: true, flushDelayMs: 2500 });
+    saveDatabase(db, { bumpCatalogRevision: true, flushDelayMs: 2500, slices: ['poems'] });
     res.json({ id, viewsCount: db.poemViews[id] });
   });
 
@@ -4752,7 +4934,7 @@ async function startServer() {
       return;
     }
     db.blogViews[id] = (db.blogViews[id] || 0) + 1;
-    saveDatabase(db, { bumpCatalogRevision: true, flushDelayMs: 2500 });
+    saveDatabase(db, { bumpCatalogRevision: true, flushDelayMs: 2500, slices: ['blog'] });
     res.json({ id, viewsCount: db.blogViews[id] });
   });
 
@@ -4911,7 +5093,7 @@ async function startServer() {
         analytics.recentEvents = analytics.recentEvents.slice(0, 40);
       }
 
-      saveDatabase(db, { bumpCatalogRevision: false, flushDelayMs: 5000 });
+      saveDatabase(db, { bumpCatalogRevision: false, flushDelayMs: 5000, slices: ['analytics'] });
       res.status(200).json({ ok: true });
     }
   );
@@ -5008,7 +5190,7 @@ async function startServer() {
       if (credited > 0) {
         account.totalTimeSeconds = Math.max(0, Math.round(account.totalTimeSeconds || 0)) + credited;
         account.lastSeenAt = new Date(nowMs).toISOString();
-        saveDatabase(db, { bumpCatalogRevision: false, flushDelayMs: 5000 });
+        saveDatabase(db, { bumpCatalogRevision: false, flushDelayMs: 5000, slices: ['community'] });
 
         if (firebaseUidForSync && firebaseTokenForSync) {
           const prevSyncMs = userTimeCloudSyncLastMs.get(firebaseUidForSync) || 0;
@@ -5172,7 +5354,7 @@ async function startServer() {
           account.likedPoemIds = restoredLikes;
           account.likedUpdatedAt = new Date().toISOString();
           account.updatedAt = account.likedUpdatedAt;
-          saveDatabase(db);
+          saveDatabase(db, { bumpCatalogRevision: false, flushDelayMs: 1500, slices: ['community'] });
           syncCloudPoemLikesForUid(claims.uid, restoredLikes);
           void syncGuestLikesToFirestore(
             {
@@ -5247,7 +5429,7 @@ async function startServer() {
     }
     const account = authResult.account;
     account.lastSeenAt = new Date().toISOString();
-    saveDatabase(db, { bumpCatalogRevision: false, flushDelayMs: 1500 });
+    saveDatabase(db, { bumpCatalogRevision: false, flushDelayMs: 5000, slices: ['community'] });
     const freshSessionToken = issueGuestSessionToken(account, 'google');
     setGuestSessionCookie(req, res, freshSessionToken);
     const requiresGoogleForAdmin =
@@ -5320,7 +5502,7 @@ async function startServer() {
     delete account.pinLockedUntil;
     account.pinUpdatedAt = nowIso;
     account.updatedAt = nowIso;
-    saveDatabase(db, { bumpCatalogRevision: false });
+    saveDatabase(db, { bumpCatalogRevision: false, flushDelayMs: 0, slices: ['community'] });
 
     const freshSessionToken = issueGuestSessionToken(account, 'google');
     setGuestSessionCookie(req, res, freshSessionToken);
@@ -5351,7 +5533,7 @@ async function startServer() {
     delete account.pinLockedUntil;
     delete account.pinUpdatedAt;
     account.updatedAt = new Date().toISOString();
-    saveDatabase(db, { bumpCatalogRevision: false });
+    saveDatabase(db, { bumpCatalogRevision: false, flushDelayMs: 0, slices: ['community'] });
 
     const freshSessionToken = issueGuestSessionToken(account, 'google');
     setGuestSessionCookie(req, res, freshSessionToken);
@@ -5419,7 +5601,7 @@ async function startServer() {
       if (nextFailed >= PIN_MAX_FAILED_ATTEMPTS) {
         const lockIso = new Date(nowMs + PIN_LOCKOUT_MS).toISOString();
         account.pinLockedUntil = lockIso;
-        saveDatabase(db, { bumpCatalogRevision: false });
+        saveDatabase(db, { bumpCatalogRevision: false, flushDelayMs: 0, slices: ['community'] });
         res.setHeader('Retry-After', String(Math.ceil(PIN_LOCKOUT_MS / 1000)));
         res.status(429).json({
           error: 'Забагато невірних спроб. ПІН-вхід заблоковано на 15 хвилин — увійдіть через Google.',
@@ -5429,7 +5611,7 @@ async function startServer() {
         });
         return;
       }
-      saveDatabase(db, { bumpCatalogRevision: false });
+      saveDatabase(db, { bumpCatalogRevision: false, flushDelayMs: 1500, slices: ['community'] });
       const attemptsRemaining = Math.max(0, PIN_MAX_FAILED_ATTEMPTS - nextFailed);
       res.status(401).json({
         error: `Невірний ПІН-код. Залишилось спроб: ${attemptsRemaining}.`,
@@ -5441,7 +5623,7 @@ async function startServer() {
     account.pinFailedAttempts = 0;
     delete account.pinLockedUntil;
     account.lastSeenAt = new Date().toISOString();
-    saveDatabase(db, { bumpCatalogRevision: false, flushDelayMs: 500 });
+    saveDatabase(db, { bumpCatalogRevision: false, flushDelayMs: 3000, slices: ['community'] });
 
     const sessionToken = issueGuestSessionToken(account, 'google');
     setGuestSessionCookie(req, res, sessionToken);
@@ -5495,7 +5677,7 @@ async function startServer() {
     }
 
     authResult.account.updatedAt = new Date().toISOString();
-    saveDatabase(db);
+    saveDatabase(db, { flushDelayMs: 1000, slices: ['community'] });
     if (donorTextUpdated && broadcastGlobalChatRefresh) {
       broadcastGlobalChatRefresh(db);
     }
@@ -5566,7 +5748,7 @@ async function startServer() {
     auth.account.likedPoemIds = nextLikes;
     auth.account.likedUpdatedAt = nowIso;
     auth.account.updatedAt = nowIso;
-    saveDatabase(db);
+    saveDatabase(db, { flushDelayMs: 1500, slices: ['community'] });
 
     let cloudSynced = false;
     if (auth.firebaseClaims && auth.firebaseIdToken) {
@@ -5671,7 +5853,7 @@ async function startServer() {
       authorName: optionalAuth?.account.displayName,
       authorPhotoUrl: optionalAuth?.account.photoUrl,
     });
-    saveDatabase(db);
+    saveDatabase(db, { flushDelayMs: 1500, slices: ['poems', 'products'] });
 
     if (optionalAuth?.firebaseClaims && optionalAuth.firebaseIdToken) {
       await syncWorkVoteToFirestore(
@@ -5794,8 +5976,8 @@ async function startServer() {
       return;
     }
 
-    let currentUrl = await validateExternalImageUrlForProxy(rawUrl);
-    if (!currentUrl) {
+    let currentValid = await validateExternalImageUrlForProxy(rawUrl);
+    if (!currentValid) {
       res.status(400).json({ error: 'Недозволений або небезпечний URL зображення.' });
       return;
     }
@@ -5803,7 +5985,7 @@ async function startServer() {
     try {
       let response: globalThis.Response | null = null;
       for (let hop = 0; hop < 4; hop += 1) {
-        const resHop = await fetch(currentUrl.toString(), {
+        const resHop = await fetch(currentValid.url.toString(), {
           method: 'GET',
           redirect: 'manual',
           headers: {
@@ -5819,13 +6001,13 @@ async function startServer() {
             res.status(400).json({ error: 'Не вдалося обробити перенаправлення зображення.' });
             return;
           }
-          const nextTarget = new URL(location, currentUrl).toString();
+          const nextTarget = new URL(location, currentValid.url).toString();
           const validatedNext = await validateExternalImageUrlForProxy(nextTarget);
           if (!validatedNext) {
             res.status(400).json({ error: 'Перенаправлення веде на недозволену адресу.' });
             return;
           }
-          currentUrl = validatedNext;
+          currentValid = validatedNext;
           continue;
         }
 
@@ -6500,7 +6682,7 @@ async function startServer() {
       authorName: optionalAuth?.account.displayName,
       authorPhotoUrl: optionalAuth?.account.photoUrl,
     });
-    saveDatabase(db);
+    saveDatabase(db, { flushDelayMs: 1500, slices: ['prose', 'poems', 'products'] });
 
     if (optionalAuth?.firebaseClaims && optionalAuth.firebaseIdToken) {
       await syncWorkVoteToFirestore(
@@ -6627,7 +6809,7 @@ async function startServer() {
       }
 
       if ((numericRating !== null && !alreadyRatedIp) || hasComment) {
-        saveDatabase(db);
+        saveDatabase(db, { flushDelayMs: 1500, slices: ['poems', 'products'] });
       }
 
       if (optionalAuth?.firebaseClaims && optionalAuth.firebaseIdToken) {
@@ -6730,7 +6912,7 @@ async function startServer() {
       }
 
       if ((numericRating !== null && !alreadyRatedIp) || hasComment) {
-        saveDatabase(db);
+        saveDatabase(db, { flushDelayMs: 1500, slices: ['prose', 'poems', 'products'] });
       }
 
       if (optionalAuth?.firebaseClaims && optionalAuth.firebaseIdToken) {
@@ -6827,7 +7009,7 @@ async function startServer() {
     }
 
     if ((numericRating !== null && !alreadyRatedIp) || hasComment) {
-      saveDatabase(db);
+      saveDatabase(db, { flushDelayMs: 1500, slices: ['products'] });
     }
 
     if (optionalAuth?.firebaseClaims && optionalAuth.firebaseIdToken) {
@@ -6919,7 +7101,7 @@ async function startServer() {
     }
 
     review.comment = cleanComment;
-    saveDatabase(db);
+    saveDatabase(db, { flushDelayMs: 1500, slices: ['products'] });
 
     const bearerToken = extractBearerToken(req);
     const firebaseToken =
@@ -7017,7 +7199,7 @@ async function startServer() {
     }
 
     const [removedReview] = db.reviews.splice(reviewIndex, 1);
-    saveDatabase(db);
+    saveDatabase(db, { flushDelayMs: 1500, slices: ['products'] });
 
     const bearerToken = extractBearerToken(req);
     const firebaseToken =
@@ -7089,7 +7271,7 @@ async function startServer() {
         hydrateAdminSiteFeedbackFromFirestore(db, adminToken),
       ]);
       if (poemSubsHydrated || proseSubsHydrated || ordersHydrated || feedbackHydrated) {
-        saveDatabase(db);
+        saveDatabase(db, { ordersDirty: ordersHydrated });
       }
     }
     const adminOrders: OrderRecord[] = db.orders.map((order) => {
@@ -7244,7 +7426,7 @@ async function startServer() {
     db.visitorIpHashes = [];
     seenAnalyticsSessionsSet.clear();
     visitorIpSet.clear();
-    saveDatabase(db);
+    saveDatabase(db, { flushDelayMs: 0, slices: ['analytics', 'poems', 'blog', 'community'] });
     res.json({ ok: true });
   });
 
@@ -7317,7 +7499,7 @@ async function startServer() {
     };
 
     db.donations.unshift(record);
-    saveDatabase(db);
+    saveDatabase(db, { flushDelayMs: 500, slices: ['community'] });
     const adminToken = extractBearerToken(req);
     if (adminToken) {
       void syncDonationToFirestore(record, adminToken);
@@ -7335,7 +7517,7 @@ async function startServer() {
       res.status(404).json({ error: 'Запис про донат не знайдено.' });
       return;
     }
-    saveDatabase(db);
+    saveDatabase(db, { flushDelayMs: 500, slices: ['community'] });
     const adminToken = extractBearerToken(req);
     if (adminToken) {
       void deleteDonationInFirestore(id, adminToken);
@@ -7492,7 +7674,7 @@ async function startServer() {
         lastAmountKopecks: snap.amountKopecks,
         updatedAt: new Date().toISOString(),
       };
-      saveDatabase(db, { bumpCatalogRevision: false });
+      saveDatabase(db, { bumpCatalogRevision: false, flushDelayMs: 2500, slices: ['meta'] });
     }
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
     res.json({
@@ -7550,7 +7732,7 @@ async function startServer() {
         lastAmountKopecks: snap.amountKopecks,
         updatedAt: new Date().toISOString(),
       };
-      saveDatabase(db, { bumpCatalogRevision: false });
+      saveDatabase(db, { bumpCatalogRevision: false, flushDelayMs: 2500, slices: ['meta'] });
     }
 
     cleanupExpiredMonobankIntents();
@@ -7656,7 +7838,7 @@ async function startServer() {
         updatedAt: new Date().toISOString(),
       };
       intent.baselineKopecks = snap.amountKopecks;
-      saveDatabase(db, { bumpCatalogRevision: false });
+      saveDatabase(db, { bumpCatalogRevision: false, flushDelayMs: 2500, slices: ['meta'] });
       res.json({
         status: 'pending',
         currentJarUah: Math.round(snap.amountKopecks / 100),
@@ -7692,7 +7874,7 @@ async function startServer() {
       intent.donationId = record.id;
 
       db.donations.unshift(record);
-      saveDatabase(db);
+      saveDatabase(db, { flushDelayMs: 0, slices: ['meta', 'community'] });
 
       res.json({
         status: 'credited',
@@ -9263,8 +9445,8 @@ async function startServer() {
       return;
     }
 
-    let currentUrl = await validateExternalImageUrlForProxy(rawUrl);
-    if (!currentUrl) {
+    let currentValid = await validateExternalImageUrlForProxy(rawUrl);
+    if (!currentValid) {
       res.status(400).json({ error: 'Недозволений або небезпечний URL зображення.' });
       return;
     }
@@ -9272,7 +9454,7 @@ async function startServer() {
     try {
       let response: globalThis.Response | null = null;
       for (let hop = 0; hop < 4; hop += 1) {
-        const resHop = await fetch(currentUrl.toString(), {
+        const resHop = await fetch(currentValid.url.toString(), {
           method: 'GET',
           redirect: 'manual',
           headers: {
@@ -9288,13 +9470,13 @@ async function startServer() {
             res.status(400).json({ error: 'Не вдалося обробити перенаправлення зображення.' });
             return;
           }
-          const nextTarget = new URL(location, currentUrl).toString();
+          const nextTarget = new URL(location, currentValid.url).toString();
           const validatedNext = await validateExternalImageUrlForProxy(nextTarget);
           if (!validatedNext) {
             res.status(400).json({ error: 'Перенаправлення веде на недозволену адресу.' });
             return;
           }
-          currentUrl = validatedNext;
+          currentValid = validatedNext;
           continue;
         }
 
@@ -11226,7 +11408,7 @@ async function startServer() {
       ),
     }));
 
-    saveDatabase(db);
+    saveDatabase(db, { slices: ['products'], ordersDirty: true });
     res.json({ product: updated });
   });
 
@@ -11871,7 +12053,7 @@ async function startServer() {
       };
 
       db.orders.unshift(pendingOrderRecord);
-      saveDatabase(db);
+      saveDatabase(db, { flushDelayMs: 0, ordersDirty: [pendingOrderRecord.orderCode] });
 
       const now = Date.now();
       pendingMonobankStoreInvoices.set(monoData.invoiceId, {
@@ -12019,7 +12201,7 @@ async function startServer() {
       const existingOrder = db.orders.find((o) => o.orderCode === pending.orderCode);
       if (existingOrder && existingOrder.payment && existingOrder.payment.status === 'pending') {
         existingOrder.payment.status = pending.status === 'expired' ? 'expired' : 'failed';
-        saveDatabase(db);
+        saveDatabase(db, { ordersDirty: [existingOrder.orderCode] });
       }
     }
 
@@ -12450,7 +12632,7 @@ async function startServer() {
       const existingOrder = db.orders.find((o) => o.orderCode === pending.orderCode);
       if (existingOrder && existingOrder.payment && existingOrder.payment.status === 'pending') {
         existingOrder.payment.status = pending.status === 'expired' ? 'expired' : 'failed';
-        saveDatabase(db);
+        saveDatabase(db, { ordersDirty: [existingOrder.orderCode] });
       }
     }
 
@@ -12521,7 +12703,7 @@ async function startServer() {
           const existingOrder = db.orders.find((o) => o.orderCode === pendingProse.orderCode);
           if (existingOrder && existingOrder.payment && existingOrder.payment.status === 'pending') {
             existingOrder.payment.status = pendingProse.status === 'expired' ? 'expired' : 'failed';
-            saveDatabase(db);
+            saveDatabase(db, { ordersDirty: [existingOrder.orderCode] });
           }
         }
         persistPendingInvoices();
@@ -12548,7 +12730,7 @@ async function startServer() {
           const existingOrder = db.orders.find((o) => o.orderCode === pendingStore.orderCode);
           if (existingOrder && existingOrder.payment && existingOrder.payment.status === 'pending') {
             existingOrder.payment.status = pendingStore.status === 'expired' ? 'expired' : 'failed';
-            saveDatabase(db);
+            saveDatabase(db, { ordersDirty: [existingOrder.orderCode] });
           }
         }
         persistPendingInvoices();
@@ -12852,7 +13034,7 @@ async function startServer() {
     if (db.chatMessages.length > 200) {
       db.chatMessages = db.chatMessages.slice(-200);
     }
-    saveDatabase(db, { bumpCatalogRevision: false, flushDelayMs: 500 });
+    saveDatabase(db, { bumpCatalogRevision: false, flushDelayMs: 1500, slices: ['community'] });
     const enrichedMessage = enrichChatMessageWithBadges(
       record,
       createBadgeLookup(db),
@@ -12916,7 +13098,7 @@ async function startServer() {
       return { ok: false, status: 403, error: 'Ви можете видаляти лише власні повідомлення.' };
     }
     db.chatMessages.splice(index, 1);
-    saveDatabase(db, { bumpCatalogRevision: false, flushDelayMs: 500 });
+    saveDatabase(db, { bumpCatalogRevision: false, flushDelayMs: 1500, slices: ['community'] });
     broadcastChatEvent({ type: 'chat:deleted', id });
     if (!actor.skipFirestoreSync && actor.idToken) {
       void deleteChatMessageInFirestore(id, actor.idToken);
@@ -12987,7 +13169,7 @@ async function startServer() {
     const cleanText = typeof text === 'string' ? text.replace(/\s+/g, ' ').trim().slice(0, 80) : '';
     auth.account.donorChatText = cleanText || undefined;
     auth.account.updatedAt = new Date().toISOString();
-    saveDatabase(db);
+    saveDatabase(db, { flushDelayMs: 1500, slices: ['community'] });
     broadcastGlobalChatRefresh?.(db);
 
     if (auth.firebaseClaims && auth.firebaseIdToken) {
