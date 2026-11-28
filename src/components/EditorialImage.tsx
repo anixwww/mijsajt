@@ -59,9 +59,9 @@ export function EditorialImage({
         width={width}
         height={height}
         referrerPolicy="no-referrer"
-        loading={priority ? 'eager' : 'lazy'}
-        fetchPriority={priority ? 'high' : 'auto'}
-        decoding={priority ? 'sync' : 'async'}
+        {...(priority
+          ? { fetchPriority: 'high' }
+          : { loading: 'lazy', decoding: 'async' })}
         onError={() => {
           setHasError(true);
           onImageError?.();

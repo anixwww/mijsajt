@@ -161,7 +161,6 @@ const StoreProductCard = memo(function StoreProductCard({
             titleFallback={product.title}
             aspectClassName={isSingle ? 'aspect-[4/3] sm:h-full' : 'aspect-[4/3]'}
             className="h-full"
-            priority={index < 3}
           />
           {hasPromoBadge && (
             <div
