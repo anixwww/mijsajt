@@ -2368,6 +2368,61 @@ function enrichBlogPost(post: RawBlogPost, db: SiteDatabase): BlogPost {
   };
 }
 
+const CATALOG_TEXT_MAX_CHARS = 1200;
+const CATALOG_TEXT_CUT_CHARS = 900;
+
+function truncatePoemForCatalog(poem: Poem): Poem {
+  if (!poem.content || poem.content.length <= CATALOG_TEXT_MAX_CHARS) {
+    return poem;
+  }
+  const nlCut = poem.content.lastIndexOf('\n', CATALOG_TEXT_CUT_CHARS);
+  const wsCut = poem.content.lastIndexOf(' ', CATALOG_TEXT_CUT_CHARS);
+  const sliceEnd =
+    nlCut >= 400 ? nlCut : wsCut >= 400 ? wsCut : CATALOG_TEXT_CUT_CHARS;
+  return {
+    ...poem,
+    content: `${poem.content.slice(0, sliceEnd).trimEnd()}…`,
+    contentTruncated: true,
+  };
+}
+
+function truncateBlogForCatalog(post: BlogPost): BlogPost {
+  if (!post.content) return post;
+  const lines = post.content.split('\n');
+  const directiveLines: string[] = [];
+  const proseLines: string[] = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith(':::blog-media ') && trimmed.endsWith(':::')) {
+      directiveLines.push(line);
+    } else {
+      proseLines.push(line);
+    }
+  }
+
+  const proseText = proseLines.join('\n');
+  if (proseText.length <= CATALOG_TEXT_MAX_CHARS) {
+    return post;
+  }
+
+  const nlCut = proseText.lastIndexOf('\n', CATALOG_TEXT_CUT_CHARS);
+  const wsCut = proseText.lastIndexOf(' ', CATALOG_TEXT_CUT_CHARS);
+  const sliceEnd =
+    nlCut >= 400 ? nlCut : wsCut >= 400 ? wsCut : CATALOG_TEXT_CUT_CHARS;
+  const truncatedProse = `${proseText.slice(0, sliceEnd).trimEnd()}…`;
+  const rebuilt =
+    directiveLines.length > 0
+      ? `${truncatedProse}\n\n${directiveLines.join('\n')}`
+      : truncatedProse;
+
+  return {
+    ...post,
+    content: rebuilt,
+    contentTruncated: true,
+  };
+}
+
 function getProsePreviewText(content: string): string {
   const paragraphs = preserveFormattedText(content)
     .split(/\n{2,}/)
@@ -4244,31 +4299,15 @@ async function startServer() {
     decodeBase64UrlJson,
   });
 
-  // Lightweight homepage shell endpoint for instant first paint
+  // Lightweight homepage shell endpoint for instant first paint (public & CDN cacheable)
   app.get('/api/home', async (req, res) => {
     const db = ensureDatabase();
     await ensureAllPublicStateHydrated(db);
     await ensureAvailableAuthorPhotos(db);
-    const ipHash = getClientIpHash(req);
-    let isNewVisitor = false;
 
-    if (!visitorIpSet.has(ipHash)) {
-      visitorIpSet.add(ipHash);
-      db.visitorIpHashes.push(ipHash);
-      isNewVisitor = true;
-    }
-    const visitRecorded = recordSiteVisit(db, req, ipHash, {
-      entrySection: 'home',
-      isNewVisitor,
-      source: 'api',
-    });
-    if (isNewVisitor || visitRecorded) {
-      saveDatabase(db, { bumpCatalogRevision: false, flushDelayMs: 5000 });
-    }
-
-    const etag = `W/"home-${catalogRevision}-${db.visitorIpHashes.length}"`;
+    const etag = `W/"home-${catalogRevision}"`;
     res.setHeader('ETag', etag);
-    res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+    res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
     if (req.headers['if-none-match'] === etag) {
       res.status(304).end();
       return;
@@ -4305,12 +4344,11 @@ async function startServer() {
     });
   });
 
-  // Public catalog + tracks unique visitor by IP
+  // Public catalog (trimmed content for poems/blog; public cacheable for anonymous requests)
   app.get('/api/catalog', async (req, res) => {
     const db = ensureDatabase();
     await ensureAllPublicStateHydrated(db);
     await ensureAvailableAuthorPhotos(db);
-    const ipHash = getClientIpHash(req);
     const optionalAuth = await tryAuthenticateOptionalGuest(req, db);
     const isAuthorized = Boolean(optionalAuth);
     if (optionalAuth?.provider === 'google' && !cloudSyncState.radioHydrated) {
@@ -4321,34 +4359,28 @@ async function startServer() {
       }
     }
 
-    let isNewVisitor = false;
-    if (!visitorIpSet.has(ipHash)) {
-      visitorIpSet.add(ipHash);
-      db.visitorIpHashes.push(ipHash);
-      isNewVisitor = true;
-    }
-    const visitRecorded = recordSiteVisit(db, req, ipHash, {
-      entrySection: 'home',
-      isNewVisitor,
-      source: 'api',
-    });
-    if (isNewVisitor || visitRecorded) {
-      saveDatabase(db, { bumpCatalogRevision: false, flushDelayMs: 5000 });
-    }
-
     const weeklyRollover = ensureWeeklyWinnersUpToDate(db);
     if (weeklyRollover.changed) {
       saveDatabase(db);
     }
 
-    const etag = `W/"cat-${catalogRevision}-${ipHash.slice(0, 12)}-${optionalAuth?.account.uid || 'anon'}"`;
+    res.setHeader('Vary', 'Authorization');
+    const etag = optionalAuth
+      ? `W/"cat-${catalogRevision}-${optionalAuth.account.uid}"`
+      : `W/"cat-pub-${catalogRevision}"`;
     res.setHeader('ETag', etag);
-    res.setHeader('Cache-Control', 'private, max-age=0, must-revalidate');
+    res.setHeader(
+      'Cache-Control',
+      optionalAuth
+        ? 'private, max-age=0, must-revalidate'
+        : 'public, max-age=60, stale-while-revalidate=300'
+    );
     if (req.headers['if-none-match'] === etag) {
       res.status(304).end();
       return;
     }
 
+    const effectiveIpHash = optionalAuth ? getClientIpHash(req) : '';
     const badgeLookup = createBadgeLookup(db);
     const photoLookup = createAccountPhotoLookup(db);
 
@@ -4381,15 +4413,17 @@ async function startServer() {
       proseTelegramDiscountPercent: db.proseTelegramDiscountPercent ?? 50,
       storeAuthDiscountPercent: 0,
       poems: db.poems.map((poem) =>
-        enrichPoem(poem, db, ipHash, optionalAuth?.account, badgeLookup, photoLookup)
+        truncatePoemForCatalog(
+          enrichPoem(poem, db, effectiveIpHash, optionalAuth?.account, badgeLookup, photoLookup)
+        )
       ),
       prose: db.prose.map((work) =>
-        enrichProseForPublic(work, db, ipHash, isAuthorized, false, badgeLookup, optionalAuth?.account, photoLookup)
+        enrichProseForPublic(work, db, effectiveIpHash, isAuthorized, false, badgeLookup, optionalAuth?.account, photoLookup)
       ),
       proseTags: db.proseTags,
-      blog: db.blog.map((post) => enrichBlogPost(post, db)),
+      blog: db.blog.map((post) => truncateBlogForCatalog(enrichBlogPost(post, db))),
       products: db.products.map((product) =>
-        enrichProductForPublic(product, db, ipHash, badgeLookup, photoLookup, optionalAuth?.account)
+        enrichProductForPublic(product, db, effectiveIpHash, badgeLookup, photoLookup, optionalAuth?.account)
       ),
       radioTracks: buildRadioTracksWithRepertoire(db, isAuthorized, optionalAuth?.account),
       monthlySelections: [...(db.monthlySelections || [])].sort((a, b) =>
@@ -4408,37 +4442,96 @@ async function startServer() {
     });
   });
 
-  // Public monthly SoundCloud music selections endpoint
-  app.get('/api/selections', async (_req, res) => {
+  // Full text lazy-loader for truncated poems in catalog
+  app.get('/api/poems/:id/read', async (req, res) => {
     const db = ensureDatabase();
     await ensureAllPublicStateHydrated(db);
+    const { id } = req.params;
+    const poem = db.poems.find((p) => p.id === id);
+    if (!poem) {
+      res.status(404).json({ error: 'Вірш не знайдено.' });
+      return;
+    }
+    const etag = `W/"poem-${poem.id}-${catalogRevision}"`;
+    res.setHeader('ETag', etag);
+    res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
+    if (req.headers['if-none-match'] === etag) {
+      res.status(304).end();
+      return;
+    }
+    res.json({ id: poem.id, content: poem.content });
+  });
+
+  // Full text lazy-loader for truncated blog posts in catalog
+  app.get('/api/blog/:id/read', async (req, res) => {
+    const db = ensureDatabase();
+    await ensureAllPublicStateHydrated(db);
+    const { id } = req.params;
+    const post = db.blog.find((b) => b.id === id);
+    if (!post) {
+      res.status(404).json({ error: 'Допис не знайдено.' });
+      return;
+    }
+    const etag = `W/"blog-${post.id}-${catalogRevision}"`;
+    res.setHeader('ETag', etag);
+    res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
+    if (req.headers['if-none-match'] === etag) {
+      res.status(304).end();
+      return;
+    }
+    res.json({ id: post.id, content: post.content });
+  });
+
+  // Public monthly SoundCloud music selections endpoint
+  app.get('/api/selections', async (req, res) => {
+    const db = ensureDatabase();
+    await ensureAllPublicStateHydrated(db);
+    const etag = `W/"sel-${catalogRevision}"`;
+    res.setHeader('ETag', etag);
+    res.setHeader('Cache-Control', 'public, max-age=120, stale-while-revalidate=600');
+    if (req.headers['if-none-match'] === etag) {
+      res.status(304).end();
+      return;
+    }
     const sorted = [...(db.monthlySelections || [])].sort((a, b) =>
       a.monthKey !== b.monthKey ? b.monthKey.localeCompare(a.monthKey) : a.order - b.order
     );
-    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
     res.json({ monthlySelections: sorted });
   });
 
-  // Authorized-only radio playlist endpoint (returns embedTargetUrl only for signed-in users)
+  // Radio playlist endpoint: public metadata cacheable without auth; full playback URLs only for signed-in users
   app.get('/api/radio', async (req, res) => {
     const db = ensureDatabase();
     if (!cloudSyncState.publicHydrated) {
       const hydrated = await hydratePublicCatalogFromFirestore(db);
       if (hydrated) saveDatabase(db);
     }
+    res.setHeader('Vary', 'Authorization');
+    const bearer = extractBearerToken(req);
+    if (!bearer) {
+      const etag = `W/"radio-pub-${catalogRevision}"`;
+      res.setHeader('ETag', etag);
+      res.setHeader('Cache-Control', 'public, max-age=120, stale-while-revalidate=600');
+      if (req.headers['if-none-match'] === etag) {
+        res.status(304).end();
+        return;
+      }
+      res.json({
+        tracks: buildRadioTracksWithRepertoire(db, false, null),
+      });
+      return;
+    }
+
     const authResult = await authenticateGuestRequest(req, db);
     if (!authResult.ok) {
       res.status(authResult.status).json({ error: authResult.error });
       return;
     }
     if (authResult.provider === 'google' && !cloudSyncState.radioHydrated) {
-      const bearer = extractBearerToken(req);
-      if (bearer) {
-        const changed = await hydrateAuthorizedProseAndRadio(db, bearer);
-        if (changed) saveDatabase(db);
-      }
+      const changed = await hydrateAuthorizedProseAndRadio(db, bearer);
+      if (changed) saveDatabase(db);
     }
-    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.setHeader('Cache-Control', 'private, no-store, no-cache, must-revalidate');
     res.json({
       tracks: buildRadioTracksWithRepertoire(db, true, authResult.account),
     });
@@ -13253,25 +13346,116 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(__dirname, 'dist');
+    const precompressedMimeMap: Record<string, string> = {
+      '.js': 'application/javascript; charset=utf-8',
+      '.mjs': 'application/javascript; charset=utf-8',
+      '.css': 'text/css; charset=utf-8',
+      '.html': 'text/html; charset=utf-8',
+      '.svg': 'image/svg+xml',
+      '.json': 'application/json; charset=utf-8',
+      '.webmanifest': 'application/manifest+json; charset=utf-8',
+      '.woff2': 'font/woff2',
+      '.ico': 'image/x-icon',
+      '.txt': 'text/plain; charset=utf-8',
+      '.xml': 'application/xml; charset=utf-8',
+    };
+
+    const createPrecompressedMiddleware = (
+      rootDir: string,
+      cacheControlForFile: (relPath: string) => string
+    ) => {
+      const resolvedRoot = path.resolve(rootDir);
+      return (req: Request, res: Response, next: () => void) => {
+        if (req.method !== 'GET' && req.method !== 'HEAD') {
+          next();
+          return;
+        }
+        let decodedPath: string;
+        try {
+          decodedPath = decodeURIComponent(req.path || '/');
+        } catch {
+          next();
+          return;
+        }
+        const relPath = decodedPath.replace(/^\/+/, '');
+        if (!relPath || decodedPath.endsWith('/')) {
+          next();
+          return;
+        }
+        const fullPath = path.resolve(resolvedRoot, relPath);
+        if (!fullPath.startsWith(resolvedRoot + path.sep)) {
+          next();
+          return;
+        }
+        const ext = path.extname(fullPath).toLowerCase();
+        const contentType = precompressedMimeMap[ext];
+        if (!contentType) {
+          next();
+          return;
+        }
+
+        const acceptEncoding = String(req.headers['accept-encoding'] || '');
+        let encodedPath: string | null = null;
+        let encoding: 'br' | 'gzip' | null = null;
+        if (/\bbr\b/i.test(acceptEncoding) && fs.existsSync(`${fullPath}.br`)) {
+          encodedPath = `${fullPath}.br`;
+          encoding = 'br';
+        } else if (/\bgzip\b/i.test(acceptEncoding) && fs.existsSync(`${fullPath}.gz`)) {
+          encodedPath = `${fullPath}.gz`;
+          encoding = 'gzip';
+        }
+
+        if (!encodedPath || !encoding) {
+          next();
+          return;
+        }
+
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Content-Encoding', encoding);
+        res.setHeader('Vary', 'Accept-Encoding');
+        res.setHeader('Cache-Control', cacheControlForFile(relPath));
+        res.sendFile(encodedPath);
+      };
+    };
+
+    const assetsDir = path.join(distPath, 'assets');
+    const srcAssetsDir = path.join(distPath, 'src/assets');
+
     app.use(
       '/assets',
-      express.static(path.join(distPath, 'assets'), {
+      createPrecompressedMiddleware(assetsDir, () => 'public, max-age=31536000, immutable'),
+      express.static(assetsDir, {
         maxAge: '1y',
         immutable: true,
       })
     );
     app.use(
       '/src/assets',
-      express.static(path.join(distPath, 'src/assets'), {
+      createPrecompressedMiddleware(srcAssetsDir, () => 'public, max-age=31536000, immutable'),
+      express.static(srcAssetsDir, {
         maxAge: '1y',
         immutable: true,
       })
     );
     app.use(
+      createPrecompressedMiddleware(distPath, (relPath) =>
+        relPath === 'index.html' ||
+        relPath === 'sw.js' ||
+        relPath === 'manifest.webmanifest' ||
+        relPath.startsWith('workbox-')
+          ? 'no-cache'
+          : 'public, max-age=3600'
+      ),
       express.static(distPath, {
         maxAge: '1h',
         setHeaders: (res, filePath) => {
-          if (filePath.endsWith('index.html')) {
+          const base = path.basename(filePath);
+          if (
+            base === 'index.html' ||
+            base === 'sw.js' ||
+            base === 'manifest.webmanifest' ||
+            base.startsWith('workbox-')
+          ) {
             res.setHeader('Cache-Control', 'no-cache');
           }
         },

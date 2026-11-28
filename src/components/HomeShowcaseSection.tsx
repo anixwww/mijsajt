@@ -7,15 +7,17 @@ import {
 } from 'lucide-react';
 import { AnimatePresence, m, useReducedMotion } from 'motion/react';
 import {
+  memo,
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
 } from 'react';
+import { useViewportActivity } from '../hooks/useViewportActivity.ts';
 import {
-  formatPromoCountdown,
   getEffectivePriceUah,
   isPhysicalProduct,
   normalizeHomeRepeatersConfig,
@@ -38,6 +40,7 @@ import { extractImagePalette, usePoemImagePalette } from '../utils/imagePalette.
 import { getProseTagPreset } from '../utils/proseTagColors.ts';
 import { preserveFormattedText } from '../utils/textFormatting.ts';
 import { EditorialImage } from './EditorialImage.tsx';
+import { PromoCountdown } from './PromoCountdown.tsx';
 import { UserRankBadges } from './UserRankBadges.tsx';
 
 interface HomeShowcaseSectionProps {
@@ -282,6 +285,8 @@ function WorkGlassVitrine({
   fullHeightThumbnail = false,
 }: WorkGlassVitrineProps) {
   const prefersReducedMotion = useReducedMotion();
+  const vitrineRef = useRef<HTMLDivElement | null>(null);
+  const vitrineActivity = useViewportActivity(vitrineRef);
   const [slideIndex, setSlideIndex] = useState(0);
   const [singleSlidePhotoTick, setSingleSlidePhotoTick] = useState(0);
 
@@ -310,20 +315,20 @@ function WorkGlassVitrine({
   }, [total]);
 
   useEffect(() => {
-    if (total <= 1) return;
+    if (total <= 1 || !vitrineActivity.isActive) return;
     const timer = window.setInterval(() => {
       setSlideIndex((prev) => prev + 1);
     }, autoIntervalMs);
     return () => window.clearInterval(timer);
-  }, [total, autoIntervalMs]);
+  }, [total, autoIntervalMs, vitrineActivity.isActive]);
 
   useEffect(() => {
-    if (total !== 1 || activeThumbnailList.length <= 1) return;
+    if (total !== 1 || activeThumbnailList.length <= 1 || !vitrineActivity.isActive) return;
     const timer = window.setInterval(() => {
       setSingleSlidePhotoTick((prev) => prev + 1);
     }, autoIntervalMs);
     return () => window.clearInterval(timer);
-  }, [total, activeThumbnailList.length, autoIntervalMs]);
+  }, [total, activeThumbnailList.length, autoIntervalMs, vitrineActivity.isActive]);
 
   const paletteSourceUrl = (
     activeThumbnailUrl ||
@@ -397,9 +402,12 @@ function WorkGlassVitrine({
 
   return (
     <div
+      ref={vitrineRef}
       aria-label={sectionLabel}
       onMouseMove={handleSpotlightMove}
-      className={`${VITRINE_GLASS_BASE} h-[152px] sm:h-[158px] flex flex-col justify-center`}
+      className={`${VITRINE_GLASS_BASE} ${
+        vitrineActivity.isActive ? '' : 'vitrine-paused '
+      }h-[152px] sm:h-[158px] flex flex-col justify-center`}
     >
       {/* Smoothly crossfaded adaptive palette background */}
       <AnimatePresence initial={false} mode="sync">
@@ -607,7 +615,7 @@ function WorkGlassVitrine({
       )}
 
       {/* Bottom Live Cycle Progress Hairline */}
-      {(total > 1 || activeThumbnailList.length > 1) && (
+      {(total > 1 || activeThumbnailList.length > 1) && vitrineActivity.isActive && (
         <div
           aria-hidden="true"
           className={`pointer-events-none absolute inset-x-0 bottom-0 z-20 h-[2px] overflow-hidden ${
@@ -633,7 +641,7 @@ function WorkGlassVitrine({
   );
 }
 
-export function HomeShowcaseSection({
+export const HomeShowcaseSection = memo(function HomeShowcaseSection({
   poems,
   prose,
   proseTags = [],
@@ -704,7 +712,6 @@ export function HomeShowcaseSection({
   }, [blog, repeatersConfig.blogMode, repeatersConfig.blogLimit]);
 
   const [feedbackFilter, setFeedbackFilter] = useState<FeedbackFilter>('all');
-  const [nowMs, setNowMs] = useState(() => Date.now());
 
   // Build dynamic slides for Вірші, Проза, Блог, Крамниця
   const poemSlides: VitrineSlide[] = useMemo(() => {
@@ -937,6 +944,7 @@ export function HomeShowcaseSection({
 
   // Store 4th Repeater filtered & sorted according to admin homeRepeaters config
   const highlightedProducts = useMemo(() => {
+    const nowSnapshot = Date.now();
     const indexed = products.map((product, index) => {
       const parsed = parseStoreProductPromo(product);
       const basePrice = Math.max(0, Math.round(Number(product.priceUah) || 0));
@@ -947,7 +955,7 @@ export function HomeShowcaseSection({
           : 0;
       const timerTargetMs = parsed.promoEndsAt ? Date.parse(parsed.promoEndsAt) : NaN;
       const hasValidFutureTimer =
-        Boolean(product.promoActive) && Number.isFinite(timerTargetMs) && timerTargetMs > nowMs;
+        Boolean(product.promoActive) && Number.isFinite(timerTargetMs) && timerTargetMs > nowSnapshot;
 
       return {
         product,
@@ -1021,18 +1029,7 @@ export function HomeShowcaseSection({
     }
 
     return listToShow.slice(0, repeatersConfig.storeLimit);
-  }, [products, nowMs, repeatersConfig.storeMode, repeatersConfig.storeLimit]);
-
-  const hasActiveStoreCountdown = useMemo(
-    () => highlightedProducts.some((entry) => entry.hasValidFutureTimer),
-    [highlightedProducts]
-  );
-
-  useEffect(() => {
-    if (!hasActiveStoreCountdown) return;
-    const timer = window.setInterval(() => setNowMs(Date.now()), 1000);
-    return () => window.clearInterval(timer);
-  }, [hasActiveStoreCountdown]);
+  }, [products, repeatersConfig.storeMode, repeatersConfig.storeLimit]);
 
   const storeSlides: VitrineSlide[] = useMemo(() => {
     if (highlightedProducts.length === 0) {
@@ -1050,7 +1047,6 @@ export function HomeShowcaseSection({
       basePriceUah: number,
       finalPriceUah: number,
       hasDiscount: boolean,
-      countdownText: string | null,
       hasCustomText: boolean
     ) => {
       const isPromoActive = Boolean(entry.product.promoActive);
@@ -1126,11 +1122,8 @@ export function HomeShowcaseSection({
               </span>
             </>
           )}
-          {countdownText && (
-            <>
-              <span aria-hidden="true">·</span>
-              <span className="font-mono">{countdownText}</span>
-            </>
+          {entry.product.promoActive && entry.parsed.promoEndsAt && (
+            <PromoCountdown endsAtIso={entry.parsed.promoEndsAt} variant="vitrine" />
           )}
           {entry.product.ratingCount > 0 && (
             <>
@@ -1150,14 +1143,10 @@ export function HomeShowcaseSection({
     };
 
     return highlightedProducts.map((entry) => {
-      const { product, parsed, discountPct } = entry;
+      const { product, discountPct } = entry;
       const basePriceUah = Math.max(0, Math.round(Number(product.priceUah) || 0));
       const finalPriceUah = getEffectivePriceUah(product);
       const hasDiscount = discountPct > 0 && finalPriceUah < basePriceUah;
-      const countdownText =
-        product.promoActive && parsed.promoEndsAt
-          ? formatPromoCountdown(parsed.promoEndsAt, nowMs)
-          : null;
 
       return {
         id: product.id,
@@ -1169,10 +1158,10 @@ export function HomeShowcaseSection({
           onOpenProduct(product.id);
         },
         meta: (hasCustomText: boolean) =>
-          buildProductMeta(entry, basePriceUah, finalPriceUah, hasDiscount, countdownText, hasCustomText),
+          buildProductMeta(entry, basePriceUah, finalPriceUah, hasDiscount, hasCustomText),
       };
     });
-  }, [highlightedProducts, products.length, repeatersConfig.storeMode, nowMs, onNavigateSection, onOpenProduct]);
+  }, [highlightedProducts, products.length, repeatersConfig.storeMode, onNavigateSection, onOpenProduct]);
 
   // Merge recentFeedback + live reviews inside poems, prose, products
   const mergedFeedback = useMemo(() => {
@@ -1414,4 +1403,4 @@ export function HomeShowcaseSection({
       </section>
     </div>
   );
-}
+});

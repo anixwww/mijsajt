@@ -1,20 +1,61 @@
 import { BellRing, Trophy, X } from 'lucide-react';
 import { AnimatePresence, LazyMotion, m, MotionConfig } from 'motion/react';
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, memo, Suspense, useCallback, useEffect, useMemo, useRef } from 'react';
+import { FirstVisitAuthHint } from './components/FirstVisitAuthHint.tsx';
 import { HeroSection } from './components/HeroSection.tsx';
 import { HomeShowcaseSection } from './components/HomeShowcaseSection.tsx';
 import { MinimizedRadioButton } from './components/MinimizedRadioButton.tsx';
 import { OfflineIndicator } from './components/OfflineIndicator.tsx';
 import { PoetrySpaceBackdrop } from './components/PoetrySpaceBackdrop.tsx';
+import { RadioEngine } from './components/RadioEngine.tsx';
 import { SectionSkeleton } from './components/SectionSkeleton.tsx';
 import { SiteBottomNav } from './components/SiteBottomNav.tsx';
 import { FALLBACK_SOCIAL_LINKS } from './components/SocialIcons.tsx';
-import { FirstVisitAuthHint } from './components/FirstVisitAuthHint.tsx';
+import { getCachedAuthUser, getFirebaseAuth, testFirestoreConnection } from './firebase.ts';
+import {
+  TELEGRAM_SUB_STORAGE_KEY,
+  useAuthStore,
+  writeRememberedGuestHint,
+} from './store/useAuthStore.ts';
+import { useCartStore } from './store/useCartStore.ts';
+import { useCatalogStore, writeCachedHomeShell } from './store/useCatalogStore.ts';
+import { useRadioStore } from './store/useRadioStore.ts';
+import { useUiStore } from './store/useUiStore.ts';
+import type {
+  BlogPost,
+  CatalogResponse,
+  GlobalChatMessage,
+  GuestUser,
+  HomePayload,
+  HomeRepeatersConfig,
+  InterviewLinkItem,
+  Poem,
+  ProseWork,
+  PurchasedAccess,
+  RadioStationId,
+  SectionId,
+  SocialLinkItem,
+  StoreProduct,
+  TelegramSubscriptionState,
+  WeeklyMusicSelection,
+} from './types.ts';
+import { initBehaviorAnalytics, setActiveMoment, trackClick } from './utils/analytics.ts';
 import { prewarmChatFirestore, subscribeGlobalChatMessages } from './utils/chatFirestore.ts';
 import {
   mergeSiteFeedbackLists,
   subscribeUserSiteFeedback,
 } from './utils/feedbackFirestore.ts';
+import { initGlobalButtonHaptics } from './utils/haptics.ts';
+import {
+  collectCatalogMediaUrls,
+  readLocalUserLikedPoemIds,
+  readOfflineCatalog,
+  saveOfflineCatalog,
+  warmOfflineMediaCache,
+  writeLocalUserLikedPoemIds,
+} from './utils/offlineCache.ts';
+import { useAllRadioTracks, useRadioDerivedState } from './utils/radioSelectors.ts';
+import { sortWeeklyMusicSelections } from './utils/weeklyMusicFirestore.ts';
 
 const loadMotionFeatures = () => import('motion/react').then((mod) => mod.domMax);
 
@@ -25,106 +66,43 @@ const loadRadioSection = () => import('./components/RadioSection.tsx');
 const loadStoreSection = () => import('./components/StoreSection.tsx');
 
 const AuthorStudioModal = lazy(() =>
-  import('./components/AuthorStudioModal.tsx').then((m) => ({ default: m.AuthorStudioModal }))
+  import('./components/AuthorStudioModal.tsx').then((mod) => ({ default: mod.AuthorStudioModal }))
 );
 const BlogSection = lazy(() =>
-  loadBlogSection().then((m) => ({ default: m.BlogSection }))
+  loadBlogSection().then((mod) => ({ default: mod.BlogSection }))
 );
 const CartLibraryDrawer = lazy(() =>
-  import('./components/CartLibraryDrawer.tsx').then((m) => ({ default: m.CartLibraryDrawer }))
+  import('./components/CartLibraryDrawer.tsx').then((mod) => ({ default: mod.CartLibraryDrawer }))
 );
 const GuestAuthModal = lazy(() =>
-  import('./components/GuestAuthModal.tsx').then((m) => ({ default: m.GuestAuthModal }))
+  import('./components/GuestAuthModal.tsx').then((mod) => ({ default: mod.GuestAuthModal }))
 );
 const PoetrySection = lazy(() =>
-  loadPoetrySection().then((m) => ({ default: m.PoetrySection }))
+  loadPoetrySection().then((mod) => ({ default: mod.PoetrySection }))
 );
 const ProseSection = lazy(() =>
-  loadProseSection().then((m) => ({ default: m.ProseSection }))
+  loadProseSection().then((mod) => ({ default: mod.ProseSection }))
 );
 const RadioSection = lazy(() =>
-  loadRadioSection().then((m) => ({ default: m.RadioSection }))
+  loadRadioSection().then((mod) => ({ default: mod.RadioSection }))
 );
 const StoreSection = lazy(() =>
-  loadStoreSection().then((m) => ({ default: m.StoreSection }))
+  loadStoreSection().then((mod) => ({ default: mod.StoreSection }))
 );
 const TelegramVerifyModal = lazy(() =>
-  import('./components/TelegramVerifyModal.tsx').then((m) => ({ default: m.TelegramVerifyModal }))
+  import('./components/TelegramVerifyModal.tsx').then((mod) => ({ default: mod.TelegramVerifyModal }))
 );
 const GlobalChatModal = lazy(() =>
-  import('./components/GlobalChatModal.tsx').then((m) => ({ default: m.GlobalChatModal }))
+  import('./components/GlobalChatModal.tsx').then((mod) => ({ default: mod.GlobalChatModal }))
 );
 const UserLeaderboardModal = lazy(() =>
-  import('./components/UserLeaderboardModal.tsx').then((m) => ({ default: m.UserLeaderboardModal }))
+  import('./components/UserLeaderboardModal.tsx').then((mod) => ({ default: mod.UserLeaderboardModal }))
 );
 const MusicSelectionsModal = lazy(() =>
-  import('./components/MusicSelectionsModal.tsx').then((m) => ({ default: m.MusicSelectionsModal }))
+  import('./components/MusicSelectionsModal.tsx').then((mod) => ({ default: mod.MusicSelectionsModal }))
 );
-import { getCachedAuthUser, getFirebaseAuth, testFirestoreConnection } from './firebase.ts';
-import {
-  type CatalogResponse,
-  type FeedbackRecord,
-  type GuestUser,
-  type HomePayload,
-  type HomeRepeatersConfig,
-  type InterviewLinkItem,
-  type Poem,
-  type ProseWork,
-  type PurchasedAccess,
-  type RadioStationId,
-  type RadioTrack,
-  type RememberedGuestHint,
-  type SectionId,
-  type SocialLinkItem,
-  type StoreProduct,
-  type TelegramSubscriptionState,
-  type GlobalChatMessage,
-  type WeeklyMusicSelection,
-} from './types.ts';
-import { initBehaviorAnalytics, setActiveMoment, trackClick } from './utils/analytics.ts';
-import { initGlobalButtonHaptics } from './utils/haptics.ts';
-import {
-  collectCatalogMediaUrls,
-  readLocalUserLikedPoemIds,
-  readOfflineCatalog,
-  saveOfflineCatalog,
-  warmOfflineMediaCache,
-  writeLocalUserLikedPoemIds,
-} from './utils/offlineCache.ts';
-import { sanitizePurchasedAccessForDevice } from './utils/paymentCrypto.ts';
-import {
-  hasRadioTelemetryWaveform,
-  setRadioTelemetryWaveform,
-  updateRadioTelemetryPlayback,
-} from './utils/radioAudioTelemetry.ts';
-import {
-  subscribeRadioTracks,
-  syncLegacyServerTracksToFirestore,
-} from './utils/radioFirestore.ts';
-import {
-  annotateAllRadioTracksWithRepertoire,
-  getSavedRadioTracks,
-  selectRadioStationRepertoire,
-} from './utils/radioRepertoire.ts';
-import {
-  sortWeeklyMusicSelections,
-  subscribeWeeklyMusicSelections,
-} from './utils/weeklyMusicFirestore.ts';
-import {
-  fetchSoundCloudWaveform,
-  getSoundCloudPlayerSrc,
-  loadSoundCloudWidgetApi,
-  type SCPlayProgressPayload,
-  type SCWidgetInstance,
-} from './utils/soundcloudWidget.ts';
 
-const CART_STORAGE_KEY = 'dankiv_cart_ids_v1';
-const UNLOCKED_STORAGE_KEY = 'dankiv_unlocked_access_v1';
-const GUEST_HINT_STORAGE_KEY = 'dankiv_guest_hint_v1';
 const LEGACY_GUEST_STORAGE_KEY = 'dankiv_guest_user_v1';
-const HOME_SHELL_STORAGE_KEY = 'dankiv_home_shell_v1';
-const RADIO_ENABLED_STORAGE_KEY = 'dankiv_radio_enabled_v1';
-const TELEGRAM_SUB_STORAGE_KEY = 'dankiv_tg_subscription_v1';
 const FALLBACK_AUTHOR_PHOTO_URL = '/src/assets/images/author_portrait_desk_1795025673568.webp';
 const FALLBACK_AUTHOR_ABOUT_TEXT = '';
 
@@ -175,83 +153,272 @@ const HOME_TRANSITION_VARIANTS = {
   },
 };
 
-function readCachedHomeShell(): HomePayload | null {
-  try {
-    const raw = localStorage.getItem(HOME_SHELL_STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as HomePayload;
-    return typeof parsed?.heroLeadText === 'string' ? parsed : null;
-  } catch {
-    return null;
-  }
+interface ConnectedRadioProps {
+  getGuestToken: (forceRefresh?: boolean) => Promise<string | null>;
+  getAdminToken: (forceRefresh?: boolean) => Promise<string | null>;
 }
 
-function writeCachedHomeShell(payload: HomePayload): void {
-  try {
-    const compact: HomePayload = {
-      heroLeadText: payload.heroLeadText,
-      authorAboutText: payload.authorAboutText,
-      authorPhotoUrl: payload.authorPhotoUrl,
-      authorPhotos: payload.authorPhotos,
-      socialLinks: payload.socialLinks,
-      monobankJarUrl: payload.monobankJarUrl,
-      monobankModalTitle: payload.monobankModalTitle,
-      monobankModalSubtitle: payload.monobankModalSubtitle,
-      monobankCardLabel: payload.monobankCardLabel,
-      monobankModalText: payload.monobankModalText,
-      monobankEmptyText: payload.monobankEmptyText,
-      contactEmail: payload.contactEmail,
-      interviews: payload.interviews,
-      homeActionAboutTitle: payload.homeActionAboutTitle,
-      homeActionContactTitle: payload.homeActionContactTitle,
-      homeActionMonobankTitle: payload.homeActionMonobankTitle,
-      homeActionInterviewsTitle: payload.homeActionInterviewsTitle,
-      homeRepeaters: payload.homeRepeaters,
-      proseAuthDiscountPercent: payload.proseAuthDiscountPercent,
-      storeAuthDiscountPercent: payload.storeAuthDiscountPercent,
-      uniqueVisitors: payload.uniqueVisitors,
-    };
-    localStorage.setItem(HOME_SHELL_STORAGE_KEY, JSON.stringify(compact));
-  } catch {
-    // Ignore storage quota errors
-  }
+const RadioSectionConnected = memo(function RadioSectionConnected({
+  getGuestToken,
+  getAdminToken,
+}: ConnectedRadioProps) {
+  const guestUser = useAuthStore((s) => s.guestUser);
+  const isAdmin = useAuthStore((s) => s.isAdmin);
+  const setGuestUser = useAuthStore((s) => s.setGuestUser);
+  const setAuthModalOpen = useUiStore((s) => s.setAuthModalOpen);
+  const updateRadioTrackLikeInCatalog = useCatalogStore((s) => s.updateRadioTrackLikeInCatalog);
+
+  const activeStation = useRadioStore((s) => s.activeRadioStation);
+  const playbackScope = useRadioStore((s) => s.radioPlaybackScope);
+  const isPlaying = useRadioStore((s) => s.radioIsPlaying);
+  const isLoadingTrack = useRadioStore((s) => s.radioIsLoadingTrack);
+  const positionMs = useRadioStore((s) => s.radioPositionMs);
+  const durationMs = useRadioStore((s) => s.radioDurationMs);
+  const volume = useRadioStore((s) => s.radioVolume);
+  const isMuted = useRadioStore((s) => s.radioIsMuted);
+  const playerError = useRadioStore((s) => s.radioPlayerError);
+  const showDirectEmbed = useRadioStore((s) => s.radioShowDirectEmbed);
+  const setPlaybackScope = useRadioStore((s) => s.setRadioPlaybackScope);
+  const setShowDirectEmbed = useRadioStore((s) => s.setRadioShowDirectEmbed);
+  const setFirestoreRadioTracks = useRadioStore((s) => s.setFirestoreRadioTracks);
+  const handlers = useRadioStore((s) => s.handlers);
+
+  const { allRadioTracks, activeRadioTrack } = useRadioDerivedState();
+
+  const handleTrackLiked = useCallback(
+    (trackId: string, likesCount: number, isLiked: boolean, likedRadioTrackIds: string[]) => {
+      updateRadioTrackLikeInCatalog(trackId, likesCount, isLiked);
+      setFirestoreRadioTracks((prev) =>
+        prev ? prev.map((t) => (t.id === trackId ? { ...t, likesCount, isLiked } : t)) : prev
+      );
+      setGuestUser((prev) => (prev ? { ...prev, likedRadioTrackIds } : prev));
+    },
+    [setFirestoreRadioTracks, setGuestUser, updateRadioTrackLikeInCatalog]
+  );
+
+  const handleOpenAuth = useCallback(() => setAuthModalOpen(true), [setAuthModalOpen]);
+  const handleToggleDirectEmbed = useCallback(
+    () => setShowDirectEmbed((prev) => !prev),
+    [setShowDirectEmbed]
+  );
+
+  return (
+    <RadioSection
+      allTracks={allRadioTracks}
+      activeStation={activeStation}
+      onSelectStation={handlers.changeStation}
+      playbackScope={playbackScope}
+      onChangePlaybackScope={setPlaybackScope}
+      guestUser={guestUser}
+      getGuestToken={getGuestToken}
+      isAdmin={isAdmin}
+      getAdminToken={getAdminToken}
+      onOpenAuthModal={handleOpenAuth}
+      onTracksUpdated={handlers.notifyTracksUpdated}
+      onTrackLiked={handleTrackLiked}
+      currentTrackId={activeRadioTrack?.id ?? null}
+      isPlaying={isPlaying}
+      isLoadingTrack={isLoadingTrack}
+      positionMs={positionMs}
+      durationMs={durationMs}
+      volume={volume}
+      isMuted={isMuted}
+      playerError={playerError}
+      showDirectEmbed={showDirectEmbed}
+      onToggleDirectEmbed={handleToggleDirectEmbed}
+      onTogglePlay={handlers.togglePlay}
+      onSelectTrack={handlers.selectTrack}
+      onNextTrack={handlers.nextTrack}
+      onPrevTrack={handlers.prevTrack}
+      onSeekTo={handlers.seekTo}
+      onVolumeChange={handlers.setVolume}
+      onToggleMute={handlers.toggleMute}
+    />
+  );
+});
+
+const MinimizedRadioButtonConnected = memo(function MinimizedRadioButtonConnected({
+  onClick,
+}: {
+  onClick: () => void;
+}) {
+  const isPlaying = useRadioStore((s) => s.radioIsPlaying);
+  const isMuted = useRadioStore((s) => s.radioIsMuted);
+  const volume = useRadioStore((s) => s.radioVolume);
+  const positionMs = useRadioStore((s) => s.radioPositionMs);
+  const durationMs = useRadioStore((s) => s.radioDurationMs);
+  const { activeRadioTrack } = useRadioDerivedState();
+
+  return (
+    <MinimizedRadioButton
+      isPlaying={isPlaying}
+      isMuted={isMuted}
+      volume={volume}
+      positionMs={positionMs}
+      durationMs={durationMs}
+      trackTitle={activeRadioTrack?.title}
+      onClick={onClick}
+    />
+  );
+});
+
+interface AuthorStudioModalConnectedProps {
+  isOpen: boolean;
+  isAdmin: boolean;
+  getAdminToken: (forceRefresh?: boolean) => Promise<string | null>;
+  onClose: () => void;
+  onCatalogUpdated: () => Promise<void>;
+  homeViewData: HomePayload | null;
+  uniqueVisitors: number;
+  onHeroLeadUpdated: (nextText: string) => void;
+  onAuthorAboutUpdated: (nextAbout: string) => void;
+  onAuthorPhotoUpdated: (nextPhotoUrl: string) => void;
+  onAuthorPhotosUpdated: (nextPhotos: string[]) => void;
+  onSocialLinksUpdated: (nextLinks: SocialLinkItem[]) => void;
+  onMonobankJarUpdated: (nextUrl: string) => void;
+  onMonobankModalTextsUpdated: (next: {
+    monobankModalTitle: string;
+    monobankModalSubtitle: string;
+    monobankCardLabel: string;
+    monobankModalText: string;
+    monobankEmptyText: string;
+  }) => void;
+  onContactEmailUpdated: (nextEmail: string) => void;
+  onInterviewsUpdated: (nextInterviews: InterviewLinkItem[]) => void;
+  onHomeActionAboutUpdated: (title: string) => void;
+  onHomeActionContactUpdated: (title: string) => void;
+  onHomeActionMonobankUpdated: (title: string) => void;
+  onHomeActionInterviewsUpdated: (title: string) => void;
+  onHomeRepeatersUpdated: (nextRepeaters: HomeRepeatersConfig) => void;
 }
 
-function readRememberedGuestHint(): RememberedGuestHint | null {
-  try {
-    const raw = localStorage.getItem(GUEST_HINT_STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as Partial<RememberedGuestHint>;
-    if (!parsed || typeof parsed.email !== 'string' || typeof parsed.displayName !== 'string') {
-      return null;
+const AuthorStudioModalConnected = memo(function AuthorStudioModalConnected({
+  isOpen,
+  isAdmin,
+  getAdminToken,
+  onClose,
+  onCatalogUpdated,
+  homeViewData,
+  uniqueVisitors,
+  onHeroLeadUpdated,
+  onAuthorAboutUpdated,
+  onAuthorPhotoUpdated,
+  onAuthorPhotosUpdated,
+  onSocialLinksUpdated,
+  onMonobankJarUpdated,
+  onMonobankModalTextsUpdated,
+  onContactEmailUpdated,
+  onInterviewsUpdated,
+  onHomeActionAboutUpdated,
+  onHomeActionContactUpdated,
+  onHomeActionMonobankUpdated,
+  onHomeActionInterviewsUpdated,
+  onHomeRepeatersUpdated,
+}: AuthorStudioModalConnectedProps) {
+  const allRadioTracks = useAllRadioTracks();
+  const notifyTracksUpdated = useRadioStore((s) => s.handlers.notifyTracksUpdated);
+
+  return (
+    <AuthorStudioModal
+      isOpen={isOpen}
+      isAdmin={isAdmin}
+      getAdminToken={getAdminToken}
+      onClose={onClose}
+      onCatalogUpdated={onCatalogUpdated}
+      heroLeadText={homeViewData?.heroLeadText || ''}
+      onHeroLeadUpdated={onHeroLeadUpdated}
+      authorAboutText={homeViewData?.authorAboutText ?? FALLBACK_AUTHOR_ABOUT_TEXT}
+      onAuthorAboutUpdated={onAuthorAboutUpdated}
+      authorPhotoUrl={homeViewData?.authorPhotoUrl ?? FALLBACK_AUTHOR_PHOTO_URL}
+      authorPhotos={
+        homeViewData?.authorPhotos && homeViewData.authorPhotos.length > 0
+          ? homeViewData.authorPhotos
+          : [homeViewData?.authorPhotoUrl ?? FALLBACK_AUTHOR_PHOTO_URL]
+      }
+      onAuthorPhotoUpdated={onAuthorPhotoUpdated}
+      onAuthorPhotosUpdated={onAuthorPhotosUpdated}
+      socialLinks={homeViewData?.socialLinks ?? FALLBACK_SOCIAL_LINKS}
+      onSocialLinksUpdated={onSocialLinksUpdated}
+      monobankJarUrl={homeViewData?.monobankJarUrl ?? ''}
+      onMonobankJarUpdated={onMonobankJarUpdated}
+      monobankModalTitle={homeViewData?.monobankModalTitle ?? 'Підтримати через Монобанк'}
+      monobankModalSubtitle={homeViewData?.monobankModalSubtitle ?? ''}
+      monobankCardLabel={homeViewData?.monobankCardLabel ?? 'Банка Монобанку'}
+      monobankModalText={homeViewData?.monobankModalText ?? ''}
+      monobankEmptyText={homeViewData?.monobankEmptyText ?? ''}
+      onMonobankModalTextsUpdated={onMonobankModalTextsUpdated}
+      contactEmail={homeViewData?.contactEmail ?? ''}
+      onContactEmailUpdated={onContactEmailUpdated}
+      interviews={homeViewData?.interviews ?? []}
+      onInterviewsUpdated={onInterviewsUpdated}
+      homeActionAboutTitle={homeViewData?.homeActionAboutTitle ?? 'Про мене'}
+      onHomeActionAboutUpdated={onHomeActionAboutUpdated}
+      homeActionContactTitle={homeViewData?.homeActionContactTitle ?? 'Зв’язок'}
+      onHomeActionContactUpdated={onHomeActionContactUpdated}
+      homeActionMonobankTitle={homeViewData?.homeActionMonobankTitle ?? 'Підтримати через Монобанк'}
+      onHomeActionMonobankUpdated={onHomeActionMonobankUpdated}
+      homeActionInterviewsTitle={homeViewData?.homeActionInterviewsTitle ?? 'Розмови'}
+      onHomeActionInterviewsUpdated={onHomeActionInterviewsUpdated}
+      homeRepeaters={homeViewData?.homeRepeaters}
+      onHomeRepeatersUpdated={onHomeRepeatersUpdated}
+      radioTracks={allRadioTracks}
+      onRadioTracksChanged={notifyTracksUpdated}
+      uniqueVisitors={uniqueVisitors}
+    />
+  );
+});
+
+const MusicSelectionsModalConnected = memo(function MusicSelectionsModalConnected({
+  isOpen,
+  onClose,
+  isAdmin,
+  getAdminToken,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  isAdmin: boolean;
+  getAdminToken: (forceRefresh?: boolean) => Promise<string | null>;
+}) {
+  const serverList = useCatalogStore((s) => s.catalog?.weeklyMusicSelections);
+  const currentPeriod = useCatalogStore((s) => s.catalog?.weeklyCurrentPeriod);
+  const setWeeklySelectionsInCatalog = useCatalogStore((s) => s.setWeeklySelectionsInCatalog);
+  const firestoreWeeklyMusic = useRadioStore((s) => s.firestoreWeeklyMusic);
+  const setFirestoreWeeklyMusic = useRadioStore((s) => s.setFirestoreWeeklyMusic);
+  const pauseRadio = useRadioStore((s) => s.handlers.pauseRadio);
+
+  const weeklyMusicSelections = useMemo(() => {
+    const fallbackList = serverList ?? [];
+    if (firestoreWeeklyMusic === null) {
+      return sortWeeklyMusicSelections(fallbackList);
     }
-    return {
-      uid: typeof parsed.uid === 'string' ? parsed.uid : '',
-      displayName: parsed.displayName,
-      email: parsed.email,
-      photoUrl: typeof parsed.photoUrl === 'string' ? parsed.photoUrl : undefined,
-      hasPin: Boolean(parsed.hasPin),
-    };
-  } catch {
-    return null;
-  }
-}
+    if (firestoreWeeklyMusic.length === 0 && fallbackList.length > 0) {
+      return sortWeeklyMusicSelections(fallbackList);
+    }
+    return sortWeeklyMusicSelections(firestoreWeeklyMusic);
+  }, [serverList, firestoreWeeklyMusic]);
 
-function writeRememberedGuestHint(user: GuestUser): RememberedGuestHint {
-  const hint: RememberedGuestHint = {
-    uid: user.uid,
-    displayName: user.displayName,
-    email: user.email,
-    photoUrl: user.photoUrl,
-    hasPin: Boolean(user.hasPin),
-  };
-  try {
-    localStorage.setItem(GUEST_HINT_STORAGE_KEY, JSON.stringify(hint));
-  } catch {
-    // Ignore storage errors
-  }
-  return hint;
-}
+  const handleWeeklySelectionsUpdated = useCallback(
+    (nextSelections: WeeklyMusicSelection[]) => {
+      const sorted = sortWeeklyMusicSelections(nextSelections);
+      setFirestoreWeeklyMusic(sorted);
+      setWeeklySelectionsInCatalog(sorted);
+    },
+    [setFirestoreWeeklyMusic, setWeeklySelectionsInCatalog]
+  );
+
+  return (
+    <MusicSelectionsModal
+      isOpen={isOpen}
+      onClose={onClose}
+      selections={weeklyMusicSelections}
+      currentPeriod={currentPeriod}
+      isAdmin={isAdmin}
+      getAdminToken={getAdminToken}
+      onSelectionsUpdated={handleWeeklySelectionsUpdated}
+      onBeforePlay={pauseRadio}
+    />
+  );
+});
 
 export default function App() {
   const initialLocation = useMemo(() => parseLocationHash(), []);
@@ -259,29 +426,108 @@ export default function App() {
     const params = new URLSearchParams(window.location.search);
     return params.get('admin') === '1' || params.get('auth') === '1';
   }, []);
-  const [homeShell, setHomeShell] = useState<HomePayload | null>(() => readCachedHomeShell());
-  const [catalog, setCatalog] = useState<CatalogResponse | null>(null);
-  const [loading, setLoading] = useState(() =>
-    initialLocation.section === 'home' ? !readCachedHomeShell() : true
-  );
-  const [loadError, setLoadError] = useState<string | null>(null);
 
-  const [uniqueVisitors, setUniqueVisitors] = useState<number>(
-    () => readCachedHomeShell()?.uniqueVisitors ?? 1
-  );
-  const [activeSection, setActiveSection] = useState<SectionId>(initialLocation.section);
-  const [poetryBackdropStyle, setPoetryBackdropStyle] = useState<{
-    backgroundColor?: string;
-    backgroundImage?: string;
-  } | null>(null);
-  const [proseHomeBackdrop, setProseHomeBackdrop] = useState(false);
-  const [poetryImmersionMode, setPoetryImmersionMode] = useState(false);
-  const [poetrySpaceState, setPoetrySpaceState] = useState<{
-    accentColor?: string;
-    swipeKey?: string;
-    swipeDirection: number;
-  }>({ swipeDirection: 1 });
-  const [deepLinkItemId, setDeepLinkItemId] = useState<string | null>(initialLocation.itemId);
+  const didInitUrlStateRef = useRef(false);
+  if (!didInitUrlStateRef.current) {
+    didInitUrlStateRef.current = true;
+    const initPatch: Partial<ReturnType<typeof useUiStore.getState>> = {};
+    if (initialLocation.section !== 'home') {
+      initPatch.activeSection = initialLocation.section;
+      useCatalogStore.setState({ loading: true });
+    }
+    if (initialLocation.itemId) {
+      initPatch.deepLinkItemId = initialLocation.itemId;
+    }
+    if (initialLocation.isSecretAuth || initialSecretSearch) {
+      initPatch.authModalOpen = true;
+    }
+    if (Object.keys(initPatch).length > 0) {
+      useUiStore.setState(initPatch);
+    }
+  }
+
+  // Subscribe only to coarse layout / modal booleans and catalog/auth slices needed at root
+  const homeShell = useCatalogStore((s) => s.homeShell);
+  const catalog = useCatalogStore((s) => s.catalog);
+  const loading = useCatalogStore((s) => s.loading);
+  const loadError = useCatalogStore((s) => s.loadError);
+  const uniqueVisitors = useCatalogStore((s) => s.uniqueVisitors);
+  const setHomeShell = useCatalogStore((s) => s.setHomeShell);
+  const setCatalog = useCatalogStore((s) => s.setCatalog);
+  const setLoading = useCatalogStore((s) => s.setLoading);
+  const setLoadError = useCatalogStore((s) => s.setLoadError);
+  const setUniqueVisitors = useCatalogStore((s) => s.setUniqueVisitors);
+  const updatePoem = useCatalogStore((s) => s.updatePoem);
+  const updateProse = useCatalogStore((s) => s.updateProse);
+  const updateBlogPost = useCatalogStore((s) => s.updateBlogPost);
+  const updateProduct = useCatalogStore((s) => s.updateProduct);
+  const setPoemViews = useCatalogStore((s) => s.setPoemViews);
+  const setBlogViews = useCatalogStore((s) => s.setBlogViews);
+  const updateHomeFields = useCatalogStore((s) => s.updateHomeFields);
+
+  const activeSection = useUiStore((s) => s.activeSection);
+  const deepLinkItemId = useUiStore((s) => s.deepLinkItemId);
+  const drawerOpen = useUiStore((s) => s.drawerOpen);
+  const drawerTab = useUiStore((s) => s.drawerTab);
+  const authorStudioOpen = useUiStore((s) => s.authorStudioOpen);
+  const authModalOpen = useUiStore((s) => s.authModalOpen);
+  const telegramModalOpen = useUiStore((s) => s.telegramModalOpen);
+  const leaderboardOpen = useUiStore((s) => s.leaderboardOpen);
+  const chatOpen = useUiStore((s) => s.chatOpen);
+  const musicSelectionsOpen = useUiStore((s) => s.musicSelectionsOpen);
+  const poetryBackdropStyle = useUiStore((s) => s.poetryBackdropStyle);
+  const proseHomeBackdrop = useUiStore((s) => s.proseHomeBackdrop);
+  const poetryImmersionMode = useUiStore((s) => s.poetryImmersionMode);
+  const poetrySpaceState = useUiStore((s) => s.poetrySpaceState);
+  const newWorkNotification = useUiStore((s) => s.newWorkNotification);
+
+  const setActiveSection = useUiStore((s) => s.setActiveSection);
+  const setDeepLinkItemId = useUiStore((s) => s.setDeepLinkItemId);
+  const setDrawerOpen = useUiStore((s) => s.setDrawerOpen);
+  const setDrawerTab = useUiStore((s) => s.setDrawerTab);
+  const setAuthorStudioOpen = useUiStore((s) => s.setAuthorStudioOpen);
+  const setAuthModalOpen = useUiStore((s) => s.setAuthModalOpen);
+  const setTelegramModalOpen = useUiStore((s) => s.setTelegramModalOpen);
+  const setLeaderboardOpen = useUiStore((s) => s.setLeaderboardOpen);
+  const setChatOpen = useUiStore((s) => s.setChatOpen);
+  const setMusicSelectionsOpen = useUiStore((s) => s.setMusicSelectionsOpen);
+  const setPoetryBackdropStyle = useUiStore((s) => s.setPoetryBackdropStyle);
+  const setProseHomeBackdrop = useUiStore((s) => s.setProseHomeBackdrop);
+  const setPoetryImmersionMode = useUiStore((s) => s.setPoetryImmersionMode);
+  const setPoetrySpaceState = useUiStore((s) => s.setPoetrySpaceState);
+  const setNewWorkNotification = useUiStore((s) => s.setNewWorkNotification);
+
+  const guestUser = useAuthStore((s) => s.guestUser);
+  const rememberedGuest = useAuthStore((s) => s.rememberedGuest);
+  const isAdmin = useAuthStore((s) => s.isAdmin);
+  const hasFirebaseSession = useAuthStore((s) => s.hasFirebaseSession);
+  const requiresGoogleForAdmin = useAuthStore((s) => s.requiresGoogleForAdmin);
+  const telegramSubscription = useAuthStore((s) => s.telegramSubscription);
+  const hasUnreadReply = useAuthStore((s) => s.hasUnreadReply);
+  const mySiteFeedback = useAuthStore((s) => s.mySiteFeedback);
+  const guestSessionToken = useAuthStore((s) => s.guestSessionToken);
+  const setGuestUser = useAuthStore((s) => s.setGuestUser);
+  const setRememberedGuest = useAuthStore((s) => s.setRememberedGuest);
+  const setIsAdmin = useAuthStore((s) => s.setIsAdmin);
+  const setHasFirebaseSession = useAuthStore((s) => s.setHasFirebaseSession);
+  const setRequiresGoogleForAdmin = useAuthStore((s) => s.setRequiresGoogleForAdmin);
+  const setTelegramSubscription = useAuthStore((s) => s.setTelegramSubscription);
+  const setHasUnreadReply = useAuthStore((s) => s.setHasUnreadReply);
+  const setMySiteFeedback = useAuthStore((s) => s.setMySiteFeedback);
+  const markFeedbackRepliesRead = useAuthStore((s) => s.markFeedbackRepliesRead);
+  const setGuestSessionToken = useAuthStore((s) => s.setGuestSessionToken);
+
+  const cartIds = useCartStore((s) => s.cartIds);
+  const unlockedItems = useCartStore((s) => s.unlockedItems);
+  const addToCartStore = useCartStore((s) => s.addToCart);
+  const removeFromCartStore = useCartStore((s) => s.removeFromCart);
+  const clearCartStore = useCartStore((s) => s.clearCart);
+  const mergeUnlockedStore = useCartStore((s) => s.mergeUnlocked);
+  const clearDeviceLibraryStore = useCartStore((s) => s.clearDeviceLibrary);
+
+  const radioEnabled = useRadioStore((s) => s.radioEnabled);
+  const radioIsPlaying = useRadioStore((s) => s.radioIsPlaying);
+  const setRadioEnabled = useRadioStore((s) => s.setRadioEnabled);
 
   const isPoetryImmersed = activeSection === 'poetry' && poetryImmersionMode;
 
@@ -289,39 +535,20 @@ export default function App() {
     if (activeSection !== 'poetry' && poetryImmersionMode) {
       setPoetryImmersionMode(false);
     }
-  }, [activeSection, poetryImmersionMode]);
+  }, [activeSection, poetryImmersionMode, setPoetryImmersionMode]);
 
   const handleTogglePoetryImmersion = useCallback(() => {
     setPoetryImmersionMode((prev) => !prev);
-  }, []);
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [drawerTab, setDrawerTab] = useState<'cart' | 'library'>('cart');
-  const [authorStudioOpen, setAuthorStudioOpen] = useState(false);
-  const [authModalOpen, setAuthModalOpen] = useState(
-    initialLocation.isSecretAuth || initialSecretSearch
-  );
-  const [telegramModalOpen, setTelegramModalOpen] = useState(false);
-  const [telegramSubscription, setTelegramSubscription] = useState<TelegramSubscriptionState>(() => {
-    try {
-      const raw = localStorage.getItem(TELEGRAM_SUB_STORAGE_KEY);
-      if (!raw) return { subscribed: false };
-      const parsed = JSON.parse(raw) as TelegramSubscriptionState;
-      if (parsed && typeof parsed.token === 'string' && parsed.token.startsWith('tgsub_v1.')) {
-        return { ...parsed, subscribed: Boolean(parsed.subscribed) };
-      }
-    } catch {
-      // Ignore storage errors
-    }
-    return { subscribed: false };
-  });
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [newWorkNotification, setNewWorkNotification] = useState<{
-    section: 'poetry' | 'prose' | 'blog' | 'store';
-    itemId: string;
-    kindLabel: string;
-    title: string;
-  } | null>(null);
+  }, [setPoetryImmersionMode]);
+
   const newWorkToastTimeoutRef = useRef<number | null>(null);
+  const guestSessionTokenRef = useRef<string | null>(guestSessionToken);
+  guestSessionTokenRef.current = guestSessionToken;
+  const firebaseSignedInRef = useRef(false);
+  const catalogPromiseRef = useRef<Promise<void> | null>(null);
+  const catalogMutationVersionRef = useRef(0);
+  const homeShellRef = useRef<HomePayload | null>(homeShell);
+  homeShellRef.current = homeShell;
 
   useEffect(() => {
     document.documentElement.classList.add('dark');
@@ -332,18 +559,21 @@ export default function App() {
     }
   }, []);
 
-  const handleTelegramVerified = useCallback((next: TelegramSubscriptionState) => {
-    setTelegramSubscription(next);
-    try {
-      if (next.subscribed && next.token) {
-        localStorage.setItem(TELEGRAM_SUB_STORAGE_KEY, JSON.stringify(next));
-      } else {
-        localStorage.removeItem(TELEGRAM_SUB_STORAGE_KEY);
+  const handleTelegramVerified = useCallback(
+    (next: TelegramSubscriptionState) => {
+      setTelegramSubscription(next);
+      try {
+        if (next.subscribed && next.token) {
+          localStorage.setItem(TELEGRAM_SUB_STORAGE_KEY, JSON.stringify(next));
+        } else {
+          localStorage.removeItem(TELEGRAM_SUB_STORAGE_KEY);
+        }
+      } catch {
+        // Ignore storage errors
       }
-    } catch {
-      // Ignore storage errors
-    }
-  }, []);
+    },
+    [setTelegramSubscription]
+  );
 
   const handleClearTelegramVerification = useCallback(() => {
     setTelegramSubscription((prev) => ({
@@ -356,7 +586,7 @@ export default function App() {
     } catch {
       // Ignore storage errors
     }
-  }, []);
+  }, [setTelegramSubscription]);
 
   useEffect(() => {
     const token = telegramSubscription.token;
@@ -380,24 +610,44 @@ export default function App() {
     };
   }, [telegramSubscription.token, handleTelegramVerified, handleClearTelegramVerification]);
 
-  const [guestUser, setGuestUser] = useState<GuestUser | null>(null);
-  const [rememberedGuest, setRememberedGuest] = useState<RememberedGuestHint | null>(() =>
-    readRememberedGuestHint()
-  );
-  const [hasFirebaseSession, setHasFirebaseSession] = useState(false);
-  const [requiresGoogleForAdmin, setRequiresGoogleForAdmin] = useState(false);
-  const guestSessionTokenRef = useRef<string | null>(null);
-  const firebaseSignedInRef = useRef(false);
-  const [leaderboardOpen, setLeaderboardOpen] = useState(false);
-  const [chatOpen, setChatOpen] = useState(false);
-  const [musicSelectionsOpen, setMusicSelectionsOpen] = useState(false);
-  const [hasUnreadReply, setHasUnreadReply] = useState(false);
-  const [mySiteFeedback, setMySiteFeedback] = useState<FeedbackRecord[]>([]);
+  const getAdminToken = useCallback(async (forceRefresh = false): Promise<string | null> => {
+    try {
+      const cachedUser = getCachedAuthUser();
+      if (cachedUser) {
+        try {
+          return await cachedUser.getIdToken(forceRefresh);
+        } catch {
+          return forceRefresh ? null : await cachedUser.getIdToken(true);
+        }
+      }
+      const auth = await getFirebaseAuth();
+      await auth.authStateReady().catch(() => {});
+      if (!auth.currentUser) return null;
+      try {
+        return await auth.currentUser.getIdToken(forceRefresh);
+      } catch {
+        return forceRefresh ? null : await auth.currentUser.getIdToken(true);
+      }
+    } catch {
+      return null;
+    }
+  }, []);
 
+  const getGuestToken = useCallback(
+    async (forceRefresh = false): Promise<string | null> => {
+      const firebaseToken = await getAdminToken(forceRefresh);
+      if (firebaseToken) {
+        return firebaseToken;
+      }
+      return guestSessionTokenRef.current || useAuthStore.getState().guestSessionToken;
+    },
+    [getAdminToken]
+  );
+
+  // Unread reply indicator polling / Firestore subscription
   useEffect(() => {
     if (!guestUser?.uid || chatOpen) {
-      if (chatOpen) setHasUnreadReply(false);
-      if (!guestUser?.uid) setHasUnreadReply(false);
+      setHasUnreadReply(false);
       return;
     }
     let active = true;
@@ -431,8 +681,7 @@ export default function App() {
         const checkReplies = async () => {
           try {
             const token =
-              guestSessionTokenRef.current ||
-              (typeof getGuestToken === 'function' ? await getGuestToken() : null);
+              guestSessionTokenRef.current || (await getGuestToken().catch(() => null));
             const headers: Record<string, string> = {};
             if (token) headers['Authorization'] = `Bearer ${token}`;
 
@@ -448,7 +697,9 @@ export default function App() {
         };
         void checkReplies();
         fallbackTimer = window.setInterval(() => {
-          void checkReplies();
+          if (document.visibilityState === 'visible') {
+            void checkReplies();
+          }
         }, 30000);
       };
 
@@ -470,9 +721,12 @@ export default function App() {
     };
 
     if (typeof window !== 'undefined' && typeof (window as any).requestIdleCallback === 'function') {
-      idleHandle = (window as any).requestIdleCallback(() => {
-        if (active) runChatSub();
-      }, { timeout: 4000 });
+      idleHandle = (window as any).requestIdleCallback(
+        () => {
+          if (active) runChatSub();
+        },
+        { timeout: 4000 }
+      );
     } else {
       idleHandle = window.setTimeout(() => {
         if (active) runChatSub();
@@ -481,23 +735,27 @@ export default function App() {
 
     return () => {
       active = false;
-      if (typeof window !== 'undefined' && typeof (window as any).cancelIdleCallback === 'function' && typeof idleHandle === 'number') {
+      if (
+        typeof window !== 'undefined' &&
+        typeof (window as any).cancelIdleCallback === 'function' &&
+        typeof idleHandle === 'number'
+      ) {
         (window as any).cancelIdleCallback(idleHandle);
       } else if (idleHandle !== null) {
-        window.clearTimeout(idleHandle as any);
+        window.clearTimeout(idleHandle as number);
       }
       unsubscribeFs();
       if (fallbackTimer !== null) {
         window.clearInterval(fallbackTimer);
       }
     };
-  }, [guestUser?.uid, guestUser?.firebaseUid, chatOpen]);
+  }, [guestUser?.uid, guestUser?.firebaseUid, chatOpen, getGuestToken, setHasUnreadReply]);
 
   const handleOpenChatModal = useCallback(() => {
     setChatOpen(true);
     localStorage.setItem('dankiv_last_read_chat_reply', Date.now().toString());
     setHasUnreadReply(false);
-  }, []);
+  }, [setChatOpen, setHasUnreadReply]);
 
   useEffect(() => {
     try {
@@ -506,64 +764,6 @@ export default function App() {
       // Clean up legacy key if present
     }
   }, []);
-
-  const [cartIds, setCartIds] = useState<string[]>(() => {
-    try {
-      const saved = localStorage.getItem(CART_STORAGE_KEY);
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-
-  const [unlockedItems, setUnlockedItems] = useState<PurchasedAccess[]>(() => {
-    try {
-      const saved = localStorage.getItem(UNLOCKED_STORAGE_KEY);
-      const parsed = saved ? JSON.parse(saved) : [];
-      return Array.isArray(parsed) ? sanitizePurchasedAccessForDevice(parsed) : [];
-    } catch {
-      return [];
-    }
-  });
-
-  const catalogPromiseRef = useRef<Promise<void> | null>(null);
-  const catalogMutationVersionRef = useRef(0);
-  const homeShellRef = useRef<HomePayload | null>(homeShell);
-  homeShellRef.current = homeShell;
-
-  const getAdminToken = useCallback(async (forceRefresh = false): Promise<string | null> => {
-    try {
-      const cachedUser = getCachedAuthUser();
-      if (cachedUser) {
-        try {
-          return await cachedUser.getIdToken(forceRefresh);
-        } catch {
-          return forceRefresh ? null : await cachedUser.getIdToken(true);
-        }
-      }
-      const auth = await getFirebaseAuth();
-      await auth.authStateReady().catch(() => {});
-      if (!auth.currentUser) return null;
-      try {
-        return await auth.currentUser.getIdToken(forceRefresh);
-      } catch {
-        return forceRefresh ? null : await auth.currentUser.getIdToken(true);
-      }
-    } catch {
-      return null;
-    }
-  }, []);
-
-  const getGuestToken = useCallback(
-    async (forceRefresh = false): Promise<string | null> => {
-      const firebaseToken = await getAdminToken(forceRefresh);
-      if (firebaseToken) {
-        return firebaseToken;
-      }
-      return guestSessionTokenRef.current;
-    },
-    [getAdminToken]
-  );
 
   // Sync user's own site feedback & unread admin replies (Firestore realtime + API polling)
   useEffect(() => {
@@ -584,7 +784,7 @@ export default function App() {
           headers,
         });
         if (!active || !res.ok) return;
-        const data = (await res.json()) as { feedback?: FeedbackRecord[] };
+        const data = (await res.json()) as { feedback?: import('./types.ts').FeedbackRecord[] };
         if (active && Array.isArray(data.feedback)) {
           setMySiteFeedback((prev) => mergeSiteFeedbackLists(data.feedback!, prev));
         }
@@ -630,7 +830,7 @@ export default function App() {
       document.removeEventListener('visibilitychange', onVisibility);
       window.clearInterval(interval);
     };
-  }, [guestUser?.uid, guestUser?.firebaseUid, hasFirebaseSession, getGuestToken]);
+  }, [guestUser?.uid, guestUser?.firebaseUid, hasFirebaseSession, getGuestToken, setMySiteFeedback]);
 
   const unreadFeedbackRepliesCount = useMemo(
     () =>
@@ -640,20 +840,10 @@ export default function App() {
     [mySiteFeedback]
   );
 
-  const handleFeedbackRepliesMarkedRead = useCallback(() => {
-    const nowIso = new Date().toISOString();
-    setMySiteFeedback((prev) =>
-      prev.map((item) =>
-        Boolean(item.adminReply?.trim()) && item.readByUser === false
-          ? { ...item, readByUser: true, updatedAt: nowIso }
-          : item
-      )
-    );
-  }, []);
-
   useEffect(() => {
     if (!guestUser?.uid) return;
     const sendHeartbeat = async () => {
+      if (document.visibilityState !== 'visible') return;
       const token = (await getGuestToken().catch(() => null)) || guestSessionTokenRef.current;
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -685,7 +875,11 @@ export default function App() {
     }
 
     return () => {
-      if (typeof window !== 'undefined' && 'cancelIdleCallback' in window && typeof idleHandle === 'number') {
+      if (
+        typeof window !== 'undefined' &&
+        'cancelIdleCallback' in window &&
+        typeof idleHandle === 'number'
+      ) {
         window.cancelIdleCallback(idleHandle);
       } else if (idleHandle !== null) {
         window.clearTimeout(idleHandle as number);
@@ -718,6 +912,7 @@ export default function App() {
               ...data,
               poems: prev.poems,
               prose: prev.prose,
+              blog: prev.blog,
               products: prev.products,
               radioTracks: prev.radioTracks,
               recentFeedback: prev.recentFeedback,
@@ -872,7 +1067,7 @@ export default function App() {
     })();
     catalogPromiseRef.current = task;
     return task;
-  }, [getGuestToken]);
+  }, [getGuestToken, setCatalog, setHomeShell, setLoadError, setLoading, setNewWorkNotification, setUniqueVisitors]);
 
   useEffect(() => {
     let active = true;
@@ -889,7 +1084,7 @@ export default function App() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [setCatalog, setHomeShell, setLoadError, setLoading, setUniqueVisitors]);
 
   useEffect(() => {
     if (!catalog) return;
@@ -902,9 +1097,7 @@ export default function App() {
         const stored = localStorage.getItem('dankiv_notifications_enabled');
         const isInIframeNow = window.self !== window.top;
         const sysGranted =
-          !isInIframeNow &&
-          'Notification' in window &&
-          Notification.permission === 'granted';
+          !isInIframeNow && 'Notification' in window && Notification.permission === 'granted';
         return stored === 'true' || (sysGranted && stored !== 'false');
       } catch {
         return false;
@@ -1017,15 +1210,20 @@ export default function App() {
     }
     void fetchCatalog();
     return undefined;
-  }, [fetchCatalog, initialLocation.section]);
+  }, [
+    fetchCatalog,
+    initialLocation.section,
+    setHomeShell,
+    setLoadError,
+    setLoading,
+    setUniqueVisitors,
+  ]);
 
   const authObserverStartedRef = useRef(false);
 
   useEffect(() => {
     let active = true;
     let unsubscribe: (() => void) | null = null;
-    let idleHandle: number | null = null;
-    let timeoutHandle: ReturnType<typeof globalThis.setTimeout> | null = null;
 
     const restoreRememberedCookieSession = async () => {
       try {
@@ -1042,11 +1240,12 @@ export default function App() {
           requiresGoogleForAdmin?: boolean;
         };
         if (!active || !data.authenticated || !data.user) return;
-        // Do not downgrade if Firebase Auth already hydrated a full Google session
         if (firebaseSignedInRef.current) return;
         const cleanUser: GuestUser = { ...data.user, sessionToken: undefined };
         writeLocalUserLikedPoemIds(cleanUser.email, cleanUser.likedPoemIds ?? []);
-        guestSessionTokenRef.current = data.user.sessionToken || null;
+        const nextTok = data.user.sessionToken || null;
+        guestSessionTokenRef.current = nextTok;
+        setGuestSessionToken(nextTok);
         setRequiresGoogleForAdmin(Boolean(data.requiresGoogleForAdmin));
         setGuestUser(cleanUser);
         setRememberedGuest(writeRememberedGuestHint(cleanUser));
@@ -1107,7 +1306,9 @@ export default function App() {
                     sessionToken: undefined,
                   };
                   writeLocalUserLikedPoemIds(cleanUser.email, cleanUser.likedPoemIds ?? []);
-                  guestSessionTokenRef.current = sessionData.user.sessionToken || null;
+                  const nextTok = sessionData.user.sessionToken || null;
+                  guestSessionTokenRef.current = nextTok;
+                  setGuestSessionToken(nextTok);
                   setIsAdmin(Boolean(sessionData.isAdmin));
                   if (!sessionData.isAdmin) {
                     setAuthorStudioOpen(false);
@@ -1122,7 +1323,6 @@ export default function App() {
                 return;
               }
 
-              // Fallback check if google-session endpoint had a transient server/network error
               const roleRes = await fetch('/api/auth/role', {
                 headers: { Authorization: `Bearer ${token}` },
               });
@@ -1154,7 +1354,6 @@ export default function App() {
               }
             }
           } else {
-            // Preserve active password/passkey guest session if signed in without Firebase
             if (!guestSessionTokenRef.current) {
               setIsAdmin(false);
               setAuthorStudioOpen(false);
@@ -1171,16 +1370,18 @@ export default function App() {
 
     return () => {
       active = false;
-      if (idleHandle !== null && typeof window !== 'undefined' && typeof window.cancelIdleCallback === 'function') {
-        window.cancelIdleCallback(idleHandle);
-      }
-      if (timeoutHandle !== null) {
-        globalThis.clearTimeout(timeoutHandle);
-      }
       unsubscribe?.();
       authObserverStartedRef.current = false;
     };
-  }, []);
+  }, [
+    setAuthorStudioOpen,
+    setGuestSessionToken,
+    setGuestUser,
+    setHasFirebaseSession,
+    setIsAdmin,
+    setRememberedGuest,
+    setRequiresGoogleForAdmin,
+  ]);
 
   useEffect(() => {
     if (authModalOpen) {
@@ -1209,7 +1410,7 @@ export default function App() {
     };
     window.addEventListener('hashchange', onHashChange);
     return () => window.removeEventListener('hashchange', onHashChange);
-  }, [isAdmin]);
+  }, [isAdmin, setActiveSection, setAuthModalOpen, setDeepLinkItemId]);
 
   useEffect(() => {
     if (initialLocation.isSecretAuth) {
@@ -1230,7 +1431,7 @@ export default function App() {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [isAdmin]);
+  }, [isAdmin, setAuthModalOpen]);
 
   useEffect(() => {
     return initBehaviorAnalytics(initialLocation.section);
@@ -1363,25 +1564,6 @@ export default function App() {
     }
   }, [activeSection]);
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cartIds));
-    } catch {
-      // Ignore storage errors
-    }
-  }, [cartIds]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(
-        UNLOCKED_STORAGE_KEY,
-        JSON.stringify(sanitizePurchasedAccessForDevice(unlockedItems))
-      );
-    } catch {
-      // Ignore storage errors
-    }
-  }, [unlockedItems]);
-
   const handleAuthenticatedGuest = useCallback(
     (
       user: GuestUser,
@@ -1390,7 +1572,9 @@ export default function App() {
       const cleanUser: GuestUser = { ...user, sessionToken: undefined };
       writeLocalUserLikedPoemIds(cleanUser.email, cleanUser.likedPoemIds ?? []);
       if (options?.sessionToken || user.sessionToken) {
-        guestSessionTokenRef.current = options?.sessionToken || user.sessionToken || null;
+        const tok = options?.sessionToken || user.sessionToken || null;
+        guestSessionTokenRef.current = tok;
+        setGuestSessionToken(tok);
       }
       if (typeof options?.isAdmin === 'boolean') {
         setIsAdmin(options.isAdmin);
@@ -1404,66 +1588,88 @@ export default function App() {
       setGuestUser(cleanUser);
       setRememberedGuest(writeRememberedGuestHint(cleanUser));
     },
-    []
+    [
+      setAuthorStudioOpen,
+      setGuestSessionToken,
+      setGuestUser,
+      setIsAdmin,
+      setRememberedGuest,
+      setRequiresGoogleForAdmin,
+    ]
   );
 
-  const handleGuestUserUpdated = useCallback((user: GuestUser) => {
-    const cleanUser: GuestUser = { ...user, sessionToken: undefined };
-    writeLocalUserLikedPoemIds(cleanUser.email, cleanUser.likedPoemIds ?? []);
-    setGuestUser(cleanUser);
-    setRememberedGuest(writeRememberedGuestHint(cleanUser));
-  }, []);
+  const handleGuestUserUpdated = useCallback(
+    (user: GuestUser) => {
+      const cleanUser: GuestUser = { ...user, sessionToken: undefined };
+      writeLocalUserLikedPoemIds(cleanUser.email, cleanUser.likedPoemIds ?? []);
+      setGuestUser(cleanUser);
+      setRememberedGuest(writeRememberedGuestHint(cleanUser));
+    },
+    [setGuestUser, setRememberedGuest]
+  );
 
   const handleForgetRememberedGuest = useCallback(() => {
     try {
-      localStorage.removeItem(GUEST_HINT_STORAGE_KEY);
+      localStorage.removeItem('dankiv_guest_hint_v1');
     } catch {
       // Ignore storage errors
     }
     setRememberedGuest(null);
-  }, []);
+  }, [setRememberedGuest]);
 
-  const handleLogoutGuest = async (mode: 'lock' | 'forget' = 'lock') => {
-    guestSessionTokenRef.current = null;
-    firebaseSignedInRef.current = false;
-    setHasFirebaseSession(false);
-    setRequiresGoogleForAdmin(false);
-    try {
-      await fetch('/api/guest/logout', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'X-Requested-With': 'XMLHttpRequest' },
-      });
-    } catch {
-      // Ignore cookie clear network errors
-    }
-    try {
-      const [auth, { signOut }] = await Promise.all([getFirebaseAuth(), import('firebase/auth')]);
-      if (auth.currentUser) {
-        await signOut(auth);
+  const handleLogoutGuest = useCallback(
+    async (mode: 'lock' | 'forget' = 'lock') => {
+      guestSessionTokenRef.current = null;
+      setGuestSessionToken(null);
+      firebaseSignedInRef.current = false;
+      setHasFirebaseSession(false);
+      setRequiresGoogleForAdmin(false);
+      try {
+        await fetch('/api/guest/logout', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        });
+      } catch {
+        // Ignore cookie clear network errors
       }
-    } catch {
-      // Ignore Firebase signOut failure
-    }
-    setGuestUser(null);
-    setIsAdmin(false);
-    setAuthorStudioOpen(false);
-    if (mode === 'forget') {
-      handleForgetRememberedGuest();
-    }
-  };
+      try {
+        const [auth, { signOut }] = await Promise.all([getFirebaseAuth(), import('firebase/auth')]);
+        if (auth.currentUser) {
+          await signOut(auth);
+        }
+      } catch {
+        // Ignore Firebase signOut failure
+      }
+      setGuestUser(null);
+      setIsAdmin(false);
+      setAuthorStudioOpen(false);
+      if (mode === 'forget') {
+        handleForgetRememberedGuest();
+      }
+    },
+    [
+      handleForgetRememberedGuest,
+      setAuthorStudioOpen,
+      setGuestSessionToken,
+      setGuestUser,
+      setHasFirebaseSession,
+      setIsAdmin,
+      setRequiresGoogleForAdmin,
+    ]
+  );
 
   const handleOpenAuthorStudio = useCallback(() => {
     if (!isAdmin) return;
     setAuthorStudioOpen(true);
-  }, [isAdmin]);
+  }, [isAdmin, setAuthorStudioOpen]);
 
   const handlePrefetchSection = useCallback(
     (section: SectionId) => {
       const ignorePrefetchError = () => {
         // Ignore transient AbortError / network errors during prefetch
       };
-      if (section !== 'home' && !catalog) {
+      if (section !== 'home' && !useCatalogStore.getState().catalog) {
         void fetchCatalog();
       }
       if (section === 'poetry') void loadPoetrySection().catch(ignorePrefetchError);
@@ -1472,7 +1678,7 @@ export default function App() {
       else if (section === 'radio') void loadRadioSection().catch(ignorePrefetchError);
       else if (section === 'store') void loadStoreSection().catch(ignorePrefetchError);
     },
-    [catalog, fetchCatalog]
+    [fetchCatalog]
   );
 
   const handleNavigate = useCallback(
@@ -1487,7 +1693,7 @@ export default function App() {
       };
       trackClick(`nav:${section}`, sectionLabels[section], 'section');
       handlePrefetchSection(section);
-      if (section !== 'home' && !catalog) {
+      if (section !== 'home' && !useCatalogStore.getState().catalog) {
         void fetchCatalog();
       }
       setActiveSection(section);
@@ -1501,7 +1707,7 @@ export default function App() {
       }
       window.scrollTo({ top: 0, behavior: 'smooth' });
     },
-    [catalog, fetchCatalog, handlePrefetchSection]
+    [fetchCatalog, handlePrefetchSection, setActiveSection, setDeepLinkItemId, setDrawerOpen]
   );
 
   const handleSectionItemHash = useCallback(
@@ -1512,13 +1718,13 @@ export default function App() {
         window.history.replaceState(null, '', nextHash);
       }
     },
-    []
+    [setDeepLinkItemId]
   );
 
   const handleOpenSectionItem = useCallback(
     (section: 'poetry' | 'prose' | 'blog' | 'store', itemId: string) => {
       handlePrefetchSection(section);
-      if (!catalog) {
+      if (!useCatalogStore.getState().catalog) {
         void fetchCatalog();
       }
       setActiveSection(section);
@@ -1532,73 +1738,54 @@ export default function App() {
       }
       window.scrollTo({ top: 0, behavior: 'smooth' });
     },
-    [catalog, fetchCatalog, handlePrefetchSection]
+    [fetchCatalog, handlePrefetchSection, setActiveSection, setDeepLinkItemId, setDrawerOpen]
   );
 
-  const handlePoemUpdated = useCallback((updatedPoem: Poem) => {
-    catalogMutationVersionRef.current += 1;
-    setCatalog((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        poems: prev.poems.map((p) => (p.id === updatedPoem.id ? updatedPoem : p)),
-      };
-    });
-  }, []);
+  const handlePoemUpdated = useCallback(
+    (updatedPoem: Poem) => {
+      catalogMutationVersionRef.current += 1;
+      updatePoem(updatedPoem);
+    },
+    [updatePoem]
+  );
 
-  const handleProseUpdated = useCallback((updatedProse: ProseWork) => {
-    catalogMutationVersionRef.current += 1;
-    setCatalog((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        prose: prev.prose.map((w) => (w.id === updatedProse.id ? updatedProse : w)),
-      };
-    });
-  }, []);
+  const handleProseUpdated = useCallback(
+    (updatedProse: ProseWork) => {
+      catalogMutationVersionRef.current += 1;
+      updateProse(updatedProse);
+    },
+    [updateProse]
+  );
 
-  const handlePoemViewed = useCallback((poemId: string, viewsCount: number) => {
-    setCatalog((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        poems: prev.poems.map((p) => (p.id === poemId ? { ...p, viewsCount } : p)),
-      };
-    });
-  }, []);
+  const handleBlogUpdated = useCallback(
+    (updatedPost: BlogPost) => {
+      catalogMutationVersionRef.current += 1;
+      updateBlogPost(updatedPost);
+    },
+    [updateBlogPost]
+  );
 
-  const handleBlogViewed = useCallback((postId: string, viewsCount: number) => {
-    setCatalog((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        blog: prev.blog.map((post) => (post.id === postId ? { ...post, viewsCount } : post)),
-      };
-    });
-  }, []);
+  const handlePoemViewed = useCallback(
+    (poemId: string, viewsCount: number) => {
+      setPoemViews(poemId, viewsCount);
+    },
+    [setPoemViews]
+  );
 
-  const handleProductUpdated = useCallback((updatedProduct: StoreProduct) => {
-    catalogMutationVersionRef.current += 1;
-    setCatalog((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        products: prev.products.map((prod) =>
-          prod.id === updatedProduct.id ? updatedProduct : prod
-        ),
-      };
-    });
-  }, []);
+  const handleBlogViewed = useCallback(
+    (postId: string, viewsCount: number) => {
+      setBlogViews(postId, viewsCount);
+    },
+    [setBlogViews]
+  );
 
-  const updateHomeFields = useCallback((patch: Partial<HomePayload>) => {
-    setCatalog((prev) => (prev ? { ...prev, ...patch } : prev));
-    setHomeShell((prev) => {
-      if (!prev) return prev;
-      const next = { ...prev, ...patch };
-      writeCachedHomeShell(next);
-      return next;
-    });
-  }, []);
+  const handleProductUpdated = useCallback(
+    (updatedProduct: StoreProduct) => {
+      catalogMutationVersionRef.current += 1;
+      updateProduct(updatedProduct);
+    },
+    [updateProduct]
+  );
 
   const handleHeroLeadUpdated = useCallback(
     (nextText: string) => updateHomeFields({ heroLeadText: nextText }),
@@ -1683,61 +1870,42 @@ export default function App() {
     [updateHomeFields]
   );
 
-  const handleAddToCart = (productId: string) => {
-    const prod = catalog?.products.find((p) => p.id === productId);
-    trackClick(
-      `cart_add:${productId}`,
-      prod ? `У кошик: «${prod.title}»` : `У кошик: ${productId}`,
-      'store'
-    );
-    setCartIds((prev) => (prev.includes(productId) ? prev : [...prev, productId]));
-    setDrawerTab('cart');
-    setDrawerOpen(true);
-  };
+  const handleAddToCart = useCallback(
+    (productId: string) => {
+      const prod = useCatalogStore.getState().catalog?.products.find((p) => p.id === productId);
+      trackClick(
+        `cart_add:${productId}`,
+        prod ? `У кошик: «${prod.title}»` : `У кошик: ${productId}`,
+        'store'
+      );
+      addToCartStore(productId);
+      setDrawerTab('cart');
+      setDrawerOpen(true);
+    },
+    [addToCartStore, setDrawerOpen, setDrawerTab]
+  );
 
-  const handleRemoveFromCart = (productId: string) => {
-    setCartIds((prev) => prev.filter((id) => id !== productId));
-  };
+  const handleCheckoutSuccess = useCallback(
+    (newlyUnlocked: PurchasedAccess[]) => {
+      mergeUnlockedStore(newlyUnlocked);
+      clearCartStore();
+    },
+    [clearCartStore, mergeUnlockedStore]
+  );
 
-  const handleCheckoutSuccess = (newlyUnlocked: PurchasedAccess[]) => {
-    const cleanNew = sanitizePurchasedAccessForDevice(newlyUnlocked);
-    setUnlockedItems((prev) => {
-      const merged = new Map<string, PurchasedAccess>();
-      for (const item of prev) merged.set(item.productId, item);
-      for (const item of cleanNew) merged.set(item.productId, item);
-      return sanitizePurchasedAccessForDevice(Array.from(merged.values()));
-    });
-    setCartIds([]);
-  };
+  const handleProsePurchased = useCallback(
+    (unlocked: PurchasedAccess) => {
+      mergeUnlockedStore([unlocked]);
+    },
+    [mergeUnlockedStore]
+  );
 
-  const handleProsePurchased = useCallback((unlocked: PurchasedAccess) => {
-    const [cleanUnlocked] = sanitizePurchasedAccessForDevice([unlocked]);
-    setUnlockedItems((prev) => {
-      const merged = new Map<string, PurchasedAccess>();
-      for (const item of prev) merged.set(item.productId, item);
-      merged.set(cleanUnlocked.productId, cleanUnlocked);
-      return sanitizePurchasedAccessForDevice(Array.from(merged.values()));
-    });
-  }, []);
-
-  const handleRestoreOrders = useCallback((restored: PurchasedAccess[]) => {
-    const cleanRestored = sanitizePurchasedAccessForDevice(restored);
-    setUnlockedItems((prev) => {
-      const merged = new Map<string, PurchasedAccess>();
-      for (const item of prev) merged.set(item.productId, item);
-      for (const item of cleanRestored) merged.set(item.productId, item);
-      return sanitizePurchasedAccessForDevice(Array.from(merged.values()));
-    });
-  }, []);
-
-  const handleClearDeviceLibrary = useCallback(() => {
-    setUnlockedItems([]);
-    try {
-      localStorage.removeItem(UNLOCKED_STORAGE_KEY);
-    } catch {
-      // Ignore storage errors
-    }
-  }, []);
+  const handleRestoreOrders = useCallback(
+    (restored: PurchasedAccess[]) => {
+      mergeUnlockedStore(restored);
+    },
+    [mergeUnlockedStore]
+  );
 
   const unlockedMap = useMemo(() => {
     const map: Record<string, PurchasedAccess> = {};
@@ -1754,466 +1922,6 @@ export default function App() {
 
   const homeViewData = catalog ?? homeShell;
 
-  // --- Authorized-only SoundCloud Radio Engine (Firestore-persisted Indie & Electronic waves) ---
-  const [firestoreRadioTracks, setFirestoreRadioTracks] = useState<RadioTrack[] | null>(null);
-  const [firestoreWeeklyMusic, setFirestoreWeeklyMusic] = useState<WeeklyMusicSelection[] | null>(null);
-  const [activeRadioStation, setActiveRadioStation] = useState<RadioStationId>('indie');
-  const legacyRadioSeededRef = useRef(false);
-  const hadFirestoreRadioTracksRef = useRef(false);
-  const radioCloudMutationUntilRef = useRef(0);
-  const serverRadioSyncedRef = useRef<string | null>(null);
-
-  const allRadioTracks = useMemo(() => {
-    const serverTracks = catalog?.radioTracks ?? [];
-    const serverById = new Map(serverTracks.map((t) => [t.id, t]));
-    const likedSet = new Set(guestUser?.likedRadioTrackIds ?? []);
-    const baseTracks =
-      firestoreRadioTracks !== null &&
-      (firestoreRadioTracks.length > 0 ||
-        hadFirestoreRadioTracksRef.current ||
-        legacyRadioSeededRef.current)
-        ? firestoreRadioTracks
-        : serverTracks;
-
-    const annotatedInput = baseTracks.map((track) => {
-      const serverTrack = serverById.get(track.id);
-      const likesCount =
-        typeof track.likesCount === 'number'
-          ? track.likesCount
-          : (serverTrack?.likesCount ?? 0);
-      const isLiked = guestUser
-        ? guestUser.likedRadioTrackIds !== undefined
-          ? likedSet.has(track.id)
-          : Boolean(track.isLiked ?? serverTrack?.isLiked)
-        : false;
-      return {
-        ...track,
-        likesCount,
-        isLiked,
-      };
-    });
-
-    return annotateAllRadioTracksWithRepertoire(annotatedInput);
-  }, [firestoreRadioTracks, catalog?.radioTracks, guestUser]);
-
-  const radioTracks = useMemo(
-    () => selectRadioStationRepertoire(allRadioTracks, activeRadioStation).repertoireTracks,
-    [allRadioTracks, activeRadioStation]
-  );
-
-  const savedRadioTracks = useMemo(
-    () => getSavedRadioTracks(allRadioTracks, guestUser?.likedRadioTrackIds),
-    [allRadioTracks, guestUser?.likedRadioTrackIds]
-  );
-
-  const [radioPlaybackScope, setRadioPlaybackScope] = useState<'repertoire' | 'saved'>('repertoire');
-  const [radioCurrentTrackId, setRadioCurrentTrackId] = useState<string | null>(null);
-  const [radioIsPlaying, setRadioIsPlaying] = useState(false);
-  const [radioIsLoadingTrack, setRadioIsLoadingTrack] = useState(false);
-  const [radioPositionMs, setRadioPositionMs] = useState(0);
-  const [radioDurationMs, setRadioDurationMs] = useState(0);
-  const [radioVolume, setRadioVolume] = useState(85);
-  const [radioIsMuted, setRadioIsMuted] = useState(false);
-  const [radioPlayerError, setRadioPlayerError] = useState<string | null>(null);
-  const [radioBootstrapSrc, setRadioBootstrapSrc] = useState<string | null>(null);
-  const [radioShowDirectEmbed, setRadioShowDirectEmbed] = useState(false);
-  const [radioEnabled, setRadioEnabled] = useState<boolean>(() => {
-    try {
-      const saved = localStorage.getItem(RADIO_ENABLED_STORAGE_KEY);
-      if (saved !== null) return saved === 'true';
-      return true;
-    } catch {
-      return true;
-    }
-  });
-
-  const isGuestAuthenticated = Boolean(guestUser);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(RADIO_ENABLED_STORAGE_KEY, radioEnabled ? 'true' : 'false');
-    } catch {
-      // Ignore storage errors
-    }
-  }, [radioEnabled]);
-
-  const radioIframeRef = useRef<HTMLIFrameElement | null>(null);
-  const radioWidgetRef = useRef<SCWidgetInstance | null>(null);
-  const radioWidgetReadyRef = useRef(false);
-  const radioBootstrapSrcRef = useRef<string | null>(null);
-  radioBootstrapSrcRef.current = radioBootstrapSrc;
-  const radioBootstrapInFlightRef = useRef(false);
-  const allRadioTracksRef = useRef<RadioTrack[]>(allRadioTracks);
-  allRadioTracksRef.current = allRadioTracks;
-  const radioTracksRef = useRef<RadioTrack[]>(radioTracks);
-  radioTracksRef.current = radioTracks;
-  const savedRadioTracksRef = useRef<RadioTrack[]>(savedRadioTracks);
-  savedRadioTracksRef.current = savedRadioTracks;
-  const radioPlaybackScopeRef = useRef<'repertoire' | 'saved'>(radioPlaybackScope);
-  radioPlaybackScopeRef.current = radioPlaybackScope;
-  const radioIsPlayingRef = useRef(radioIsPlaying);
-  radioIsPlayingRef.current = radioIsPlaying;
-  const radioCurrentTrackIdRef = useRef<string | null>(radioCurrentTrackId);
-  radioCurrentTrackIdRef.current = radioCurrentTrackId;
-  const radioLoadedUrlRef = useRef<string | null>(null);
-  const radioPendingAutoPlayRef = useRef(false);
-  const radioVolumeRef = useRef(radioVolume);
-  radioVolumeRef.current = radioVolume;
-  const radioIsMutedRef = useRef(radioIsMuted);
-  radioIsMutedRef.current = radioIsMuted;
-  const userInitiatedPauseRef = useRef(false);
-  const lastPlayAttemptAtRef = useRef(0);
-  const playConfirmedProgressRef = useRef(false);
-  const radioFinishingTransitionUntilRef = useRef(0);
-
-  const getTrackEmbedTarget = useCallback((track?: RadioTrack | null): string | null => {
-    if (!track) return null;
-    return track.embedTargetUrl || track.soundcloudUrl || null;
-  }, []);
-
-  const activeRadioTrack = useMemo(() => {
-    if (!guestUser) return null;
-    const preferredList =
-      radioPlaybackScope === 'saved' && savedRadioTracks.length > 0
-        ? savedRadioTracks
-        : radioTracks;
-    if (radioCurrentTrackId) {
-      const inPreferred = preferredList.find((t) => t.id === radioCurrentTrackId);
-      if (inPreferred) return inPreferred;
-      const inAll = allRadioTracks.find((t) => t.id === radioCurrentTrackId);
-      if (
-        inAll &&
-        (radioPlaybackScope === 'saved' || (inAll.station || 'indie') === activeRadioStation)
-      ) {
-        return inAll;
-      }
-    }
-    return preferredList[0] ?? radioTracks[0] ?? null;
-  }, [
-    guestUser,
-    radioPlaybackScope,
-    savedRadioTracks,
-    radioTracks,
-    allRadioTracks,
-    radioCurrentTrackId,
-    activeRadioStation,
-  ]);
-
-  const radioIframeId = 'dankiv-sc-radio-widget';
-
-  const hydrateTrackWaveform = useCallback(
-    async (trackId: string | null | undefined, widget?: SCWidgetInstance | null) => {
-      if (!trackId || hasRadioTelemetryWaveform(trackId)) return;
-
-      if (widget && typeof widget.getCurrentSound === 'function') {
-        const waveformFromWidget = await new Promise<string | null>((resolve) => {
-          let settled = false;
-          const timer = window.setTimeout(() => {
-            if (!settled) {
-              settled = true;
-              resolve(null);
-            }
-          }, 1500);
-          try {
-            widget.getCurrentSound((sound) => {
-              if (settled) return;
-              settled = true;
-              window.clearTimeout(timer);
-              resolve(sound?.waveform_url ?? null);
-            });
-          } catch {
-            if (!settled) {
-              settled = true;
-              window.clearTimeout(timer);
-              resolve(null);
-            }
-          }
-        });
-        if (waveformFromWidget) {
-          const samples = await fetchSoundCloudWaveform(waveformFromWidget);
-          if (samples && samples.length > 0) {
-            setRadioTelemetryWaveform(trackId, samples);
-            return;
-          }
-        }
-      }
-
-      try {
-        const token = await getGuestToken();
-        if (!token) return;
-        const res = await fetch(`/api/radio/waveform/${encodeURIComponent(trackId)}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) return;
-        const data = (await res.json()) as { samples?: number[] };
-        if (Array.isArray(data.samples) && data.samples.length > 0) {
-          setRadioTelemetryWaveform(trackId, data.samples);
-        }
-      } catch {
-        // Fallback rhythmic equalizer remains active if waveform unavailable
-      }
-    },
-    [getGuestToken]
-  );
-
-  useEffect(() => {
-    updateRadioTelemetryPlayback({
-      isPlaying: Boolean(guestUser && radioIsPlaying),
-      trackId: activeRadioTrack?.id ?? null,
-      trackStation: activeRadioTrack?.station ?? activeRadioStation,
-      durationMs: radioDurationMs,
-      volume: radioVolume,
-      isMuted: radioIsMuted,
-    });
-  }, [
-    guestUser,
-    radioIsPlaying,
-    activeRadioTrack?.id,
-    activeRadioTrack?.station,
-    activeRadioStation,
-    radioDurationMs,
-    radioVolume,
-    radioIsMuted,
-  ]);
-
-  const bootstrapRadioIframe = useCallback((targetUrl: string, autoPlay: boolean) => {
-    const src = getSoundCloudPlayerSrc(targetUrl, autoPlay);
-    if (!src) return;
-    radioLoadedUrlRef.current = targetUrl;
-    radioPendingAutoPlayRef.current = autoPlay;
-    if (autoPlay) {
-      userInitiatedPauseRef.current = false;
-      lastPlayAttemptAtRef.current = Date.now();
-      playConfirmedProgressRef.current = false;
-      setRadioIsLoadingTrack(true);
-    }
-    if (radioBootstrapInFlightRef.current) return;
-    radioBootstrapInFlightRef.current = true;
-    void loadSoundCloudWidgetApi()
-      .then(() => {
-        radioBootstrapInFlightRef.current = false;
-        const latestTarget = radioLoadedUrlRef.current || targetUrl;
-        const latestSrc = getSoundCloudPlayerSrc(latestTarget, radioPendingAutoPlayRef.current);
-        if (latestSrc) {
-          setRadioBootstrapSrc(latestSrc);
-        }
-      })
-      .catch(() => {
-        radioBootstrapInFlightRef.current = false;
-        setRadioIsLoadingTrack(false);
-        setRadioPlayerError('Не вдалося завантажити плеєр SoundCloud.');
-      });
-  }, []);
-
-  const loadTrackIntoWidget = useCallback(
-    (embedTargetUrl: string, autoPlay: boolean) => {
-      const widget = radioWidgetRef.current;
-      if (!widget || !radioWidgetReadyRef.current) {
-        radioLoadedUrlRef.current = embedTargetUrl;
-        radioPendingAutoPlayRef.current = autoPlay;
-        if (autoPlay) {
-          userInitiatedPauseRef.current = false;
-          lastPlayAttemptAtRef.current = Date.now();
-          playConfirmedProgressRef.current = false;
-          setRadioIsLoadingTrack(true);
-        }
-        return;
-      }
-      radioWidgetReadyRef.current = false;
-      radioLoadedUrlRef.current = embedTargetUrl;
-      radioPendingAutoPlayRef.current = autoPlay;
-      if (autoPlay) {
-        userInitiatedPauseRef.current = false;
-        lastPlayAttemptAtRef.current = Date.now();
-        playConfirmedProgressRef.current = false;
-      }
-      setRadioIsLoadingTrack(true);
-      setRadioPositionMs(0);
-      setRadioDurationMs(0);
-      setRadioPlayerError(null);
-      widget.load(embedTargetUrl, {
-        auto_play: autoPlay,
-        hide_related: true,
-        show_comments: false,
-        show_user: true,
-        show_reposts: false,
-        show_teaser: false,
-        show_artwork: true,
-        visual: false,
-        buying: false,
-        sharing: false,
-        download: false,
-        callback: () => {
-          radioWidgetReadyRef.current = true;
-          widget.setVolume(radioIsMutedRef.current ? 0 : radioVolumeRef.current);
-          widget.getDuration((dur) => {
-            if (Number.isFinite(dur) && dur > 0) {
-              setRadioDurationMs(dur);
-            }
-          });
-          const activeId = radioCurrentTrackIdRef.current ?? radioTracksRef.current[0]?.id;
-          if (activeId) {
-            void hydrateTrackWaveform(activeId, widget);
-          }
-          if (autoPlay || radioPendingAutoPlayRef.current) {
-            userInitiatedPauseRef.current = false;
-            lastPlayAttemptAtRef.current = Date.now();
-            playConfirmedProgressRef.current = false;
-            setRadioIsLoadingTrack(true);
-            widget.play();
-          } else {
-            setRadioIsLoadingTrack(false);
-          }
-        },
-      });
-    },
-    [hydrateTrackWaveform]
-  );
-
-  const handleRadioSelectTrack = useCallback(
-    (trackId: string, autoPlay = true, scope?: 'repertoire' | 'saved') => {
-      if (!isGuestAuthenticated) return;
-      if (scope) {
-        setRadioPlaybackScope(scope);
-        radioPlaybackScopeRef.current = scope;
-      }
-      const target =
-        allRadioTracksRef.current.find((t) => t.id === trackId) ??
-        radioTracksRef.current.find((t) => t.id === trackId);
-      if (!target) return;
-      setRadioCurrentTrackId(target.id);
-      setRadioPlayerError(null);
-      const targetUrl = getTrackEmbedTarget(target);
-      if (targetUrl) {
-        if (!radioBootstrapSrcRef.current) {
-          bootstrapRadioIframe(targetUrl, autoPlay);
-          return;
-        }
-        loadTrackIntoWidget(targetUrl, autoPlay);
-      }
-    },
-    [isGuestAuthenticated, getTrackEmbedTarget, bootstrapRadioIframe, loadTrackIntoWidget]
-  );
-
-  const handleRadioNextTrack = useCallback(() => {
-    if (!isGuestAuthenticated) return;
-    const list =
-      radioPlaybackScopeRef.current === 'saved' && savedRadioTracksRef.current.length > 0
-        ? savedRadioTracksRef.current
-        : radioTracksRef.current;
-    if (list.length === 0) return;
-    radioFinishingTransitionUntilRef.current = Date.now() + 2000;
-    if (list.length === 1) {
-      const only = list[0];
-      setRadioCurrentTrackId(only.id);
-      setRadioPositionMs(0);
-      if (radioWidgetRef.current && radioWidgetReadyRef.current) {
-        radioPendingAutoPlayRef.current = true;
-        userInitiatedPauseRef.current = false;
-        lastPlayAttemptAtRef.current = Date.now();
-        playConfirmedProgressRef.current = false;
-        setRadioIsLoadingTrack(true);
-        const w = radioWidgetRef.current;
-        w.seekTo(0);
-        window.setTimeout(() => {
-          w.play();
-        }, 70);
-      } else {
-        const targetUrl = getTrackEmbedTarget(only);
-        if (targetUrl) {
-          if (!radioBootstrapSrcRef.current) {
-            bootstrapRadioIframe(targetUrl, true);
-          } else {
-            loadTrackIntoWidget(targetUrl, true);
-          }
-        }
-      }
-      return;
-    }
-    const curIdx = list.findIndex((t) => t.id === radioCurrentTrackIdRef.current);
-    const nextTrack = list[(curIdx >= 0 ? curIdx + 1 : 0) % list.length];
-    handleRadioSelectTrack(nextTrack.id, true);
-  }, [
-    isGuestAuthenticated,
-    getTrackEmbedTarget,
-    bootstrapRadioIframe,
-    handleRadioSelectTrack,
-    loadTrackIntoWidget,
-  ]);
-
-  const handleRadioPrevTrack = useCallback(() => {
-    if (!isGuestAuthenticated) return;
-    const list =
-      radioPlaybackScopeRef.current === 'saved' && savedRadioTracksRef.current.length > 0
-        ? savedRadioTracksRef.current
-        : radioTracksRef.current;
-    if (list.length === 0) return;
-    const curIdx = list.findIndex((t) => t.id === radioCurrentTrackIdRef.current);
-    const prevIdx = curIdx >= 0 ? (curIdx - 1 + list.length) % list.length : list.length - 1;
-    handleRadioSelectTrack(list[prevIdx].id, true);
-  }, [isGuestAuthenticated, handleRadioSelectTrack]);
-
-  const handleRadioTogglePlay = useCallback(() => {
-    const targetUrl = getTrackEmbedTarget(activeRadioTrack);
-    if (!isGuestAuthenticated || !targetUrl) return;
-    setRadioPlayerError(null);
-    const widget = radioWidgetRef.current;
-    if (widget && radioWidgetReadyRef.current) {
-      if (radioIsPlayingRef.current) {
-        radioPendingAutoPlayRef.current = false;
-        userInitiatedPauseRef.current = true;
-        widget.pause();
-      } else {
-        radioPendingAutoPlayRef.current = true;
-        userInitiatedPauseRef.current = false;
-        lastPlayAttemptAtRef.current = Date.now();
-        playConfirmedProgressRef.current = false;
-        setRadioIsLoadingTrack(true);
-        widget.play();
-      }
-      return;
-    }
-    radioPendingAutoPlayRef.current = true;
-    userInitiatedPauseRef.current = false;
-    lastPlayAttemptAtRef.current = Date.now();
-    playConfirmedProgressRef.current = false;
-    setRadioIsLoadingTrack(true);
-    if (!radioBootstrapSrcRef.current) {
-      bootstrapRadioIframe(targetUrl, true);
-    } else {
-      radioLoadedUrlRef.current = targetUrl;
-    }
-  }, [isGuestAuthenticated, activeRadioTrack, getTrackEmbedTarget, bootstrapRadioIframe]);
-
-  const handleRadioSeekTo = useCallback((ms: number) => {
-    setRadioPositionMs(ms);
-    updateRadioTelemetryPlayback({ positionMs: ms });
-    if (radioWidgetRef.current && radioWidgetReadyRef.current) {
-      radioWidgetRef.current.seekTo(ms);
-    }
-  }, []);
-
-  const handleRadioVolumeChange = useCallback((nextVol: number) => {
-    const clamped = Math.max(0, Math.min(100, Math.round(nextVol)));
-    setRadioVolume(clamped);
-    setRadioIsMuted(clamped === 0);
-    updateRadioTelemetryPlayback({ volume: clamped, isMuted: clamped === 0 });
-    if (radioWidgetRef.current && radioWidgetReadyRef.current) {
-      radioWidgetRef.current.setVolume(clamped);
-    }
-  }, []);
-
-  const handleRadioToggleMute = useCallback(() => {
-    setRadioIsMuted((prev) => {
-      const next = !prev;
-      updateRadioTelemetryPlayback({ isMuted: next });
-      if (radioWidgetRef.current && radioWidgetReadyRef.current) {
-        radioWidgetRef.current.setVolume(next ? 0 : radioVolumeRef.current);
-      }
-      return next;
-    });
-  }, []);
-
   const handleToggleRadioSetting = useCallback(() => {
     const next = !radioEnabled;
     setRadioEnabled(next);
@@ -2226,14 +1934,8 @@ export default function App() {
       handleNavigate('radio');
       return;
     }
-    radioPendingAutoPlayRef.current = false;
-    userInitiatedPauseRef.current = true;
-    setRadioIsPlaying(false);
-    setRadioIsLoadingTrack(false);
-    setRadioShowDirectEmbed(false);
-    if (radioWidgetRef.current && radioWidgetReadyRef.current) {
-      radioWidgetRef.current.pause();
-    }
+    useRadioStore.getState().handlers.pauseRadio();
+    useRadioStore.getState().setRadioShowDirectEmbed(false);
     if (activeSection === 'radio') {
       setActiveSection('home');
       setDeepLinkItemId(null);
@@ -2242,496 +1944,34 @@ export default function App() {
       }
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
-  }, [radioEnabled, activeSection, handleNavigate]);
+  }, [activeSection, handleNavigate, radioEnabled, setActiveSection, setDeepLinkItemId, setRadioEnabled]);
 
-  const handleRadioStationChange = useCallback(
-    (nextStation: RadioStationId) => {
-      setRadioPlaybackScope('repertoire');
-      radioPlaybackScopeRef.current = 'repertoire';
-      if (nextStation === activeRadioStation) return;
-      setActiveRadioStation(nextStation);
-      setRadioPlayerError(null);
-      const nextList = selectRadioStationRepertoire(
-        allRadioTracksRef.current,
-        nextStation
-      ).repertoireTracks;
-      if (nextList.length === 0) {
-        if (radioWidgetRef.current && radioWidgetReadyRef.current) {
-          userInitiatedPauseRef.current = true;
-          radioWidgetRef.current.pause();
-        }
-        radioPendingAutoPlayRef.current = false;
-        setRadioCurrentTrackId(null);
-        setRadioIsPlaying(false);
-        setRadioIsLoadingTrack(false);
-        setRadioPositionMs(0);
-        setRadioDurationMs(0);
-        return;
-      }
-      const firstTrack = nextList[0];
-      setRadioCurrentTrackId(firstTrack.id);
-      const shouldAutoPlay = Boolean(isGuestAuthenticated && (radioIsPlayingRef.current || activeSection === 'radio'));
-      const targetUrl = getTrackEmbedTarget(firstTrack);
-      if (isGuestAuthenticated && targetUrl) {
-        if (!radioBootstrapSrcRef.current) {
-          bootstrapRadioIframe(targetUrl, shouldAutoPlay);
-          return;
-        }
-        loadTrackIntoWidget(targetUrl, shouldAutoPlay);
-      }
-    },
-    [
-      activeRadioStation,
-      activeSection,
-      isGuestAuthenticated,
-      getTrackEmbedTarget,
-      bootstrapRadioIframe,
-      loadTrackIntoWidget,
-    ]
+  const handleCloseLeaderboard = useCallback(() => setLeaderboardOpen(false), [setLeaderboardOpen]);
+  const handleCloseChat = useCallback(() => setChatOpen(false), [setChatOpen]);
+  const handleCloseMusicSelections = useCallback(
+    () => setMusicSelectionsOpen(false),
+    [setMusicSelectionsOpen]
   );
-
-  const handleRadioTracksUpdated = useCallback(
-    (
-      nextAllTracks: RadioTrack[],
-      activateTrackId?: string | null,
-      targetStation?: RadioStationId
-    ) => {
-      if (targetStation) {
-        setActiveRadioStation(targetStation);
-      }
-      const annotated = annotateAllRadioTracksWithRepertoire(nextAllTracks);
-      legacyRadioSeededRef.current = true;
-      hadFirestoreRadioTracksRef.current = true;
-      radioCloudMutationUntilRef.current = Date.now() + 5000;
-      serverRadioSyncedRef.current = annotated
-        .map((t) => `${t.id}:${t.station || 'indie'}:${t.order ?? 0}`)
-        .join('|');
-      setFirestoreRadioTracks((prev) => (prev !== null ? annotated : prev));
-      setCatalog((prev) => (prev ? { ...prev, radioTracks: annotated } : prev));
-      allRadioTracksRef.current = annotated;
-      const effectiveStation = targetStation ?? activeRadioStation;
-      radioTracksRef.current = selectRadioStationRepertoire(
-        annotated,
-        effectiveStation
-      ).repertoireTracks;
-      if (activateTrackId && isGuestAuthenticated) {
-        const target = annotated.find((t) => t.id === activateTrackId);
-        if (target) {
-          setRadioPlaybackScope('repertoire');
-          radioPlaybackScopeRef.current = 'repertoire';
-          setRadioCurrentTrackId(target.id);
-          setRadioPlayerError(null);
-          const targetUrl = getTrackEmbedTarget(target);
-          if (targetUrl) {
-            if (!radioBootstrapSrcRef.current) {
-              bootstrapRadioIframe(targetUrl, true);
-              return;
-            }
-            loadTrackIntoWidget(targetUrl, true);
-          }
-        }
-      }
-    },
-    [
-      activeRadioStation,
-      isGuestAuthenticated,
-      getTrackEmbedTarget,
-      bootstrapRadioIframe,
-      loadTrackIntoWidget,
-    ]
+  const handleOpenAuthModalStable = useCallback(() => setAuthModalOpen(true), [setAuthModalOpen]);
+  const handleOpenLeaderboardStable = useCallback(
+    () => setLeaderboardOpen(true),
+    [setLeaderboardOpen]
   );
-
-  const handleRadioTrackLiked = useCallback(
-    (trackId: string, likesCount: number, isLiked: boolean, likedRadioTrackIds: string[]) => {
-      catalogMutationVersionRef.current += 1;
-      setCatalog((prev) =>
-        prev
-          ? {
-              ...prev,
-              radioTracks: (prev.radioTracks ?? []).map((t) =>
-                t.id === trackId ? { ...t, likesCount, isLiked } : t
-              ),
-            }
-          : prev
-      );
-      setFirestoreRadioTracks((prev) =>
-        prev
-          ? prev.map((t) => (t.id === trackId ? { ...t, likesCount, isLiked } : t))
-          : prev
-      );
-      setGuestUser((prev) => {
-        if (!prev) return prev;
-        return { ...prev, likedRadioTrackIds };
-      });
-    },
-    []
+  const handleOpenWeeklyMusicStable = useCallback(
+    () => setMusicSelectionsOpen(true),
+    [setMusicSelectionsOpen]
   );
-
-  const handlePauseRadio = useCallback(() => {
-    radioPendingAutoPlayRef.current = false;
-    userInitiatedPauseRef.current = true;
-    setRadioIsPlaying(false);
-    setRadioIsLoadingTrack(false);
-    if (radioWidgetRef.current && radioWidgetReadyRef.current) {
-      radioWidgetRef.current.pause();
-    }
-  }, []);
-
-  const weeklyMusicSelections = useMemo(() => {
-    const serverList = catalog?.weeklyMusicSelections ?? [];
-    if (firestoreWeeklyMusic === null) {
-      return sortWeeklyMusicSelections(serverList);
-    }
-    if (firestoreWeeklyMusic.length === 0 && serverList.length > 0) {
-      return sortWeeklyMusicSelections(serverList);
-    }
-    return sortWeeklyMusicSelections(firestoreWeeklyMusic);
-  }, [catalog?.weeklyMusicSelections, firestoreWeeklyMusic]);
-
-  const handleWeeklySelectionsUpdated = useCallback((nextSelections: WeeklyMusicSelection[]) => {
-    const sorted = sortWeeklyMusicSelections(nextSelections);
-    catalogMutationVersionRef.current += 1;
-    setFirestoreWeeklyMusic(sorted);
-    setCatalog((prev) => (prev ? { ...prev, weeklyMusicSelections: sorted } : prev));
-  }, []);
-
-  const handleCloseLeaderboard = useCallback(() => setLeaderboardOpen(false), []);
-  const handleCloseChat = useCallback(() => setChatOpen(false), []);
-  const handleCloseMusicSelections = useCallback(() => setMusicSelectionsOpen(false), []);
-  const handleOpenAuthModalStable = useCallback(() => setAuthModalOpen(true), []);
-
-  const handleRadioNextTrackRef = useRef(handleRadioNextTrack);
-  handleRadioNextTrackRef.current = handleRadioNextTrack;
-  const loadTrackIntoWidgetRef = useRef(loadTrackIntoWidget);
-  loadTrackIntoWidgetRef.current = loadTrackIntoWidget;
-  const hydrateTrackWaveformRef = useRef(hydrateTrackWaveform);
-  hydrateTrackWaveformRef.current = hydrateTrackWaveform;
-
-  // SoundCloud widget & Firestore radio track sync stay deferred until user authenticates
-
-  useEffect(() => {
-    if (!isGuestAuthenticated) return;
-    void loadSoundCloudWidgetApi().catch(() => {});
-  }, [isGuestAuthenticated]);
-
-  useEffect(() => {
-    let active = true;
-    let unsubscribe: (() => void) | null = null;
-    void subscribeWeeklyMusicSelections((selections) => {
-      if (active) {
-        setFirestoreWeeklyMusic(selections);
-      }
-    })
-      .then((unsub) => {
-        if (active) {
-          unsubscribe = unsub;
-        } else {
-          unsub();
-        }
-      })
-      .catch(() => {});
-
-    return () => {
-      active = false;
-      unsubscribe?.();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!guestUser) {
-      setFirestoreRadioTracks(null);
-      legacyRadioSeededRef.current = false;
-      hadFirestoreRadioTracksRef.current = false;
-      return;
-    }
-    let active = true;
-    let unsubscribe: (() => void) | null = null;
-    void subscribeRadioTracks((tracks) => {
-      if (active) {
-        if (tracks.length > 0) {
-          hadFirestoreRadioTracksRef.current = true;
-        }
-        setFirestoreRadioTracks(tracks);
-      }
-    })
-      .then((unsub) => {
-        if (active) {
-          unsubscribe = unsub;
-        } else {
-          unsub();
-        }
-      })
-      .catch(() => {});
-
-    return () => {
-      active = false;
-      unsubscribe?.();
-    };
-  }, [guestUser]);
-
-  // Bidirectional backfill between server catalog and Firestore when admin is signed in
-  useEffect(() => {
-    if (!isAdmin || firestoreRadioTracks === null) return;
-    if (Date.now() < radioCloudMutationUntilRef.current) return;
-    const serverTracks = catalog?.radioTracks ?? [];
-    if (
-      firestoreRadioTracks.length === 0 &&
-      serverTracks.length > 0 &&
-      !legacyRadioSeededRef.current &&
-      !hadFirestoreRadioTracksRef.current
-    ) {
-      legacyRadioSeededRef.current = true;
-      void syncLegacyServerTracksToFirestore(serverTracks).catch(() => {});
-      return;
-    }
-    const firestoreKey = firestoreRadioTracks
-      .map((t) => `${t.id}:${t.station}:${t.order ?? 0}`)
-      .join('|');
-    const serverKey = serverTracks
-      .map((t) => `${t.id}:${t.station || 'indie'}:${t.order ?? 0}`)
-      .join('|');
-    if (
-      (firestoreRadioTracks.length > 0 || hadFirestoreRadioTracksRef.current) &&
-      firestoreKey !== serverKey &&
-      serverRadioSyncedRef.current !== firestoreKey
-    ) {
-      serverRadioSyncedRef.current = firestoreKey;
-      void getAdminToken().then((token) => {
-        if (!token) return;
-        return fetch('/api/author/radio/tracks/sync', {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ tracks: firestoreRadioTracks }),
-        }).catch(() => {});
-      });
-    }
-  }, [isAdmin, firestoreRadioTracks, catalog?.radioTracks, getAdminToken]);
-
-  // Sync active track when playlist changes or guest signs out
-  useEffect(() => {
-    if (!isGuestAuthenticated) {
-      radioWidgetRef.current = null;
-      radioWidgetReadyRef.current = false;
-      radioLoadedUrlRef.current = null;
-      radioPendingAutoPlayRef.current = false;
-      radioBootstrapInFlightRef.current = false;
-      setRadioBootstrapSrc(null);
-      setRadioShowDirectEmbed(false);
-      setRadioIsPlaying(false);
-      setRadioIsLoadingTrack(false);
-      setRadioPositionMs(0);
-      setRadioDurationMs(0);
-      setRadioPlayerError(null);
-      return;
-    }
-    const activeScopeList =
-      radioPlaybackScope === 'saved' && savedRadioTracks.length > 0
-        ? savedRadioTracks
-        : radioTracks;
-    if (activeScopeList.length === 0) {
-      setRadioCurrentTrackId(null);
-      setRadioIsPlaying(false);
-      setRadioPositionMs(0);
-      setRadioDurationMs(0);
-      return;
-    }
-    if (!radioCurrentTrackId || !activeScopeList.some((t) => t.id === radioCurrentTrackId)) {
-      setRadioCurrentTrackId(activeScopeList[0].id);
-    }
-  }, [isGuestAuthenticated, radioTracks, savedRadioTracks, radioPlaybackScope, radioCurrentTrackId]);
-
-  // Watchdog: prevent infinite spinner if SoundCloud iframe fails to start playback
-  useEffect(() => {
-    if (!radioIsLoadingTrack) return;
-    const timer = window.setTimeout(() => {
-      if (radioIsPlayingRef.current) return;
-      radioPendingAutoPlayRef.current = false;
-      setRadioIsLoadingTrack(false);
-      setRadioPlayerError(
-        'Плеєр не відповів вчасно. Натисніть «Відкрити плеєр SoundCloud» нижче або спробуйте ще раз.'
-      );
-      setRadioShowDirectEmbed(true);
-    }, 9000);
-    return () => window.clearTimeout(timer);
-  }, [radioIsLoadingTrack]);
-
-  // Bootstrap hidden SoundCloud iframe only AFTER Widget API script is ready (prevents missing READY event)
-  useEffect(() => {
-    const targetUrl = getTrackEmbedTarget(activeRadioTrack);
-    if (!isGuestAuthenticated || radioBootstrapSrc || !targetUrl) return;
-    if (activeSection !== 'radio' && !radioPendingAutoPlayRef.current) return;
-    bootstrapRadioIframe(targetUrl, radioPendingAutoPlayRef.current);
-  }, [
-    isGuestAuthenticated,
-    radioBootstrapSrc,
-    activeRadioTrack,
-    activeSection,
-    getTrackEmbedTarget,
-    bootstrapRadioIframe,
-  ]);
-
-  // Bind SoundCloud Widget API events once iframe is mounted
-  useEffect(() => {
-    if (!isGuestAuthenticated || !radioBootstrapSrc || !radioIframeRef.current) return;
-    let cancelled = false;
-    let widget: SCWidgetInstance | null = null;
-    let scEvents: {
-      READY: string;
-      PLAY: string;
-      PAUSE: string;
-      FINISH: string;
-      PLAY_PROGRESS: string;
-      ERROR: string;
-    } | null = null;
-
-    loadSoundCloudWidgetApi()
-      .then((WidgetFactory) => {
-        if (cancelled || !radioIframeRef.current) return;
-        scEvents = WidgetFactory.Events;
-        widget = WidgetFactory(radioIframeRef.current);
-        radioWidgetRef.current = widget;
-
-        widget.bind(scEvents.READY, () => {
-          if (cancelled || !widget) return;
-          radioWidgetReadyRef.current = true;
-          widget.setVolume(radioIsMutedRef.current ? 0 : radioVolumeRef.current);
-          widget.getDuration((dur) => {
-            if (!cancelled && Number.isFinite(dur) && dur > 0) {
-              setRadioDurationMs(dur);
-            }
-          });
-
-          const list =
-            radioPlaybackScopeRef.current === 'saved' && savedRadioTracksRef.current.length > 0
-              ? savedRadioTracksRef.current
-              : radioTracksRef.current;
-          const desired =
-            allRadioTracksRef.current.find((t) => t.id === radioCurrentTrackIdRef.current) ??
-            list[0];
-          if (desired?.id) {
-            void hydrateTrackWaveformRef.current(desired.id, widget);
-          }
-          const desiredUrl = getTrackEmbedTarget(desired);
-          if (desiredUrl && desiredUrl !== radioLoadedUrlRef.current) {
-            loadTrackIntoWidgetRef.current(desiredUrl, radioPendingAutoPlayRef.current);
-          } else if (radioPendingAutoPlayRef.current) {
-            userInitiatedPauseRef.current = false;
-            lastPlayAttemptAtRef.current = Date.now();
-            playConfirmedProgressRef.current = false;
-            setRadioIsLoadingTrack(true);
-            widget.play();
-          } else {
-            setRadioIsLoadingTrack(false);
-          }
-        });
-
-        widget.bind(scEvents.PLAY, () => {
-          if (cancelled || !widget) return;
-          radioPendingAutoPlayRef.current = false;
-          userInitiatedPauseRef.current = false;
-          setRadioIsLoadingTrack(false);
-          setRadioIsPlaying(true);
-          setRadioPlayerError(null);
-          const currentId = radioCurrentTrackIdRef.current ?? radioTracksRef.current[0]?.id;
-          if (currentId) {
-            void hydrateTrackWaveformRef.current(currentId, widget);
-          }
-          widget.getDuration((dur) => {
-            if (!cancelled && Number.isFinite(dur) && dur > 0) {
-              setRadioDurationMs(dur);
-            }
-          });
-        });
-
-        widget.bind(scEvents.PAUSE, () => {
-          if (cancelled) return;
-          if (
-            !radioWidgetReadyRef.current ||
-            Date.now() < radioFinishingTransitionUntilRef.current
-          ) {
-            return;
-          }
-          setRadioIsPlaying(false);
-          setRadioIsLoadingTrack(false);
-          const bouncedImmediately =
-            !userInitiatedPauseRef.current &&
-            !playConfirmedProgressRef.current &&
-            Date.now() - lastPlayAttemptAtRef.current < 1800;
-          if (bouncedImmediately) {
-            setRadioPlayerError(
-              'Браузер обмежив автозапуск аудіо з прихованого вікна. Натисніть Play у вбудованому плеєрі SoundCloud або відкрийте трек напряму.'
-            );
-            setRadioShowDirectEmbed(true);
-          }
-          userInitiatedPauseRef.current = false;
-        });
-
-        widget.bind(scEvents.PLAY_PROGRESS, (rawPayload?: unknown) => {
-          if (cancelled || !rawPayload || typeof rawPayload !== 'object') return;
-          const payload = rawPayload as SCPlayProgressPayload;
-          if (typeof payload.currentPosition === 'number') {
-            if (payload.currentPosition > 120) {
-              playConfirmedProgressRef.current = true;
-              setRadioShowDirectEmbed(false);
-            }
-            setRadioPositionMs(payload.currentPosition);
-            updateRadioTelemetryPlayback({
-              positionMs: payload.currentPosition,
-              relativePosition:
-                typeof payload.relativePosition === 'number' ? payload.relativePosition : undefined,
-            });
-          }
-        });
-
-        widget.bind(scEvents.FINISH, () => {
-          if (cancelled) return;
-          radioFinishingTransitionUntilRef.current = Date.now() + 2000;
-          setRadioIsPlaying(false);
-          setRadioPositionMs(0);
-          playConfirmedProgressRef.current = false;
-          handleRadioNextTrackRef.current();
-        });
-
-        widget.bind(scEvents.ERROR, () => {
-          if (cancelled) return;
-          radioPendingAutoPlayRef.current = false;
-          setRadioIsLoadingTrack(false);
-          setRadioIsPlaying(false);
-          setRadioPlayerError(
-            'Не вдалося запустити цей трек у прихованому плеєрі. Спробуйте вбудований плеєр SoundCloud або відкрийте трек напряму.'
-          );
-          setRadioShowDirectEmbed(true);
-        });
-      })
-      .catch(() => {
-        if (!cancelled) {
-          radioPendingAutoPlayRef.current = false;
-          setRadioIsLoadingTrack(false);
-          setRadioPlayerError('Не вдалося підключити плеєр SoundCloud.');
-        }
-      });
-
-    return () => {
-      cancelled = true;
-      radioWidgetReadyRef.current = false;
-      if (widget && scEvents) {
-        try {
-          widget.unbind(scEvents.READY);
-          widget.unbind(scEvents.PLAY);
-          widget.unbind(scEvents.PAUSE);
-          widget.unbind(scEvents.PLAY_PROGRESS);
-          widget.unbind(scEvents.FINISH);
-          widget.unbind(scEvents.ERROR);
-        } catch {
-          // Ignore widget cleanup errors
-        }
-      }
-      radioWidgetRef.current = null;
-    };
-  }, [isGuestAuthenticated, radioBootstrapSrc, getTrackEmbedTarget]);
+  const handleOpenRadioStable = useCallback(() => {
+    trackClick('header:radio', 'Кнопка радіо', 'section');
+    handleNavigate('radio');
+  }, [handleNavigate]);
+  const handleOpenDrawerFromNav = useCallback(
+    (tab?: 'cart' | 'library') => {
+      if (tab) setDrawerTab(tab);
+      setDrawerOpen(true);
+    },
+    [setDrawerOpen, setDrawerTab]
+  );
 
   return (
     <LazyMotion features={loadMotionFeatures}>
@@ -2775,537 +2015,493 @@ export default function App() {
                 </button>
               </div>
             ) : activeSection === 'home' && homeViewData ? (
-                  <m.div
-                    key="home-view"
-                    variants={HOME_TRANSITION_VARIANTS}
-                    initial="initial"
-                    animate="animate"
-                    className="w-full flex-1 flex flex-col"
-                  >
-                  <HeroSection
-                    heroLeadText={homeViewData.heroLeadText}
-                    authorAboutText={homeViewData.authorAboutText ?? FALLBACK_AUTHOR_ABOUT_TEXT}
-                    authorPhotoUrl={homeViewData.authorPhotoUrl ?? FALLBACK_AUTHOR_PHOTO_URL}
-                    authorPhotos={
-                      homeViewData.authorPhotos && homeViewData.authorPhotos.length > 0
-                        ? homeViewData.authorPhotos
-                        : [homeViewData.authorPhotoUrl ?? FALLBACK_AUTHOR_PHOTO_URL]
+              <m.div
+                key="home-view"
+                variants={HOME_TRANSITION_VARIANTS}
+                initial="initial"
+                animate="animate"
+                className="w-full flex-1 flex flex-col"
+              >
+                <HeroSection
+                  heroLeadText={homeViewData.heroLeadText}
+                  authorAboutText={homeViewData.authorAboutText ?? FALLBACK_AUTHOR_ABOUT_TEXT}
+                  authorPhotoUrl={homeViewData.authorPhotoUrl ?? FALLBACK_AUTHOR_PHOTO_URL}
+                  authorPhotos={
+                    homeViewData.authorPhotos && homeViewData.authorPhotos.length > 0
+                      ? homeViewData.authorPhotos
+                      : [homeViewData.authorPhotoUrl ?? FALLBACK_AUTHOR_PHOTO_URL]
+                  }
+                  socialLinks={homeViewData.socialLinks ?? FALLBACK_SOCIAL_LINKS}
+                  monobankJarUrl={homeViewData.monobankJarUrl ?? ''}
+                  monobankModalTitle={
+                    homeViewData.monobankModalTitle ?? 'Підтримати через Монобанк'
+                  }
+                  monobankModalSubtitle={homeViewData.monobankModalSubtitle ?? ''}
+                  monobankCardLabel={homeViewData.monobankCardLabel ?? 'Банка Монобанку'}
+                  monobankModalText={homeViewData.monobankModalText ?? ''}
+                  monobankEmptyText={homeViewData.monobankEmptyText ?? ''}
+                  contactEmail={homeViewData.contactEmail ?? ''}
+                  interviews={homeViewData.interviews ?? []}
+                  homeActionAboutTitle={homeViewData.homeActionAboutTitle ?? 'Про мене'}
+                  homeActionContactTitle={homeViewData.homeActionContactTitle ?? 'Зв’язок'}
+                  homeActionMonobankTitle={
+                    homeViewData.homeActionMonobankTitle ?? 'Підтримати через Монобанк'
+                  }
+                  homeActionInterviewsTitle={homeViewData.homeActionInterviewsTitle ?? 'Розмови'}
+                  onHeroLeadUpdated={handleHeroLeadUpdated}
+                  onAuthorAboutUpdated={handleAuthorAboutUpdated}
+                  onContactEmailUpdated={handleContactEmailUpdated}
+                  onSocialLinksUpdated={handleSocialLinksUpdated}
+                  onOpenAuthorStudio={handleOpenAuthorStudio}
+                  onOpenAuthModal={handleOpenAuthModalStable}
+                  onSecretAdminTrigger={() => {
+                    if (!isAdmin) {
+                      setAuthModalOpen(true);
                     }
-                    socialLinks={homeViewData.socialLinks ?? FALLBACK_SOCIAL_LINKS}
-                    monobankJarUrl={homeViewData.monobankJarUrl ?? ''}
-                    monobankModalTitle={homeViewData.monobankModalTitle ?? 'Підтримати через Монобанк'}
-                    monobankModalSubtitle={homeViewData.monobankModalSubtitle ?? ''}
-                    monobankCardLabel={homeViewData.monobankCardLabel ?? 'Банка Монобанку'}
-                    monobankModalText={homeViewData.monobankModalText ?? ''}
-                    monobankEmptyText={homeViewData.monobankEmptyText ?? ''}
-                    contactEmail={homeViewData.contactEmail ?? ''}
-                    interviews={homeViewData.interviews ?? []}
-                    homeActionAboutTitle={homeViewData.homeActionAboutTitle ?? 'Про мене'}
-                    homeActionContactTitle={homeViewData.homeActionContactTitle ?? 'Зв’язок'}
-                    homeActionMonobankTitle={homeViewData.homeActionMonobankTitle ?? 'Підтримати через Монобанк'}
-                    homeActionInterviewsTitle={homeViewData.homeActionInterviewsTitle ?? 'Розмови'}
-                    onHeroLeadUpdated={handleHeroLeadUpdated}
-                    onAuthorAboutUpdated={handleAuthorAboutUpdated}
-                    onContactEmailUpdated={handleContactEmailUpdated}
-                    onSocialLinksUpdated={handleSocialLinksUpdated}
-                    onOpenAuthorStudio={handleOpenAuthorStudio}
-                    onOpenAuthModal={() => setAuthModalOpen(true)}
-                    onSecretAdminTrigger={() => {
-                      if (!isAdmin) {
-                        setAuthModalOpen(true);
-                      }
-                    }}
-                    guestUser={guestUser}
-                    getGuestToken={getGuestToken}
-                    siteFeedbackItems={mySiteFeedback}
-                    onSiteFeedbackItemsChange={setMySiteFeedback}
-                    unreadFeedbackRepliesCount={unreadFeedbackRepliesCount}
-                    onFeedbackRepliesMarkedRead={handleFeedbackRepliesMarkedRead}
-                    isAdmin={isAdmin}
-                    getAdminToken={getAdminToken}
-                    isRadioEnabled={radioEnabled}
-                    onToggleRadio={handleToggleRadioSetting}
-                    isRadioPlaying={Boolean(guestUser && radioIsPlaying)}
-                    onOpenLeaderboard={() => setLeaderboardOpen(true)}
-                    onOpenChat={handleOpenChatModal}
-                    hasUnreadReply={hasUnreadReply}
-                    onOpenRadio={() => {
-                      trackClick('header:radio', 'Кнопка радіо', 'section');
-                      handleNavigate('radio');
-                    }}
-                    onOpenWeeklyMusic={() => setMusicSelectionsOpen(true)}
-                    showcaseNode={
-                      <HomeShowcaseSection
-                        poems={catalog?.poems ?? []}
-                        prose={catalog?.prose ?? []}
-                        proseTags={catalog?.proseTags ?? []}
-                        blog={catalog?.blog ?? []}
-                        products={catalog?.products ?? []}
-                        recentFeedback={catalog?.recentFeedback ?? []}
-                        homeRepeaters={catalog?.homeRepeaters ?? homeViewData?.homeRepeaters}
-                        catalogLoaded={Boolean(catalog)}
+                  }}
+                  guestUser={guestUser}
+                  getGuestToken={getGuestToken}
+                  siteFeedbackItems={mySiteFeedback}
+                  onSiteFeedbackItemsChange={setMySiteFeedback}
+                  unreadFeedbackRepliesCount={unreadFeedbackRepliesCount}
+                  onFeedbackRepliesMarkedRead={markFeedbackRepliesRead}
+                  isAdmin={isAdmin}
+                  getAdminToken={getAdminToken}
+                  isRadioEnabled={radioEnabled}
+                  onToggleRadio={handleToggleRadioSetting}
+                  isRadioPlaying={Boolean(guestUser && radioIsPlaying)}
+                  onOpenLeaderboard={handleOpenLeaderboardStable}
+                  onOpenChat={handleOpenChatModal}
+                  hasUnreadReply={hasUnreadReply}
+                  onOpenRadio={handleOpenRadioStable}
+                  onOpenWeeklyMusic={handleOpenWeeklyMusicStable}
+                  showcaseNode={
+                    <HomeShowcaseSection
+                      poems={catalog?.poems ?? []}
+                      prose={catalog?.prose ?? []}
+                      proseTags={catalog?.proseTags ?? []}
+                      blog={catalog?.blog ?? []}
+                      products={catalog?.products ?? []}
+                      recentFeedback={catalog?.recentFeedback ?? []}
+                      homeRepeaters={catalog?.homeRepeaters ?? homeViewData?.homeRepeaters}
+                      catalogLoaded={Boolean(catalog)}
+                      cartIds={cartIds}
+                      unlockedMap={unlockedMap}
+                      onNavigateSection={handleNavigate}
+                      onOpenPoem={(poemId) => handleOpenSectionItem('poetry', poemId)}
+                      onOpenProse={(proseId) => handleOpenSectionItem('prose', proseId)}
+                      onOpenBlog={(postId) => handleOpenSectionItem('blog', postId)}
+                      onOpenProduct={(productId) => handleOpenSectionItem('store', productId)}
+                      onAddToCart={handleAddToCart}
+                      onOpenLibrary={() => {
+                        setDrawerTab(cartProducts.length > 0 ? 'cart' : 'library');
+                        setDrawerOpen(true);
+                      }}
+                    />
+                  }
+                />
+              </m.div>
+            ) : !catalog ? (
+              <SectionSkeleton section={activeSection} />
+            ) : (
+              <m.div
+                key={`section-${activeSection}`}
+                variants={SECTION_TRANSITION_VARIANTS}
+                initial="initial"
+                animate="animate"
+                className={`${
+                  activeSection === 'radio' ? 'max-w-6xl' : 'max-w-4xl'
+                } w-full mx-auto px-4 sm:px-6 flex flex-col transition-[padding] duration-[1500ms] ease-out ${
+                  isPoetryImmersed ? 'pt-4 pb-8' : 'pt-5 pb-24 sm:pb-28 md:pt-7'
+                }`}
+              >
+                <div className="flex-1 min-w-0 w-full">
+                  <Suspense fallback={<SectionSkeleton section={activeSection} embedded />}>
+                    {activeSection === 'poetry' && (
+                      <PoetrySection
+                        poems={catalog.poems}
+                        weeklyPoems={catalog.weeklyPoems ?? []}
+                        weeklyCurrentPeriod={catalog.weeklyCurrentPeriod}
+                        guestUser={guestUser}
+                        getGuestToken={getGuestToken}
+                        isAdmin={isAdmin}
+                        getAdminToken={getAdminToken}
+                        onOpenAuthModal={handleOpenAuthModalStable}
+                        onGuestUserUpdated={handleGuestUserUpdated}
+                        onPoemUpdated={handlePoemUpdated}
+                        onPoemViewed={handlePoemViewed}
+                        initialPoemId={deepLinkItemId}
+                        onActivePoemChange={(id) => handleSectionItemHash('poetry', id)}
+                        onSurfaceStyleChange={setPoetryBackdropStyle}
+                        immersionMode={poetryImmersionMode}
+                        onToggleImmersionMode={handleTogglePoetryImmersion}
+                        onSpaceStateChange={setPoetrySpaceState}
+                      />
+                    )}
+
+                    {activeSection === 'prose' && (
+                      <ProseSection
+                        proseList={catalog.prose}
+                        weeklyProse={catalog.weeklyProse ?? []}
+                        weeklyCurrentPeriod={catalog.weeklyCurrentPeriod}
+                        proseTags={catalog.proseTags ?? []}
+                        proseAuthDiscountPercent={catalog.proseAuthDiscountPercent ?? 0}
+                        proseTelegramDiscountPercent={catalog.proseTelegramDiscountPercent ?? 50}
+                        monobankJarUrl={homeViewData?.monobankJarUrl ?? ''}
+                        monobankAcquiringEnabled={Boolean(homeViewData?.monobankAcquiringEnabled)}
+                        telegramSubscription={telegramSubscription}
+                        onOpenTelegramModal={() => setTelegramModalOpen(true)}
+                        onTelegramInvalidated={handleClearTelegramVerification}
+                        unlockedMap={unlockedMap}
+                        guestUser={guestUser}
+                        getGuestToken={getGuestToken}
+                        onOpenAuthModal={handleOpenAuthModalStable}
+                        isAdmin={isAdmin}
+                        getAdminToken={getAdminToken}
+                        onProsePurchased={handleProsePurchased}
+                        onRestoreOrders={handleRestoreOrders}
+                        onProseUpdated={handleProseUpdated}
+                        initialProseId={deepLinkItemId}
+                        onActiveProseChange={(id) => handleSectionItemHash('prose', id)}
+                        onHomeBackdropChange={setProseHomeBackdrop}
+                      />
+                    )}
+
+                    {activeSection === 'blog' && (
+                      <BlogSection
+                        posts={catalog.blog}
+                        onPostViewed={handleBlogViewed}
+                        onPostUpdated={handleBlogUpdated}
+                        initialPostId={deepLinkItemId}
+                        onActivePostChange={(id) => handleSectionItemHash('blog', id)}
+                      />
+                    )}
+
+                    {activeSection === 'radio' && (
+                      <RadioSectionConnected
+                        getGuestToken={getGuestToken}
+                        getAdminToken={getAdminToken}
+                      />
+                    )}
+
+                    {activeSection === 'store' && (
+                      <StoreSection
+                        products={catalog.products}
                         cartIds={cartIds}
                         unlockedMap={unlockedMap}
-                        onNavigateSection={handleNavigate}
-                        onOpenPoem={(poemId) => handleOpenSectionItem('poetry', poemId)}
-                        onOpenProse={(proseId) => handleOpenSectionItem('prose', proseId)}
-                        onOpenBlog={(postId) => handleOpenSectionItem('blog', postId)}
-                        onOpenProduct={(productId) => handleOpenSectionItem('store', productId)}
+                        guestUser={guestUser}
+                        getGuestToken={getGuestToken}
+                        isAdmin={isAdmin}
+                        getAdminToken={getAdminToken}
+                        onOpenAuthModal={handleOpenAuthModalStable}
                         onAddToCart={handleAddToCart}
                         onOpenLibrary={() => {
                           setDrawerTab(cartProducts.length > 0 ? 'cart' : 'library');
                           setDrawerOpen(true);
                         }}
+                        onProductUpdated={handleProductUpdated}
+                        initialProductId={deepLinkItemId}
+                        onActiveProductChange={(id) => handleSectionItemHash('store', id)}
                       />
-                    }
-                  />
-                  </m.div>
-                ) : !catalog ? (
-                  <SectionSkeleton section={activeSection} />
-                ) : (
-                  <m.div
-                    key={`section-${activeSection}`}
-                    variants={SECTION_TRANSITION_VARIANTS}
-                    initial="initial"
-                    animate="animate"
-                    className={`${
-                      activeSection === 'radio' ? 'max-w-6xl' : 'max-w-4xl'
-                    } w-full mx-auto px-4 sm:px-6 flex flex-col transition-[padding] duration-[1500ms] ease-out ${
-                      isPoetryImmersed ? 'pt-4 pb-8' : 'pt-5 pb-24 sm:pb-28 md:pt-7'
-                    }`}
-                  >
-                   <div className="flex-1 min-w-0 w-full">
-                    <Suspense
-                      fallback={<SectionSkeleton section={activeSection} embedded />}
-                    >
-                      {activeSection === 'poetry' && (
-                        <PoetrySection
-                          poems={catalog.poems}
-                          weeklyPoems={catalog.weeklyPoems ?? []}
-                          weeklyCurrentPeriod={catalog.weeklyCurrentPeriod}
-                          guestUser={guestUser}
-                          getGuestToken={getGuestToken}
-                          isAdmin={isAdmin}
-                          getAdminToken={getAdminToken}
-                          onOpenAuthModal={() => setAuthModalOpen(true)}
-                          onGuestUserUpdated={handleGuestUserUpdated}
-                          onPoemUpdated={handlePoemUpdated}
-                          onPoemViewed={handlePoemViewed}
-                          initialPoemId={deepLinkItemId}
-                          onActivePoemChange={(id) => handleSectionItemHash('poetry', id)}
-                          onSurfaceStyleChange={setPoetryBackdropStyle}
-                          immersionMode={poetryImmersionMode}
-                          onToggleImmersionMode={handleTogglePoetryImmersion}
-                          onSpaceStateChange={setPoetrySpaceState}
-                        />
-                      )}
-
-                      {activeSection === 'prose' && (
-                        <ProseSection
-                          proseList={catalog.prose}
-                          weeklyProse={catalog.weeklyProse ?? []}
-                          weeklyCurrentPeriod={catalog.weeklyCurrentPeriod}
-                          proseTags={catalog.proseTags ?? []}
-                          proseAuthDiscountPercent={catalog.proseAuthDiscountPercent ?? 0}
-                          proseTelegramDiscountPercent={catalog.proseTelegramDiscountPercent ?? 50}
-                          monobankJarUrl={homeViewData?.monobankJarUrl ?? ''}
-                          monobankAcquiringEnabled={Boolean(homeViewData?.monobankAcquiringEnabled)}
-                          telegramSubscription={telegramSubscription}
-                          onOpenTelegramModal={() => setTelegramModalOpen(true)}
-                          onTelegramInvalidated={handleClearTelegramVerification}
-                          unlockedMap={unlockedMap}
-                          guestUser={guestUser}
-                          getGuestToken={getGuestToken}
-                          onOpenAuthModal={() => setAuthModalOpen(true)}
-                          isAdmin={isAdmin}
-                          getAdminToken={getAdminToken}
-                          onProsePurchased={handleProsePurchased}
-                          onRestoreOrders={handleRestoreOrders}
-                          onProseUpdated={handleProseUpdated}
-                          initialProseId={deepLinkItemId}
-                          onActiveProseChange={(id) => handleSectionItemHash('prose', id)}
-                          onHomeBackdropChange={setProseHomeBackdrop}
-                        />
-                      )}
-
-                      {activeSection === 'blog' && (
-                        <BlogSection
-                          posts={catalog.blog}
-                          onPostViewed={handleBlogViewed}
-                          initialPostId={deepLinkItemId}
-                          onActivePostChange={(id) => handleSectionItemHash('blog', id)}
-                        />
-                      )}
-
-                      {activeSection === 'radio' && (
-                        <RadioSection
-                          allTracks={allRadioTracks}
-                          activeStation={activeRadioStation}
-                          onSelectStation={handleRadioStationChange}
-                          playbackScope={radioPlaybackScope}
-                          onChangePlaybackScope={setRadioPlaybackScope}
-                          guestUser={guestUser}
-                          getGuestToken={getGuestToken}
-                          isAdmin={isAdmin}
-                          getAdminToken={getAdminToken}
-                          onOpenAuthModal={() => setAuthModalOpen(true)}
-                          onTracksUpdated={handleRadioTracksUpdated}
-                          onTrackLiked={handleRadioTrackLiked}
-                          currentTrackId={activeRadioTrack?.id ?? null}
-                          isPlaying={radioIsPlaying}
-                          isLoadingTrack={radioIsLoadingTrack}
-                          positionMs={radioPositionMs}
-                          durationMs={radioDurationMs}
-                          volume={radioVolume}
-                          isMuted={radioIsMuted}
-                          playerError={radioPlayerError}
-                          showDirectEmbed={radioShowDirectEmbed}
-                          onToggleDirectEmbed={() => setRadioShowDirectEmbed((prev) => !prev)}
-                          onTogglePlay={handleRadioTogglePlay}
-                          onSelectTrack={handleRadioSelectTrack}
-                          onNextTrack={handleRadioNextTrack}
-                          onPrevTrack={handleRadioPrevTrack}
-                          onSeekTo={handleRadioSeekTo}
-                          onVolumeChange={handleRadioVolumeChange}
-                          onToggleMute={handleRadioToggleMute}
-                        />
-                      )}
-
-
-                      {activeSection === 'store' && (
-                        <StoreSection
-                          products={catalog.products}
-                          cartIds={cartIds}
-                          unlockedMap={unlockedMap}
-                          guestUser={guestUser}
-                          getGuestToken={getGuestToken}
-                          isAdmin={isAdmin}
-                          getAdminToken={getAdminToken}
-                          onOpenAuthModal={() => setAuthModalOpen(true)}
-                          onAddToCart={handleAddToCart}
-                          onOpenLibrary={() => {
-                            setDrawerTab(cartProducts.length > 0 ? 'cart' : 'library');
-                            setDrawerOpen(true);
-                          }}
-                          onProductUpdated={handleProductUpdated}
-                          initialProductId={deepLinkItemId}
-                          onActiveProductChange={(id) => handleSectionItemHash('store', id)}
-                        />
-                      )}
-                    </Suspense>
-                  </div>
-                  </m.div>
+                    )}
+                  </Suspense>
+                </div>
+              </m.div>
             )}
           </main>
 
-        {drawerOpen && (
-          <Suspense fallback={null}>
-            <CartLibraryDrawer
-              isOpen={drawerOpen}
-              activeTab={drawerTab}
-              onTabChange={setDrawerTab}
-              onClose={() => setDrawerOpen(false)}
-              cartProducts={cartProducts}
-              onRemoveFromCart={handleRemoveFromCart}
-              onCheckoutSuccess={handleCheckoutSuccess}
-              unlockedItems={unlockedItems}
-              guestUser={guestUser}
-              getGuestToken={getGuestToken}
-              monobankJarUrl={homeViewData?.monobankJarUrl ?? ''}
-              onOpenAuthModal={() => setAuthModalOpen(true)}
-              onRestoreOrders={handleRestoreOrders}
-              onClearDeviceLibrary={handleClearDeviceLibrary}
-              onOpenProse={(proseId) => {
-                setActiveSection('prose');
-                setDeepLinkItemId(proseId);
-                setDrawerOpen(false);
-                window.history.pushState(null, '', `#prose/${encodeURIComponent(proseId)}`);
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }}
-            />
-          </Suspense>
-        )}
-
-        {authorStudioOpen && isAdmin && (
-          <Suspense fallback={null}>
-            <AuthorStudioModal
-              isOpen={authorStudioOpen && isAdmin}
-              isAdmin={isAdmin}
-              getAdminToken={getAdminToken}
-              onClose={() => setAuthorStudioOpen(false)}
-              onCatalogUpdated={fetchCatalog}
-              heroLeadText={homeViewData?.heroLeadText || ''}
-              onHeroLeadUpdated={handleHeroLeadUpdated}
-              authorAboutText={homeViewData?.authorAboutText ?? FALLBACK_AUTHOR_ABOUT_TEXT}
-              onAuthorAboutUpdated={handleAuthorAboutUpdated}
-              authorPhotoUrl={homeViewData?.authorPhotoUrl ?? FALLBACK_AUTHOR_PHOTO_URL}
-              authorPhotos={
-                homeViewData?.authorPhotos && homeViewData.authorPhotos.length > 0
-                  ? homeViewData.authorPhotos
-                  : [homeViewData?.authorPhotoUrl ?? FALLBACK_AUTHOR_PHOTO_URL]
-              }
-              onAuthorPhotoUpdated={handleAuthorPhotoUpdated}
-              onAuthorPhotosUpdated={handleAuthorPhotosUpdated}
-              socialLinks={homeViewData?.socialLinks ?? FALLBACK_SOCIAL_LINKS}
-              onSocialLinksUpdated={handleSocialLinksUpdated}
-              monobankJarUrl={homeViewData?.monobankJarUrl ?? ''}
-              onMonobankJarUpdated={handleMonobankJarUpdated}
-              monobankModalTitle={homeViewData?.monobankModalTitle ?? 'Підтримати через Монобанк'}
-              monobankModalSubtitle={homeViewData?.monobankModalSubtitle ?? ''}
-              monobankCardLabel={homeViewData?.monobankCardLabel ?? 'Банка Монобанку'}
-              monobankModalText={homeViewData?.monobankModalText ?? ''}
-              monobankEmptyText={homeViewData?.monobankEmptyText ?? ''}
-              onMonobankModalTextsUpdated={handleMonobankModalTextsUpdated}
-              contactEmail={homeViewData?.contactEmail ?? ''}
-              onContactEmailUpdated={handleContactEmailUpdated}
-              interviews={homeViewData?.interviews ?? []}
-              onInterviewsUpdated={handleInterviewsUpdated}
-              homeActionAboutTitle={homeViewData?.homeActionAboutTitle ?? 'Про мене'}
-              onHomeActionAboutUpdated={handleHomeActionAboutUpdated}
-              homeActionContactTitle={homeViewData?.homeActionContactTitle ?? 'Зв’язок'}
-              onHomeActionContactUpdated={handleHomeActionContactUpdated}
-              homeActionMonobankTitle={homeViewData?.homeActionMonobankTitle ?? 'Підтримати через Монобанк'}
-              onHomeActionMonobankUpdated={handleHomeActionMonobankUpdated}
-              homeActionInterviewsTitle={homeViewData?.homeActionInterviewsTitle ?? 'Розмови'}
-              onHomeActionInterviewsUpdated={handleHomeActionInterviewsUpdated}
-              homeRepeaters={homeViewData?.homeRepeaters}
-              onHomeRepeatersUpdated={handleHomeRepeatersUpdated}
-              radioTracks={allRadioTracks}
-              onRadioTracksChanged={handleRadioTracksUpdated}
-              uniqueVisitors={uniqueVisitors}
-            />
-          </Suspense>
-        )}
-
-        {authModalOpen && (
-          <Suspense fallback={null}>
-            <GuestAuthModal
-              isOpen={authModalOpen}
-              onClose={() => setAuthModalOpen(false)}
-              guestUser={guestUser}
-              rememberedGuest={rememberedGuest}
-              isAdmin={isAdmin}
-              requiresGoogleForAdmin={requiresGoogleForAdmin}
-              hasFirebaseSession={hasFirebaseSession}
-              getGuestToken={getGuestToken}
-              onAuthenticated={handleAuthenticatedGuest}
-              onUserUpdated={handleGuestUserUpdated}
-              onLogout={handleLogoutGuest}
-              onForgetRemembered={handleForgetRememberedGuest}
-              onOpenAuthorStudio={handleOpenAuthorStudio}
-              poems={catalog?.poems ?? []}
-              onOpenPoem={(poemId) => {
-                setActiveSection('poetry');
-                setDeepLinkItemId(poemId);
-                setAuthModalOpen(false);
-                const nextHash = `#poetry/${encodeURIComponent(poemId)}`;
-                if (window.location.hash !== nextHash) {
-                  window.history.pushState(null, '', nextHash);
-                }
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }}
-              onOpenProse={(proseId) => {
-                handleOpenSectionItem('prose', proseId);
-                setAuthModalOpen(false);
-              }}
-              onCatalogUpdated={() => void fetchCatalog()}
-            />
-          </Suspense>
-        )}
-
-        {telegramModalOpen && (
-          <Suspense fallback={null}>
-            <TelegramVerifyModal
-              isOpen={telegramModalOpen}
-              onClose={() => setTelegramModalOpen(false)}
-              discountPercent={catalog?.proseTelegramDiscountPercent ?? homeViewData?.proseTelegramDiscountPercent ?? 50}
-              subscription={telegramSubscription}
-              onVerified={handleTelegramVerified}
-              onClearVerification={handleClearTelegramVerification}
-            />
-          </Suspense>
-        )}
-
-        {/* Persistent SoundCloud Widget iframe (in-viewport unobtrusive layer, expandable when browser requires direct tap) */}
-        {guestUser && radioBootstrapSrc && (
-          <div
-            aria-hidden={!radioShowDirectEmbed || isPoetryImmersed}
-            className={
-              radioShowDirectEmbed && !isPoetryImmersed
-                ? 'fixed bottom-[76px] sm:bottom-[82px] right-3 sm:right-6 z-50 w-[min(calc(100vw-1.5rem),22rem)] rounded-2xl bg-[#202020] p-2 shadow-2xl space-y-1.5'
-                : 'fixed bottom-0 right-0 w-[300px] h-[166px] opacity-[0.01] pointer-events-none -z-10'
-            }
-          >
-            {radioShowDirectEmbed && !isPoetryImmersed && (
-              <div className="flex items-center justify-between px-1.5 text-[11px] text-[#C4BFB4]">
-                <span className="truncate font-medium">Плеєр SoundCloud</span>
-                <button
-                  type="button"
-                  onClick={() => setRadioShowDirectEmbed(false)}
-                  aria-label="Згорнути плеєр SoundCloud"
-                  className="p-1 rounded-lg hover:bg-white/10 text-[#C4BFB4] hover:text-white cursor-pointer"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            )}
-            <iframe
-              ref={radioIframeRef}
-              id={radioIframeId}
-              title="Радіостанція SoundCloud"
-              src={radioBootstrapSrc}
-              allow="autoplay; encrypted-media"
-              tabIndex={radioShowDirectEmbed ? 0 : -1}
-              className="w-full h-[166px] rounded-xl border-0 block"
-            />
-          </div>
-        )}
-
-
-
-        {/* User Leaderboard Modal */}
-        {leaderboardOpen && (
-          <Suspense fallback={null}>
-            <UserLeaderboardModal
-              isOpen={leaderboardOpen}
-              onClose={handleCloseLeaderboard}
-              guestUser={guestUser}
-              isAdmin={isAdmin}
-              getAdminToken={getAdminToken}
-              getGuestToken={getGuestToken}
-              authToken={guestSessionTokenRef.current}
-            />
-          </Suspense>
-        )}
-
-        {/* Global Community Chat Modal */}
-        {chatOpen && (
-          <Suspense fallback={null}>
-            <GlobalChatModal
-              isOpen={chatOpen}
-              onClose={handleCloseChat}
-              guestUser={guestUser}
-              isAdmin={isAdmin}
-              getGuestToken={getGuestToken}
-              onOpenAuthModal={handleOpenAuthModalStable}
-              onGuestUserUpdated={handleGuestUserUpdated}
-            />
-          </Suspense>
-        )}
-
-        {/* Monthly / Weekly Music Selections Modal */}
-        {musicSelectionsOpen && (
-          <Suspense fallback={null}>
-            <MusicSelectionsModal
-              isOpen={musicSelectionsOpen}
-              onClose={handleCloseMusicSelections}
-              selections={weeklyMusicSelections}
-              currentPeriod={catalog?.weeklyCurrentPeriod}
-              isAdmin={isAdmin}
-              getAdminToken={getAdminToken}
-              onSelectionsUpdated={handleWeeklySelectionsUpdated}
-              onBeforePlay={handlePauseRadio}
-            />
-          </Suspense>
-        )}
-
-        <FirstVisitAuthHint
-          guestUser={guestUser}
-          rememberedGuest={rememberedGuest}
-          suppress={authModalOpen || chatOpen || leaderboardOpen || musicSelectionsOpen || drawerOpen || isPoetryImmersed}
-          onOpenAuthModal={() => setAuthModalOpen(true)}
-        />
-
-        <AnimatePresence>
-          {newWorkNotification && !isPoetryImmersed && (
-            <m.div
-              key="new-work-notification"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0, transition: { duration: 0.35 } }}
-              exit={{
-                opacity: 0,
-                pointerEvents: 'none',
-                transition: { duration: 1.4, ease: [0.22, 1, 0.36, 1] },
-              }}
-              className="fixed bottom-[78px] sm:bottom-[86px] right-4 sm:right-6 z-50 w-[min(calc(100vw-2rem),21rem)] rounded-2xl bg-white/95 dark:bg-[#242424]/95 backdrop-blur-xl shadow-[0_18px_40px_-14px_rgba(20,20,19,0.3)] dark:shadow-[0_22px_48px_-14px_rgba(0,0,0,0.85)] p-3 flex items-center justify-between gap-2.5"
-            >
-              <button
-                type="button"
-                onClick={() => {
-                  const target = newWorkNotification;
-                  setNewWorkNotification(null);
-                  handleOpenSectionItem(target.section, target.itemId);
-                }}
-                className="flex items-center gap-2.5 min-w-0 flex-1 text-left cursor-pointer group"
-              >
-                <span className="w-8 h-8 rounded-xl bg-[#EAE7DF] dark:bg-[#323232] text-[#2C5937] dark:text-[#E5E5E5] inline-flex items-center justify-center shrink-0">
-                  <BellRing className="w-4 h-4" strokeWidth={1.9} />
-                </span>
-                <div className="min-w-0">
-                  <p className="text-[11px] font-medium text-[#2C5937] dark:text-[#C4BFB4]">
-                    {newWorkNotification.kindLabel}
-                  </p>
-                  <p className="text-xs font-semibold text-[#141413] dark:text-[#F4F1EA] truncate group-hover:underline">
-                    «{newWorkNotification.title}»
-                  </p>
-                </div>
-              </button>
-              <button
-                type="button"
-                onClick={() => setNewWorkNotification(null)}
-                aria-label="Закрити сповіщення"
-                className="p-1.5 rounded-lg text-[#5C5C58] dark:text-[#C4BFB4] hover:bg-[#EFECE6] dark:hover:bg-[#323232] shrink-0 cursor-pointer"
-              >
-                <X className="w-3.5 h-3.5" strokeWidth={2} />
-              </button>
-            </m.div>
-          )}
-        </AnimatePresence>
-
-        <AnimatePresence>
-          {!isPoetryImmersed && (
-            <m.div
-              key="offline-indicator-fade"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1, transition: { duration: 0.45 } }}
-              exit={{
-                opacity: 0,
-                pointerEvents: 'none',
-                transition: { duration: 1.4, ease: [0.22, 1, 0.36, 1] },
-              }}
-            >
-              <OfflineIndicator />
-            </m.div>
-          )}
-        </AnimatePresence>
-
-        <AnimatePresence>
-          {!isPoetryImmersed && (
-            <m.div
-              key="site-bottom-nav-fade"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1, transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] } }}
-              exit={{
-                opacity: 0,
-                pointerEvents: 'none',
-                transition: { duration: 1.5, ease: [0.22, 1, 0.36, 1] },
-              }}
-              className="relative z-40"
-            >
-              <SiteBottomNav
-                activeSection={activeSection}
-                onNavigate={handleNavigate}
-                onPrefetchSection={handlePrefetchSection}
-                cartCount={cartProducts.length}
-                unlockedCount={unlockedItems.length}
-                onOpenDrawer={(tab) => {
-                  if (tab) setDrawerTab(tab);
-                  setDrawerOpen(true);
+          {drawerOpen && (
+            <Suspense fallback={null}>
+              <CartLibraryDrawer
+                isOpen={drawerOpen}
+                activeTab={drawerTab}
+                onTabChange={setDrawerTab}
+                onClose={() => setDrawerOpen(false)}
+                cartProducts={cartProducts}
+                onRemoveFromCart={removeFromCartStore}
+                onCheckoutSuccess={handleCheckoutSuccess}
+                unlockedItems={unlockedItems}
+                guestUser={guestUser}
+                getGuestToken={getGuestToken}
+                monobankJarUrl={homeViewData?.monobankJarUrl ?? ''}
+                onOpenAuthModal={handleOpenAuthModalStable}
+                onRestoreOrders={handleRestoreOrders}
+                onClearDeviceLibrary={clearDeviceLibraryStore}
+                onOpenProse={(proseId) => {
+                  setActiveSection('prose');
+                  setDeepLinkItemId(proseId);
+                  setDrawerOpen(false);
+                  window.history.pushState(null, '', `#prose/${encodeURIComponent(proseId)}`);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
               />
-            </m.div>
+            </Suspense>
           )}
-        </AnimatePresence>
+
+          {authorStudioOpen && isAdmin && (
+            <Suspense fallback={null}>
+              <AuthorStudioModalConnected
+                isOpen={authorStudioOpen && isAdmin}
+                isAdmin={isAdmin}
+                getAdminToken={getAdminToken}
+                onClose={() => setAuthorStudioOpen(false)}
+                onCatalogUpdated={fetchCatalog}
+                homeViewData={homeViewData}
+                uniqueVisitors={uniqueVisitors}
+                onHeroLeadUpdated={handleHeroLeadUpdated}
+                onAuthorAboutUpdated={handleAuthorAboutUpdated}
+                onAuthorPhotoUpdated={handleAuthorPhotoUpdated}
+                onAuthorPhotosUpdated={handleAuthorPhotosUpdated}
+                onSocialLinksUpdated={handleSocialLinksUpdated}
+                onMonobankJarUpdated={handleMonobankJarUpdated}
+                onMonobankModalTextsUpdated={handleMonobankModalTextsUpdated}
+                onContactEmailUpdated={handleContactEmailUpdated}
+                onInterviewsUpdated={handleInterviewsUpdated}
+                onHomeActionAboutUpdated={handleHomeActionAboutUpdated}
+                onHomeActionContactUpdated={handleHomeActionContactUpdated}
+                onHomeActionMonobankUpdated={handleHomeActionMonobankUpdated}
+                onHomeActionInterviewsUpdated={handleHomeActionInterviewsUpdated}
+                onHomeRepeatersUpdated={handleHomeRepeatersUpdated}
+              />
+            </Suspense>
+          )}
+
+          {authModalOpen && (
+            <Suspense fallback={null}>
+              <GuestAuthModal
+                isOpen={authModalOpen}
+                onClose={() => setAuthModalOpen(false)}
+                guestUser={guestUser}
+                rememberedGuest={rememberedGuest}
+                isAdmin={isAdmin}
+                requiresGoogleForAdmin={requiresGoogleForAdmin}
+                hasFirebaseSession={hasFirebaseSession}
+                getGuestToken={getGuestToken}
+                onAuthenticated={handleAuthenticatedGuest}
+                onUserUpdated={handleGuestUserUpdated}
+                onLogout={handleLogoutGuest}
+                onForgetRemembered={handleForgetRememberedGuest}
+                onOpenAuthorStudio={handleOpenAuthorStudio}
+                poems={catalog?.poems ?? []}
+                onOpenPoem={(poemId) => {
+                  setActiveSection('poetry');
+                  setDeepLinkItemId(poemId);
+                  setAuthModalOpen(false);
+                  const nextHash = `#poetry/${encodeURIComponent(poemId)}`;
+                  if (window.location.hash !== nextHash) {
+                    window.history.pushState(null, '', nextHash);
+                  }
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                onOpenProse={(proseId) => {
+                  handleOpenSectionItem('prose', proseId);
+                  setAuthModalOpen(false);
+                }}
+                onCatalogUpdated={() => void fetchCatalog()}
+              />
+            </Suspense>
+          )}
+
+          {telegramModalOpen && (
+            <Suspense fallback={null}>
+              <TelegramVerifyModal
+                isOpen={telegramModalOpen}
+                onClose={() => setTelegramModalOpen(false)}
+                discountPercent={
+                  catalog?.proseTelegramDiscountPercent ??
+                  homeViewData?.proseTelegramDiscountPercent ??
+                  50
+                }
+                subscription={telegramSubscription}
+                onVerified={handleTelegramVerified}
+                onClearVerification={handleClearTelegramVerification}
+              />
+            </Suspense>
+          )}
+
+          <RadioEngine getGuestToken={getGuestToken} getAdminToken={getAdminToken} />
+
+          {/* Floating Leaderboard Button when signed in & not on home */}
+          <AnimatePresence>
+            {guestUser && activeSection !== 'home' && !isPoetryImmersed && (
+              <m.button
+                key="floating-leaderboard-btn"
+                type="button"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                transition={{ duration: 0.2 }}
+                onClick={() => {
+                  trackClick('floating:leaderboard', 'Рейтинг (плаваюча кнопка)', 'section');
+                  setLeaderboardOpen(true);
+                }}
+                aria-label="Рейтинг читачів"
+                title="Рейтинг читачів"
+                className="fixed bottom-[74px] sm:bottom-[78px] left-3.5 sm:left-6 z-30 w-9 h-9 rounded-full bg-[#FAF9F5] dark:bg-[#202020] text-[#B45309] dark:text-amber-400 shadow-[0_6px_18px_-5px_rgba(20,20,19,0.22)] dark:shadow-[0_8px_22px_-6px_rgba(0,0,0,0.72)] flex items-center justify-center hover:scale-105 active:scale-[0.94] transition-transform duration-150 cursor-pointer"
+              >
+                <Trophy className="w-4 h-4" strokeWidth={1.9} />
+              </m.button>
+            )}
+          </AnimatePresence>
+
+          {/* Minimized persistent Radio button on non-radio sections */}
+          <AnimatePresence>
+            {radioEnabled && guestUser && activeSection !== 'radio' && !isPoetryImmersed && (
+              <m.div
+                key="minimized-radio-btn"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                transition={{ duration: 0.2 }}
+              >
+                <MinimizedRadioButtonConnected onClick={handleOpenRadioStable} />
+              </m.div>
+            )}
+          </AnimatePresence>
+
+          {/* User Leaderboard Modal */}
+          {leaderboardOpen && (
+            <Suspense fallback={null}>
+              <UserLeaderboardModal
+                isOpen={leaderboardOpen}
+                onClose={handleCloseLeaderboard}
+                guestUser={guestUser}
+                isAdmin={isAdmin}
+                getAdminToken={getAdminToken}
+                getGuestToken={getGuestToken}
+                authToken={guestSessionToken}
+              />
+            </Suspense>
+          )}
+
+          {/* Global Community Chat Modal */}
+          {chatOpen && (
+            <Suspense fallback={null}>
+              <GlobalChatModal
+                isOpen={chatOpen}
+                onClose={handleCloseChat}
+                guestUser={guestUser}
+                isAdmin={isAdmin}
+                getGuestToken={getGuestToken}
+                onOpenAuthModal={handleOpenAuthModalStable}
+                onGuestUserUpdated={handleGuestUserUpdated}
+              />
+            </Suspense>
+          )}
+
+          {/* Monthly / Weekly Music Selections Modal */}
+          {musicSelectionsOpen && (
+            <Suspense fallback={null}>
+              <MusicSelectionsModalConnected
+                isOpen={musicSelectionsOpen}
+                onClose={handleCloseMusicSelections}
+                isAdmin={isAdmin}
+                getAdminToken={getAdminToken}
+              />
+            </Suspense>
+          )}
+
+          <FirstVisitAuthHint
+            guestUser={guestUser}
+            rememberedGuest={rememberedGuest}
+            suppress={
+              authModalOpen ||
+              chatOpen ||
+              leaderboardOpen ||
+              musicSelectionsOpen ||
+              drawerOpen ||
+              isPoetryImmersed
+            }
+            onOpenAuthModal={handleOpenAuthModalStable}
+          />
+
+          <AnimatePresence>
+            {newWorkNotification && !isPoetryImmersed && (
+              <m.div
+                key="new-work-notification"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0, transition: { duration: 0.35 } }}
+                exit={{
+                  opacity: 0,
+                  pointerEvents: 'none',
+                  transition: { duration: 1.4, ease: [0.22, 1, 0.36, 1] },
+                }}
+                className="fixed bottom-[78px] sm:bottom-[86px] right-4 sm:right-6 z-50 w-[min(calc(100vw-2rem),21rem)] rounded-2xl bg-white dark:bg-[#242424] border border-black/5 dark:border-white/10 shadow-[0_18px_40px_-14px_rgba(20,20,19,0.3)] dark:shadow-[0_22px_48px_-14px_rgba(0,0,0,0.85)] p-3 flex items-center justify-between gap-2.5"
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    const target = newWorkNotification;
+                    setNewWorkNotification(null);
+                    handleOpenSectionItem(target.section, target.itemId);
+                  }}
+                  className="flex items-center gap-2.5 min-w-0 flex-1 text-left cursor-pointer group"
+                >
+                  <span className="w-8 h-8 rounded-xl bg-[#EAE7DF] dark:bg-[#323232] text-[#2C5937] dark:text-[#E5E5E5] inline-flex items-center justify-center shrink-0">
+                    <BellRing className="w-4 h-4" strokeWidth={1.9} />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-medium text-[#2C5937] dark:text-[#C4BFB4]">
+                      {newWorkNotification.kindLabel}
+                    </p>
+                    <p className="text-xs font-semibold text-[#141413] dark:text-[#F4F1EA] truncate group-hover:underline">
+                      «{newWorkNotification.title}»
+                    </p>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNewWorkNotification(null)}
+                  aria-label="Закрити сповіщення"
+                  className="p-1.5 rounded-lg text-[#5C5C58] dark:text-[#C4BFB4] hover:bg-[#EFECE6] dark:hover:bg-[#323232] shrink-0 cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" strokeWidth={2} />
+                </button>
+              </m.div>
+            )}
+          </AnimatePresence>
+
+          <AnimatePresence>
+            {!isPoetryImmersed && (
+              <m.div
+                key="offline-indicator-fade"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1, transition: { duration: 0.45 } }}
+                exit={{
+                  opacity: 0,
+                  pointerEvents: 'none',
+                  transition: { duration: 1.4, ease: [0.22, 1, 0.36, 1] },
+                }}
+              >
+                <OfflineIndicator />
+              </m.div>
+            )}
+          </AnimatePresence>
+
+          <AnimatePresence>
+            {!isPoetryImmersed && (
+              <m.div
+                key="site-bottom-nav-fade"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1, transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] } }}
+                exit={{
+                  opacity: 0,
+                  pointerEvents: 'none',
+                  transition: { duration: 1.5, ease: [0.22, 1, 0.36, 1] },
+                }}
+                className="relative z-40"
+              >
+                <SiteBottomNav
+                  activeSection={activeSection}
+                  onNavigate={handleNavigate}
+                  onPrefetchSection={handlePrefetchSection}
+                  cartCount={cartProducts.length}
+                  unlockedCount={unlockedItems.length}
+                  onOpenDrawer={handleOpenDrawerFromNav}
+                />
+              </m.div>
+            )}
+          </AnimatePresence>
         </div>
       </MotionConfig>
     </LazyMotion>

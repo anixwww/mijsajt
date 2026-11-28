@@ -566,36 +566,54 @@ export function StudioWorksTab({
     [getAuthHeaders]
   );
 
-  const handleStartEditPoem = (poem: Poem) => {
-    setEditingPoemId(poem.id);
+  const handleStartEditPoem = async (poem: Poem) => {
+    let resolvedPoem = poem;
+    if (poem.contentTruncated) {
+      setFeedback('Завантаження повного тексту вірша...');
+      try {
+        const res = await fetch(`/api/poems/${encodeURIComponent(poem.id)}/read`);
+        if (res.ok) {
+          const data = (await res.json()) as { content?: string };
+          if (typeof data.content === 'string') {
+            resolvedPoem = { ...poem, content: data.content, contentTruncated: false };
+            setPoems((prev) =>
+              prev.map((p) => (p.id === poem.id ? resolvedPoem : p))
+            );
+          }
+        }
+      } catch {
+        // Fall back to existing content if offline
+      }
+    }
+    setEditingPoemId(resolvedPoem.id);
     setPubKind('poem');
-    setPubTitle(poem.title);
-    setPubMeta(poem.cycle || '');
-    setPubPoemYear(String(poem.year || new Date().getFullYear()));
-    setPubPoemWorkStatus(poem.workStatus || '');
+    setPubTitle(resolvedPoem.title);
+    setPubMeta(resolvedPoem.cycle || '');
+    setPubPoemYear(String(resolvedPoem.year || new Date().getFullYear()));
+    setPubPoemWorkStatus(resolvedPoem.workStatus || '');
     setPubPoemPositionMode('start');
-    setPubContent(poem.content);
-    setPubPoemNote(poem.note || '');
-    setPubPoemFontSize(poem.fontSize || 'lg');
-    setPubPoemTextAlign(poem.textAlign || 'left');
-    setPubPoemLineSpacing(poem.lineSpacing || 'relaxed');
-    setPubPoemTextColor(poem.textColor || '');
-    setPubPoemBackgroundColor(poem.backgroundColor || '');
-    setPubPoemImageUrl(poem.imageUrl || '');
-    setPubPoemImagePalette(poem.imagePalette || null);
+    setPubContent(resolvedPoem.content);
+    setPubPoemNote(resolvedPoem.note || '');
+    setPubPoemFontSize(resolvedPoem.fontSize || 'lg');
+    setPubPoemTextAlign(resolvedPoem.textAlign || 'left');
+    setPubPoemLineSpacing(resolvedPoem.lineSpacing || 'relaxed');
+    setPubPoemTextColor(resolvedPoem.textColor || '');
+    setPubPoemBackgroundColor(resolvedPoem.backgroundColor || '');
+    setPubPoemImageUrl(resolvedPoem.imageUrl || '');
+    setPubPoemImagePalette(resolvedPoem.imagePalette || null);
     setPoemPhotoUrlDraft('');
     setPubPoemSoundCloudTracks(
-      poem.soundcloudTracks && poem.soundcloudTracks.length > 0
-        ? poem.soundcloudTracks
-        : poem.soundcloudTrack
-          ? [poem.soundcloudTrack]
+      resolvedPoem.soundcloudTracks && resolvedPoem.soundcloudTracks.length > 0
+        ? resolvedPoem.soundcloudTracks
+        : resolvedPoem.soundcloudTrack
+          ? [resolvedPoem.soundcloudTrack]
           : []
     );
     setPoemScUrlDraft('');
     setFeedback(null);
     setSubTab('compose');
-    if (poem.imageUrl && !poem.imagePalette) {
-      void extractAndApplyPoemPalette(poem.imageUrl, false);
+    if (resolvedPoem.imageUrl && !resolvedPoem.imagePalette) {
+      void extractAndApplyPoemPalette(resolvedPoem.imageUrl, false);
     }
   };
 
@@ -720,15 +738,33 @@ export function StudioWorksTab({
     setPubPoemSoundCloudTracks((prev) => prev.filter((t) => t.id !== id));
   };
 
-  const handleStartEditBlog = (post: BlogPost) => {
-    const unpacked = unpackBlogContentForEditor(post.content);
-    setEditingBlogId(post.id);
+  const handleStartEditBlog = async (post: BlogPost) => {
+    let resolvedPost = post;
+    if (post.contentTruncated) {
+      setFeedback('Завантаження повного тексту допису...');
+      try {
+        const res = await fetch(`/api/blog/${encodeURIComponent(post.id)}/read`);
+        if (res.ok) {
+          const data = (await res.json()) as { content?: string };
+          if (typeof data.content === 'string') {
+            resolvedPost = { ...post, content: data.content, contentTruncated: false };
+            setBlog((prev) =>
+              prev.map((b) => (b.id === post.id ? resolvedPost : b))
+            );
+          }
+        }
+      } catch {
+        // Fall back to existing content if offline
+      }
+    }
+    const unpacked = unpackBlogContentForEditor(resolvedPost.content);
+    setEditingBlogId(resolvedPost.id);
     setPubKind('blog');
-    setPubTitle(post.title);
-    setPubMeta(post.category || '');
-    setPubExcerpt(post.excerpt || '');
+    setPubTitle(resolvedPost.title);
+    setPubMeta(resolvedPost.category || '');
+    setPubExcerpt(resolvedPost.excerpt || '');
     setPubContent(unpacked.text);
-    setPubBlogCoverImage(post.coverImage || '');
+    setPubBlogCoverImage(resolvedPost.coverImage || '');
     setBlogCoverUrlDraft('');
     setPubBlogFilmTitle(unpacked.filmMeta?.filmTitle || '');
     setPubBlogDirector(unpacked.filmMeta?.director || '');

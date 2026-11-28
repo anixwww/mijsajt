@@ -89,7 +89,7 @@ export function FirstVisitAuthHint({
           role="status"
           aria-live="polite"
           aria-label="Підказка про авторизацію"
-          className="fixed bottom-[76px] sm:bottom-[82px] left-3 right-3 sm:left-6 sm:right-auto sm:w-[372px] z-40 rounded-2xl bg-[#202020]/96 border border-white/10 shadow-[0_18px_42px_-12px_rgba(0,0,0,0.8)] backdrop-blur-md overflow-hidden"
+          className="fixed bottom-[76px] sm:bottom-[82px] left-3 right-3 sm:left-6 sm:right-auto sm:w-[372px] z-40 rounded-2xl bg-[#202020] border border-white/10 shadow-[0_18px_42px_-12px_rgba(0,0,0,0.8)] overflow-hidden"
         >
           <div className="p-3.5 sm:p-4 space-y-3">
             <div className="flex items-start justify-between gap-2.5">

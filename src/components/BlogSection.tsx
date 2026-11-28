@@ -25,7 +25,7 @@ import {
   ZoomIn,
 } from 'lucide-react';
 import { AnimatePresence, m } from 'motion/react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useOnlineStatus } from '../hooks/useOnlineStatus.ts';
 import type { BlogPost } from '../types.ts';
@@ -55,6 +55,7 @@ import { ShareButton } from './ShareButton.tsx';
 interface BlogSectionProps {
   posts: BlogPost[];
   onPostViewed: (postId: string, viewsCount: number) => void;
+  onPostUpdated?: (post: BlogPost) => void;
   initialPostId?: string | null;
   onActivePostChange?: (postId: string | null) => void;
 }
@@ -174,7 +175,7 @@ function FilmPosterFrame({
       />
 
       {typeof rating === 'number' && rating > 0 && (
-        <div className="absolute top-3 left-3 inline-flex items-center gap-1 px-2 py-1 rounded-md bg-black/75 backdrop-blur-xs text-[#FDE68A] font-mono text-xs font-semibold tabular-nums">
+        <div className="absolute top-3 left-3 inline-flex items-center gap-1 px-2 py-1 rounded-md bg-black/85 text-[#FDE68A] font-mono text-xs font-semibold tabular-nums">
           <Star className="w-3 h-3 fill-[#FACC15] text-[#FACC15]" strokeWidth={1.75} />
           <span>{rating.toFixed(1)}</span>
           <span className="text-white/55 text-[10px]">/10</span>
@@ -626,9 +627,10 @@ function BlogYouTubeVideoCard({ video }: { video: BlogYoutubeMediaItem }) {
   );
 }
 
-export function BlogSection({
+export const BlogSection = memo(function BlogSection({
   posts,
   onPostViewed,
+  onPostUpdated,
   initialPostId,
   onActivePostChange,
 }: BlogSectionProps) {
@@ -645,9 +647,11 @@ export function BlogSection({
   const [revealedSpoilerIds, setRevealedSpoilerIds] = useState<Record<string, boolean>>({});
   const [readProgress, setReadProgress] = useState(0);
   const [mastheadFailed, setMastheadFailed] = useState(false);
+  const [loadingPostId, setLoadingPostId] = useState<string | null>(null);
 
   const modalScrollRef = useRef<HTMLDivElement | null>(null);
   const handledDeepLinkRef = useRef<string | null>(null);
+  const fetchingPostIdsRef = useRef<Set<string>>(new Set());
   const { getTouchProps, isTouchActive } = useTouchFeedback();
 
   useEffect(() => {
@@ -810,6 +814,32 @@ export function BlogSection({
       });
   };
 
+  const hydrateBlogPost = useCallback(
+    async (post: BlogPost) => {
+      if (!post.contentTruncated || fetchingPostIdsRef.current.has(post.id)) return;
+      fetchingPostIdsRef.current.add(post.id);
+      setLoadingPostId(post.id);
+      try {
+        const res = await fetch(`/api/blog/${encodeURIComponent(post.id)}/read`);
+        if (!res.ok) return;
+        const data = (await res.json()) as { content?: string };
+        if (typeof data.content === 'string') {
+          onPostUpdated?.({
+            ...post,
+            content: data.content,
+            contentTruncated: false,
+          });
+        }
+      } catch {
+        // Keep truncated preview offline or on transient network error
+      } finally {
+        fetchingPostIdsRef.current.delete(post.id);
+        setLoadingPostId((prev) => (prev === post.id ? null : prev));
+      }
+    },
+    [onPostUpdated]
+  );
+
   useEffect(() => {
     if (!initialPostId) {
       handledDeepLinkRef.current = null;
@@ -823,8 +853,11 @@ export function BlogSection({
       setPlayingTrackId(null);
       setReadProgress(0);
       trackPostView(matched.id);
+      if (matched.contentTruncated) {
+        void hydrateBlogPost(matched);
+      }
     }
-  }, [initialPostId, posts]);
+  }, [initialPostId, posts, hydrateBlogPost]);
 
   useEffect(() => {
     if (activePost) {
@@ -855,6 +888,9 @@ export function BlogSection({
     setReadProgress(0);
     onActivePostChange?.(post.id);
     trackPostView(post.id);
+    if (post.contentTruncated) {
+      void hydrateBlogPost(post);
+    }
     if (modalScrollRef.current) {
       modalScrollRef.current.scrollTop = 0;
     }
@@ -1788,6 +1824,12 @@ export function BlogSection({
                           largeText ? 'text-lg' : 'text-base'
                         }`}
                       >
+                        {loadingPostId === activePost.id && activePost.contentTruncated && (
+                          <div className="flex items-center gap-2 text-xs text-[#787872] dark:text-[#A8A49B]">
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            <span>Завантаження повного тексту...</span>
+                          </div>
+                        )}
                         {activeBlocks.map((block, index) => {
                           if (block.type === 'paragraph') {
                             const isPullQuote = block.text.trim().startsWith('>');
@@ -2031,4 +2073,4 @@ export function BlogSection({
         )}
     </section>
   );
-}
+});

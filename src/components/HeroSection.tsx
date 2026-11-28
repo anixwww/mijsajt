@@ -17,8 +17,9 @@ import {
   X,
 } from 'lucide-react';
 import { AnimatePresence, m, type Variants } from 'motion/react';
-import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { memo, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import { useViewportActivity } from '../hooks/useViewportActivity.ts';
 import type {
   FeedbackRecord,
   GuestUser,
@@ -230,7 +231,7 @@ function HomeActionIcon({ kind }: { kind: 'about' | 'contact' | 'monobank' | 'in
   );
 }
 
-export function HeroSection({
+export const HeroSection = memo(function HeroSection({
   heroLeadText: _heroLeadText,
   authorAboutText,
   authorPhotoUrl,
@@ -312,6 +313,8 @@ export function HeroSection({
       : null;
 
   const [failedPhotoUrls, setFailedPhotoUrls] = useState<Record<string, true>>({});
+  const galleryRef = useRef<HTMLDivElement | null>(null);
+  const galleryActivity = useViewportActivity(galleryRef);
 
   const galleryPhotos = useMemo(() => {
     const raw = (authorPhotos && authorPhotos.length > 0 ? authorPhotos : [authorPhotoUrl])
@@ -422,13 +425,20 @@ export function HeroSection({
   }, [galleryPhotos, prevPhotoIndex, nextPhotoIndex, safePhotoIndex]);
 
   useEffect(() => {
-    if (galleryPhotos.length <= 1 || isGalleryPaused || activeModal !== null) return;
+    if (
+      galleryPhotos.length <= 1 ||
+      isGalleryPaused ||
+      activeModal !== null ||
+      !galleryActivity.isActive
+    ) {
+      return;
+    }
     const timer = window.setInterval(() => {
       setPhotoDirection(1);
       setActivePhotoIndex((prev) => (prev + 1) % galleryPhotos.length);
     }, 4800);
     return () => window.clearInterval(timer);
-  }, [galleryPhotos.length, isGalleryPaused, activeModal, safePhotoIndex]);
+  }, [galleryPhotos.length, isGalleryPaused, activeModal, safePhotoIndex, galleryActivity.isActive]);
 
   const handleNextGalleryPhoto = () => {
     if (galleryPhotos.length <= 1) return;
@@ -866,11 +876,17 @@ export function HeroSection({
               {/* Nebula glow layers */}
               <span
                 aria-hidden="true"
-                className="pointer-events-none absolute -left-2 -top-2 w-7 h-7 rounded-full bg-[#6366F1]/30 blur-md group-hover:bg-[#818CF8]/45 transition-colors duration-300"
+                style={{
+                  background: 'radial-gradient(circle, rgba(99, 102, 241, 0.36) 0%, transparent 72%)',
+                }}
+                className="pointer-events-none absolute -left-2 -top-2 w-8 h-8 rounded-full opacity-85 group-hover:opacity-100 transition-opacity duration-300"
               />
               <span
                 aria-hidden="true"
-                className="pointer-events-none absolute -right-2 -bottom-2 w-7 h-7 rounded-full bg-[#A855F7]/25 blur-md group-hover:bg-[#C084FC]/40 transition-colors duration-300"
+                style={{
+                  background: 'radial-gradient(circle, rgba(168, 85, 247, 0.3) 0%, transparent 72%)',
+                }}
+                className="pointer-events-none absolute -right-2 -bottom-2 w-8 h-8 rounded-full opacity-85 group-hover:opacity-100 transition-opacity duration-300"
               />
 
               {/* Subtle starfield inside the button */}
@@ -965,11 +981,19 @@ export function HeroSection({
                 <>
                   <span
                     aria-hidden="true"
-                    className="pointer-events-none absolute -left-2 -top-2 w-8 h-8 rounded-full bg-[#F59E0B]/40 blur-md animate-pulse"
+                    style={{
+                      background: 'radial-gradient(circle, rgba(245, 158, 11, 0.45) 0%, transparent 72%)',
+                    }}
+                    className={`pointer-events-none absolute -left-2 -top-2 w-9 h-9 rounded-full ${
+                      galleryActivity.isVisible && !galleryActivity.reducedMotion ? 'animate-pulse' : ''
+                    }`}
                   />
                   <span
                     aria-hidden="true"
-                    className="pointer-events-none absolute -right-2 -bottom-2 w-8 h-8 rounded-full bg-[#D97706]/35 blur-md"
+                    style={{
+                      background: 'radial-gradient(circle, rgba(217, 119, 6, 0.38) 0%, transparent 72%)',
+                    }}
+                    className="pointer-events-none absolute -right-2 -bottom-2 w-9 h-9 rounded-full"
                   />
                   <span className="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-[#F59E0B] ring-2 ring-[#261502] animate-ping" />
                   <span className="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-[#FCD34D] ring-2 ring-[#261502]" />
@@ -998,11 +1022,17 @@ export function HeroSection({
                   {/* Aurora emerald-cyan glow layers */}
                   <span
                     aria-hidden="true"
-                    className="pointer-events-none absolute -left-2 -top-2 w-7 h-7 rounded-full bg-[#10B981]/30 blur-md group-hover:bg-[#34D399]/45 transition-colors duration-300"
+                    style={{
+                      background: 'radial-gradient(circle, rgba(16, 185, 129, 0.36) 0%, transparent 72%)',
+                    }}
+                    className="pointer-events-none absolute -left-2 -top-2 w-8 h-8 rounded-full opacity-85 group-hover:opacity-100 transition-opacity duration-300"
                   />
                   <span
                     aria-hidden="true"
-                    className="pointer-events-none absolute -right-2 -bottom-2 w-7 h-7 rounded-full bg-[#06B6D4]/25 blur-md group-hover:bg-[#22D3EE]/40 transition-colors duration-300"
+                    style={{
+                      background: 'radial-gradient(circle, rgba(6, 182, 212, 0.3) 0%, transparent 72%)',
+                    }}
+                    className="pointer-events-none absolute -right-2 -bottom-2 w-8 h-8 rounded-full opacity-85 group-hover:opacity-100 transition-opacity duration-300"
                   />
 
                   {/* Subtle aurora glints inside the button */}
@@ -1122,6 +1152,7 @@ export function HeroSection({
 
         {/* Full-Width Frameless Author Photo Gallery */}
         <m.div
+          ref={galleryRef}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.42, delay: 0.14, ease: [0.16, 1, 0.3, 1] }}
@@ -1181,7 +1212,7 @@ export function HeroSection({
                   handlePrevGalleryPhoto();
                 }}
                 aria-label="Попереднє фото"
-                className="absolute left-3 sm:left-5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/32 hover:bg-black/52 text-white backdrop-blur-xs inline-flex items-center justify-center opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity duration-200 cursor-pointer"
+                className="absolute left-3 sm:left-5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/55 hover:bg-black/75 text-white inline-flex items-center justify-center opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity duration-200 cursor-pointer"
               >
                 <ChevronLeft className="w-4 h-4" strokeWidth={2} />
               </button>
@@ -1193,7 +1224,7 @@ export function HeroSection({
                   handleNextGalleryPhoto();
                 }}
                 aria-label="Наступне фото"
-                className="absolute right-3 sm:right-5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/32 hover:bg-black/52 text-white backdrop-blur-xs inline-flex items-center justify-center opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity duration-200 cursor-pointer"
+                className="absolute right-3 sm:right-5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/55 hover:bg-black/75 text-white inline-flex items-center justify-center opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity duration-200 cursor-pointer"
               >
                 <ChevronRight className="w-4 h-4" strokeWidth={2} />
               </button>
@@ -1262,7 +1293,7 @@ export function HeroSection({
                 key={key}
                 type="button"
                 onClick={() => handleOpenModal(key)}
-                className="touch-surface group w-full text-left bg-[#FAFBF8]/90 dark:bg-[#262626] backdrop-blur-xs hover:bg-white dark:hover:bg-[#323232] rounded-2xl px-3.5 py-3 shadow-[0_12px_28px_-20px_rgba(17,30,22,0.26)] dark:shadow-[0_14px_30px_-18px_rgba(0,0,0,0.68)] flex items-center gap-3.5 transition-all duration-150 active:scale-[0.985] cursor-pointer"
+                className="touch-surface group w-full text-left bg-[#FAFBF8] dark:bg-[#262626] hover:bg-white dark:hover:bg-[#323232] rounded-2xl px-3.5 py-3 shadow-[0_12px_28px_-20px_rgba(17,30,22,0.26)] dark:shadow-[0_14px_30px_-18px_rgba(0,0,0,0.68)] flex items-center gap-3.5 transition-all duration-150 active:scale-[0.985] cursor-pointer"
               >
                 <span
                   className="w-10 h-10 rounded-[11px] inline-flex items-center justify-center shrink-0 transition-all duration-150 group-hover:scale-[1.04] shadow-xs bg-[#EAE7DF] dark:bg-[#323232] text-[#5C5C58] dark:text-[#C4BFB4] group-hover:text-[#141413] dark:group-hover:text-[#F4F1EA]"
@@ -1947,4 +1978,4 @@ export function HeroSection({
         )}
     </section>
   );
-}
+});

@@ -14,7 +14,7 @@ import {
   WifiOff,
 } from 'lucide-react';
 import { m } from 'motion/react';
-import { useMemo, useState, type FormEvent, type KeyboardEvent } from 'react';
+import { memo, useMemo, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { useOnlineStatus } from '../hooks/useOnlineStatus.ts';
 import {
   RADIO_STATIONS,
@@ -144,7 +144,7 @@ function TrackArtwork({
   );
 }
 
-export function RadioSection({
+export const RadioSection = memo(function RadioSection({
   allTracks,
   activeStation,
   onSelectStation,
@@ -514,11 +514,19 @@ export function RadioSection({
           {/* Soft ambient lighting */}
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute -top-24 left-1/2 -translate-x-1/2 w-[380px] h-[220px] rounded-full bg-[#74962A]/10 dark:bg-white/[0.04] blur-3xl"
+            style={{
+              background:
+                'radial-gradient(ellipse at center, rgba(116, 150, 42, 0.14) 0%, transparent 72%)',
+            }}
+            className="pointer-events-none absolute -top-24 left-1/2 -translate-x-1/2 w-[420px] h-[240px] rounded-full"
           />
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute -bottom-24 left-1/2 -translate-x-1/2 w-[300px] h-[160px] rounded-full bg-[#2C5937]/8 dark:bg-white/[0.03] blur-3xl"
+            style={{
+              background:
+                'radial-gradient(ellipse at center, rgba(44, 89, 55, 0.1) 0%, transparent 72%)',
+            }}
+            className="pointer-events-none absolute -bottom-24 left-1/2 -translate-x-1/2 w-[340px] h-[180px] rounded-full"
           />
 
           {/* Delicate corner botanical filigree */}
@@ -612,11 +620,17 @@ export function RadioSection({
               {/* Nebula glow layers */}
               <span
                 aria-hidden="true"
-                className="pointer-events-none absolute -left-5 -top-5 w-20 h-20 rounded-full bg-[#6366F1]/25 blur-xl group-hover:bg-[#818CF8]/40 transition-colors duration-300"
+                style={{
+                  background: 'radial-gradient(circle, rgba(99, 102, 241, 0.34) 0%, transparent 72%)',
+                }}
+                className="pointer-events-none absolute -left-5 -top-5 w-24 h-24 rounded-full opacity-80 group-hover:opacity-100 transition-opacity duration-300"
               />
               <span
                 aria-hidden="true"
-                className="pointer-events-none absolute -right-5 -bottom-5 w-20 h-20 rounded-full bg-[#A855F7]/20 blur-xl group-hover:bg-[#C084FC]/35 transition-colors duration-300"
+                style={{
+                  background: 'radial-gradient(circle, rgba(168, 85, 247, 0.28) 0%, transparent 72%)',
+                }}
+                className="pointer-events-none absolute -right-5 -bottom-5 w-24 h-24 rounded-full opacity-80 group-hover:opacity-100 transition-opacity duration-300"
               />
 
               {/* Subtle starfield inside the button */}
@@ -1088,4 +1102,4 @@ export function RadioSection({
       </div>
     </section>
   );
-}
+});

@@ -4,7 +4,8 @@
  */
 
 import { Check, Loader2, MessageSquare, Pencil, Send, Star, Trash2, User, X } from 'lucide-react';
-import { useEffect, useState, type FormEvent } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactElement } from 'react';
+import { List, useDynamicRowHeight, type RowComponentProps } from 'react-window';
 import type { GuestUser, Poem, ProseWork, ReviewItem, StoreProduct } from '../types.ts';
 import { trackClick } from '../utils/analytics.ts';
 import { UserRankBadges } from './UserRankBadges.tsx';
@@ -50,6 +51,252 @@ function ReviewAvatar({ photoUrl, name }: { photoUrl?: string; name: string }) {
     <span className="w-5 h-5 rounded-full bg-[#EFECE6] dark:bg-[#323232] flex items-center justify-center text-[#5C5C58] dark:text-[#A8A49B] shrink-0">
       <User className="w-3 h-3" />
     </span>
+  );
+}
+
+interface ReviewRowData {
+  reviews: ReviewItem[];
+  compact: boolean;
+  isAdmin: boolean;
+  guestUserUid?: string;
+  guestUserFirebaseUid?: string;
+  editingReviewId: string | null;
+  editCommentText: string;
+  editSubmitting: boolean;
+  editError: string | null;
+  confirmDeleteId: string | null;
+  deleteSubmittingId: string | null;
+  onStartEdit: (rev: ReviewItem) => void;
+  onCancelEdit: () => void;
+  onEditTextChange: (value: string) => void;
+  onSaveEdit: (reviewId: string) => void;
+  onToggleConfirmDelete: (reviewId: string) => void;
+  onConfirmDelete: (reviewId: string) => void;
+}
+
+const ReviewCard = memo(function ReviewCard({
+  rev,
+  compact,
+  canModify,
+  isEditing,
+  editCommentText,
+  editSubmitting,
+  editError,
+  isConfirmingDelete,
+  deleteSubmitting,
+  onStartEdit,
+  onCancelEdit,
+  onEditTextChange,
+  onSaveEdit,
+  onToggleConfirmDelete,
+  onConfirmDelete,
+}: {
+  rev: ReviewItem;
+  compact: boolean;
+  canModify: boolean;
+  isEditing: boolean;
+  editCommentText: string;
+  editSubmitting: boolean;
+  editError: string | null;
+  isConfirmingDelete: boolean;
+  deleteSubmitting: boolean;
+  onStartEdit: (rev: ReviewItem) => void;
+  onCancelEdit: () => void;
+  onEditTextChange: (value: string) => void;
+  onSaveEdit: (reviewId: string) => void;
+  onToggleConfirmDelete: (reviewId: string) => void;
+  onConfirmDelete: (reviewId: string) => void;
+}) {
+  return (
+    <div
+      className={
+        compact
+          ? 'p-3.5 bg-[#FAF9F5] dark:bg-[#262626] rounded-xl space-y-1.5'
+          : 'p-4 bg-white dark:bg-[#262626] rounded-xl space-y-2'
+      }
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <ReviewAvatar photoUrl={rev.authorPhotoUrl} name={rev.authorName} />
+          <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+            <span className="text-xs font-semibold text-[#141413] dark:text-[#F4F1EA] truncate max-w-full">
+              {rev.authorName}
+            </span>
+            <UserRankBadges badges={rev.authorBadges} size="xs" />
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 text-[11px] text-[#5C5C58] dark:text-[#A8A49B] font-mono tabular-nums">
+          {typeof rev.rating === 'number' && (
+            <>
+              <span className="inline-flex items-center gap-1 text-[#141413] dark:text-[#F4F1EA] font-medium">
+                <Star className="w-3 h-3 fill-[#FACC15] text-[#EAB308]" strokeWidth={1.75} />
+                <span>{rev.rating.toFixed(1)}</span>
+              </span>
+              <span aria-hidden="true">·</span>
+            </>
+          )}
+          <span>
+            {new Date(rev.createdAt).toLocaleDateString('uk-UA', {
+              day: 'numeric',
+              month: 'short',
+            })}
+          </span>
+
+          {canModify && !isEditing && (
+            <div className="flex items-center gap-1 ml-1.5 pl-1.5 border-l border-black/10 dark:border-white/10">
+              <button
+                type="button"
+                onClick={() => onStartEdit(rev)}
+                title="Редагувати коментар"
+                aria-label="Редагувати коментар"
+                className="p-1 rounded text-[#7A7870] hover:text-[#141413] dark:text-[#A6A196] dark:hover:text-[#F4F1EA] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+              >
+                <Pencil className="w-3 h-3" />
+              </button>
+              <button
+                type="button"
+                onClick={() => onToggleConfirmDelete(rev.id)}
+                title="Видалити коментар"
+                aria-label="Видалити коментар"
+                className="p-1 rounded text-[#7A7870] hover:text-rose-600 dark:text-[#A6A196] dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer"
+              >
+                <Trash2 className="w-3 h-3" />
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {isConfirmingDelete && (
+        <div className="mt-2 p-2.5 rounded-lg bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/40 flex flex-wrap items-center justify-between gap-2 text-xs text-rose-800 dark:text-rose-300">
+          <span className="font-medium">Видалити цей коментар?</span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={deleteSubmitting}
+              onClick={() => onToggleConfirmDelete(rev.id)}
+              className="px-2.5 py-1 rounded-md bg-white/70 dark:bg-black/30 hover:bg-white dark:hover:bg-black/50 transition-colors cursor-pointer"
+            >
+              Скасувати
+            </button>
+            <button
+              type="button"
+              disabled={deleteSubmitting}
+              onClick={() => onConfirmDelete(rev.id)}
+              className="px-2.5 py-1 rounded-md bg-rose-600 text-white font-semibold hover:bg-rose-700 transition-colors cursor-pointer disabled:opacity-50"
+            >
+              {deleteSubmitting ? 'Видалення...' : 'Так, видалити'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {isEditing ? (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            onSaveEdit(rev.id);
+          }}
+          className="mt-2 space-y-2 pt-1"
+        >
+          <textarea
+            rows={2}
+            maxLength={1500}
+            value={editCommentText}
+            onChange={(e) => onEditTextChange(e.target.value)}
+            className="input-editorial w-full text-xs sm:text-sm"
+            autoFocus
+          />
+          {editError && (
+            <p className="text-xs text-rose-700 dark:text-rose-400 font-medium">{editError}</p>
+          )}
+          <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              disabled={editSubmitting}
+              onClick={onCancelEdit}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium text-[#7A7870] dark:text-[#A6A196] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+            >
+              Скасувати
+            </button>
+            <button
+              type="submit"
+              disabled={editSubmitting || !editCommentText.trim()}
+              className="btn-editorial-primary px-3 py-1.5 text-xs font-semibold gap-1.5 disabled:opacity-45"
+            >
+              {editSubmitting ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : (
+                <Check className="w-3 h-3" />
+              )}
+              <span>Зберегти</span>
+            </button>
+          </div>
+        </form>
+      ) : (
+        <p className="text-sm text-[#444440] dark:text-[#C5C1B8] leading-relaxed whitespace-pre-wrap">
+          {rev.comment}
+        </p>
+      )}
+    </div>
+  );
+});
+
+function ReviewRow({
+  ariaAttributes,
+  index,
+  style,
+  reviews,
+  compact,
+  isAdmin,
+  guestUserUid,
+  guestUserFirebaseUid,
+  editingReviewId,
+  editCommentText,
+  editSubmitting,
+  editError,
+  confirmDeleteId,
+  deleteSubmittingId,
+  onStartEdit,
+  onCancelEdit,
+  onEditTextChange,
+  onSaveEdit,
+  onToggleConfirmDelete,
+  onConfirmDelete,
+}: RowComponentProps<ReviewRowData>): ReactElement | null {
+  const rev = reviews[index];
+  if (!rev) return null;
+  const canModify = Boolean(
+    isAdmin ||
+      (guestUserUid &&
+        (rev.authorUid === guestUserUid ||
+          (guestUserFirebaseUid && rev.authorUid === guestUserFirebaseUid)))
+  );
+  const spacingClass =
+    index < reviews.length - 1 ? (compact ? 'pb-2.5' : 'pb-3') : '';
+  return (
+    <div {...ariaAttributes} style={style}>
+      <div className={spacingClass}>
+        <ReviewCard
+          rev={rev}
+          compact={compact}
+          canModify={canModify}
+          isEditing={editingReviewId === rev.id}
+          editCommentText={editCommentText}
+          editSubmitting={editSubmitting}
+          editError={editError}
+          isConfirmingDelete={confirmDeleteId === rev.id}
+          deleteSubmitting={deleteSubmittingId === rev.id}
+          onStartEdit={onStartEdit}
+          onCancelEdit={onCancelEdit}
+          onEditTextChange={onEditTextChange}
+          onSaveEdit={onSaveEdit}
+          onToggleConfirmDelete={onToggleConfirmDelete}
+          onConfirmDelete={onConfirmDelete}
+        />
+      </div>
+    </div>
   );
 }
 
@@ -310,6 +557,69 @@ export function ReviewsBlock({
     }
   };
 
+  const saveEditRef = useRef(handleSaveEdit);
+  saveEditRef.current = handleSaveEdit;
+  const deleteRef = useRef(handleDelete);
+  deleteRef.current = handleDelete;
+
+  const stableStartEdit = useCallback((rev: ReviewItem) => handleStartEdit(rev), []);
+  const stableCancelEdit = useCallback(() => handleCancelEdit(), []);
+  const stableSaveEdit = useCallback((reviewId: string) => {
+    void saveEditRef.current(reviewId);
+  }, []);
+  const stableToggleConfirmDelete = useCallback((reviewId: string) => {
+    setConfirmDeleteId((prev) => (prev === reviewId ? null : reviewId));
+  }, []);
+  const stableConfirmDelete = useCallback((reviewId: string) => {
+    void deleteRef.current(reviewId);
+  }, []);
+
+  const shouldVirtualize = localReviews.length > 15;
+  const dynamicRowHeight = useDynamicRowHeight({
+    defaultRowHeight: compact ? 92 : 108,
+    key: `${targetId}:${localReviews.length}:${editingReviewId ?? ''}:${confirmDeleteId ?? ''}`,
+  });
+
+  const reviewRowProps = useMemo<ReviewRowData>(
+    () => ({
+      reviews: localReviews,
+      compact,
+      isAdmin,
+      guestUserUid: guestUser?.uid,
+      guestUserFirebaseUid: guestUser?.firebaseUid,
+      editingReviewId,
+      editCommentText,
+      editSubmitting,
+      editError,
+      confirmDeleteId,
+      deleteSubmittingId,
+      onStartEdit: stableStartEdit,
+      onCancelEdit: stableCancelEdit,
+      onEditTextChange: setEditCommentText,
+      onSaveEdit: stableSaveEdit,
+      onToggleConfirmDelete: stableToggleConfirmDelete,
+      onConfirmDelete: stableConfirmDelete,
+    }),
+    [
+      localReviews,
+      compact,
+      isAdmin,
+      guestUser?.uid,
+      guestUser?.firebaseUid,
+      editingReviewId,
+      editCommentText,
+      editSubmitting,
+      editError,
+      confirmDeleteId,
+      deleteSubmittingId,
+      stableStartEdit,
+      stableCancelEdit,
+      stableSaveEdit,
+      stableToggleConfirmDelete,
+      stableConfirmDelete,
+    ]
+  );
+
   const submitLabel = submitting
     ? 'Надсилання...'
     : hasSelectedRating && hasComment
@@ -450,157 +760,50 @@ export function ReviewsBlock({
       )}
 
       {/* Existing Reviews List */}
-      {localReviews.length > 0 && (
-        <div className={compact ? 'space-y-2.5' : 'space-y-3'}>
-          {localReviews.map((rev) => {
-            const canModify = Boolean(
-              isAdmin ||
-                (guestUser &&
-                  (rev.authorUid === guestUser.uid ||
-                    (guestUser.firebaseUid && rev.authorUid === guestUser.firebaseUid)))
-            );
-            const isEditing = editingReviewId === rev.id;
-            const isConfirmingDelete = confirmDeleteId === rev.id;
-
-            return (
-              <div
-                key={rev.id}
-                className={
-                  compact
-                    ? 'p-3.5 bg-[#FAF9F5] dark:bg-[#262626] rounded-xl space-y-1.5'
-                    : 'p-4 bg-white dark:bg-[#262626] rounded-xl space-y-2'
-                }
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2 min-w-0 flex-1">
-                    <ReviewAvatar photoUrl={rev.authorPhotoUrl} name={rev.authorName} />
-                    <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-                      <span className="text-xs font-semibold text-[#141413] dark:text-[#F4F1EA] truncate max-w-full">
-                        {rev.authorName}
-                      </span>
-                      <UserRankBadges badges={rev.authorBadges} size="xs" />
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 text-[11px] text-[#5C5C58] dark:text-[#A8A49B] font-mono tabular-nums">
-                    {typeof rev.rating === 'number' && (
-                      <>
-                        <span className="inline-flex items-center gap-1 text-[#141413] dark:text-[#F4F1EA] font-medium">
-                          <Star className="w-3 h-3 fill-[#FACC15] text-[#EAB308]" strokeWidth={1.75} />
-                          <span>{rev.rating.toFixed(1)}</span>
-                        </span>
-                        <span aria-hidden="true">·</span>
-                      </>
-                    )}
-                    <span>
-                      {new Date(rev.createdAt).toLocaleDateString('uk-UA', {
-                        day: 'numeric',
-                        month: 'short',
-                      })}
-                    </span>
-
-                    {/* Admin or comment author actions */}
-                    {canModify && !isEditing && (
-                      <div className="flex items-center gap-1 ml-1.5 pl-1.5 border-l border-black/10 dark:border-white/10">
-                        <button
-                          type="button"
-                          onClick={() => handleStartEdit(rev)}
-                          title="Редагувати коментар"
-                          aria-label="Редагувати коментар"
-                          className="p-1 rounded text-[#7A7870] hover:text-[#141413] dark:text-[#A6A196] dark:hover:text-[#F4F1EA] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
-                        >
-                          <Pencil className="w-3 h-3" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setConfirmDeleteId(isConfirmingDelete ? null : rev.id)}
-                          title="Видалити коментар"
-                          aria-label="Видалити коментар"
-                          className="p-1 rounded text-[#7A7870] hover:text-rose-600 dark:text-[#A6A196] dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {isConfirmingDelete && (
-                  <div className="mt-2 p-2.5 rounded-lg bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/40 flex flex-wrap items-center justify-between gap-2 text-xs text-rose-800 dark:text-rose-300">
-                    <span className="font-medium">Видалити цей коментар?</span>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        disabled={deleteSubmittingId === rev.id}
-                        onClick={() => setConfirmDeleteId(null)}
-                        className="px-2.5 py-1 rounded-md bg-white/70 dark:bg-black/30 hover:bg-white dark:hover:bg-black/50 transition-colors cursor-pointer"
-                      >
-                        Скасувати
-                      </button>
-                      <button
-                        type="button"
-                        disabled={deleteSubmittingId === rev.id}
-                        onClick={() => void handleDelete(rev.id)}
-                        className="px-2.5 py-1 rounded-md bg-rose-600 text-white font-semibold hover:bg-rose-700 transition-colors cursor-pointer disabled:opacity-50"
-                      >
-                        {deleteSubmittingId === rev.id ? 'Видалення...' : 'Так, видалити'}
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {isEditing ? (
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      void handleSaveEdit(rev.id);
-                    }}
-                    className="mt-2 space-y-2 pt-1"
-                  >
-                    <textarea
-                      rows={2}
-                      maxLength={1500}
-                      value={editCommentText}
-                      onChange={(e) => setEditCommentText(e.target.value)}
-                      className="input-editorial w-full text-xs sm:text-sm"
-                      autoFocus
-                    />
-                    {editError && (
-                      <p className="text-xs text-rose-700 dark:text-rose-400 font-medium">{editError}</p>
-                    )}
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        type="button"
-                        disabled={editSubmitting}
-                        onClick={handleCancelEdit}
-                        className="px-3 py-1.5 rounded-lg text-xs font-medium text-[#7A7870] dark:text-[#A6A196] hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
-                      >
-                        Скасувати
-                      </button>
-                      <button
-                        type="submit"
-                        disabled={editSubmitting || !editCommentText.trim()}
-                        className="btn-editorial-primary px-3 py-1.5 text-xs font-semibold gap-1.5 disabled:opacity-45"
-                      >
-                        {editSubmitting ? (
-                          <Loader2 className="w-3 h-3 animate-spin" />
-                        ) : (
-                          <Check className="w-3 h-3" />
-                        )}
-                        <span>Зберегти</span>
-                      </button>
-                    </div>
-                  </form>
-                ) : (
-                  <p className="text-sm text-[#444440] dark:text-[#C5C1B8] leading-relaxed whitespace-pre-wrap">
-                    {rev.comment}
-                  </p>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
+      {localReviews.length > 0 &&
+        (shouldVirtualize ? (
+          <div className="h-[460px] w-full overflow-hidden">
+            <List
+              rowCount={localReviews.length}
+              rowHeight={dynamicRowHeight}
+              rowComponent={ReviewRow}
+              rowProps={reviewRowProps}
+              overscanCount={4}
+              className="h-full w-full overflow-x-hidden pr-1"
+            />
+          </div>
+        ) : (
+          <div className={compact ? 'space-y-2.5' : 'space-y-3'}>
+            {localReviews.map((rev) => {
+              const canModify = Boolean(
+                isAdmin ||
+                  (guestUser &&
+                    (rev.authorUid === guestUser.uid ||
+                      (guestUser.firebaseUid && rev.authorUid === guestUser.firebaseUid)))
+              );
+              return (
+                <ReviewCard
+                  key={rev.id}
+                  rev={rev}
+                  compact={compact}
+                  canModify={canModify}
+                  isEditing={editingReviewId === rev.id}
+                  editCommentText={editCommentText}
+                  editSubmitting={editSubmitting}
+                  editError={editError}
+                  isConfirmingDelete={confirmDeleteId === rev.id}
+                  deleteSubmitting={deleteSubmittingId === rev.id}
+                  onStartEdit={stableStartEdit}
+                  onCancelEdit={stableCancelEdit}
+                  onEditTextChange={setEditCommentText}
+                  onSaveEdit={stableSaveEdit}
+                  onToggleConfirmDelete={stableToggleConfirmDelete}
+                  onConfirmDelete={stableConfirmDelete}
+                />
+              );
+            })}
+          </div>
+        ))}
     </div>
   );
 }

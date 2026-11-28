@@ -1188,7 +1188,7 @@ export function WeeklyMusicBox({
           role="dialog"
           aria-modal="true"
           onClick={() => setLightboxIndex(null)}
-          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 sm:p-8"
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xs flex items-center justify-center p-4 sm:p-8"
         >
           <button
             type="button"

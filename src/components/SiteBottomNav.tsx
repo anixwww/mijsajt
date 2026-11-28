@@ -4,7 +4,8 @@
  */
 
 import { AnimatePresence, LayoutGroup, m } from 'motion/react';
-import { useEffect, useState, type CSSProperties } from 'react';
+import { memo, useEffect, useState, type CSSProperties } from 'react';
+import { usePageVisibility, usePrefersReducedMotion } from '../hooks/useViewportActivity.ts';
 import type { SectionId } from '../types.ts';
 import { useTouchFeedback } from '../utils/useTouchFeedback.ts';
 
@@ -45,7 +46,7 @@ const GARLAND_BULBS: FairyBulbSpec[] = [
   { id: 'b16', leftPct: 94.8, topPx: 7.4, sizePx: 2.5, haloPx: 14, core: '#FFFBEB', glow: 'rgba(251, 191, 36, 0.4)', dur: '5.5s', delay: '2.0s', minOpacity: 0.38, maxOpacity: 0.86 },
 ];
 
-function FestiveBottomIllumination() {
+function FestiveBottomIllumination({ paused }: { paused: boolean }) {
   return (
     <m.div
       aria-hidden="true"
@@ -104,8 +105,11 @@ function FestiveBottomIllumination() {
         return (
           <span
             key={b.id}
-            style={style}
-            className="festive-bulb-twinkle absolute -translate-x-1/2 -translate-y-1/2 flex items-center justify-center"
+            style={{
+              ...style,
+              ...(paused ? { animation: 'none' } : {}),
+            }}
+            className={`${paused ? '' : 'festive-bulb-twinkle '}absolute -translate-x-1/2 -translate-y-1/2 flex items-center justify-center`}
           >
             <span
               className="absolute inset-0 rounded-full"
@@ -224,7 +228,7 @@ const NAV_TABS: NavTabItem[] = [
   { id: 'store', label: 'Крамниця', touchId: 'nav-store' },
 ];
 
-export function SiteBottomNav({
+export const SiteBottomNav = memo(function SiteBottomNav({
   activeSection,
   onNavigate,
   onPrefetchSection,
@@ -233,6 +237,9 @@ export function SiteBottomNav({
   onOpenDrawer,
 }: SiteBottomNavProps) {
   const { getTouchProps, isTouchActive } = useTouchFeedback();
+  const isPageVisible = usePageVisibility();
+  const prefersReducedMotion = usePrefersReducedMotion();
+  const pauseAnimations = !isPageVisible || prefersReducedMotion;
   const storeBadgeCount = cartCount > 0 ? cartCount : unlockedCount;
 
   const [festiveLightsEnabled, setFestiveLightsEnabled] = useState<boolean>(() => {
@@ -317,11 +324,17 @@ export function SiteBottomNav({
                   {/* Warm hearth glow layers */}
                   <span
                     aria-hidden="true"
-                    className="pointer-events-none absolute -left-2 -top-2 w-7 h-7 rounded-full bg-[#F59E0B]/30 blur-md group-hover:bg-[#FBBF24]/45 transition-colors duration-300"
+                    style={{
+                      background: 'radial-gradient(circle, rgba(245, 158, 11, 0.36) 0%, transparent 72%)',
+                    }}
+                    className="pointer-events-none absolute -left-2 -top-2 w-8 h-8 rounded-full opacity-85 group-hover:opacity-100 transition-opacity duration-300"
                   />
                   <span
                     aria-hidden="true"
-                    className="pointer-events-none absolute -right-2 -bottom-2 w-7 h-7 rounded-full bg-[#D97706]/25 blur-md group-hover:bg-[#F59E0B]/40 transition-colors duration-300"
+                    style={{
+                      background: 'radial-gradient(circle, rgba(217, 119, 6, 0.3) 0%, transparent 72%)',
+                    }}
+                    className="pointer-events-none absolute -right-2 -bottom-2 w-8 h-8 rounded-full opacity-85 group-hover:opacity-100 transition-opacity duration-300"
                   />
 
                   {/* Cozy sparks/starfield */}
@@ -332,7 +345,7 @@ export function SiteBottomNav({
                     className="pointer-events-none absolute inset-0 w-full h-full opacity-80 group-hover:opacity-100 transition-opacity duration-300"
                   >
                     <circle cx="8" cy="9" r="0.65" fill="#FEF3C7" opacity="0.8" />
-                    <circle cx="32" cy="8" r="0.8" fill="#FDE68A" opacity="0.9" className="animate-pulse" />
+                    <circle cx="32" cy="8" r="0.8" fill="#FDE68A" opacity="0.9" className={pauseAnimations ? '' : 'animate-pulse'} />
                     <circle cx="9" cy="31" r="0.6" fill="#FCD34D" opacity="0.7" />
                     <circle cx="31" cy="31" r="0.65" fill="#FBBF24" opacity="0.75" />
                   </svg>
@@ -409,10 +422,10 @@ export function SiteBottomNav({
       <AnimatePresence>
         {festiveLightsEnabled && (
           <div className="absolute inset-0 z-35 pointer-events-none overflow-hidden rounded-t-[20px]">
-            <FestiveBottomIllumination key="festive-lights" />
+            <FestiveBottomIllumination key="festive-lights" paused={pauseAnimations} />
           </div>
         )}
       </AnimatePresence>
     </nav>
   );
-}
+});

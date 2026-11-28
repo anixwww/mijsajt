@@ -1,4 +1,5 @@
-import { useEffect, useRef } from 'react';
+import { memo, useEffect, useRef } from 'react';
+import { useViewportActivity } from '../hooks/useViewportActivity.ts';
 import {
   computeLiveFrequencyBands,
   getLiveRadioProgress,
@@ -18,7 +19,7 @@ interface MinimizedRadioButtonProps {
 const RING_RADIUS = 16.25;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
-export function MinimizedRadioButton({
+export const MinimizedRadioButton = memo(function MinimizedRadioButton({
   isPlaying,
   isMuted,
   volume,
@@ -27,6 +28,8 @@ export function MinimizedRadioButton({
   trackTitle,
   onClick,
 }: MinimizedRadioButtonProps) {
+  const btnRef = useRef<HTMLButtonElement | null>(null);
+  const { isActive: viewportActive, reducedMotion } = useViewportActivity(btnRef);
   const haloRef = useRef<HTMLSpanElement | null>(null);
   const progressCircleRef = useRef<SVGCircleElement | null>(null);
   const progressTrackRef = useRef<SVGCircleElement | null>(null);
@@ -106,11 +109,7 @@ export function MinimizedRadioButton({
       return;
     }
 
-    const prefersReducedMotion =
-      typeof window !== 'undefined' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    if (prefersReducedMotion) {
+    if (reducedMotion || !viewportActive) {
       applyFrame(
         isSilenced ? 0 : 0.4,
         isSilenced ? 0 : 0.5,
@@ -153,10 +152,11 @@ export function MinimizedRadioButton({
     return () => {
       window.cancelAnimationFrame(rafId);
     };
-  }, [isPlaying, isMuted, volume, positionMs, durationMs]);
+  }, [isPlaying, isMuted, volume, positionMs, durationMs, viewportActive, reducedMotion]);
 
   return (
     <button
+      ref={btnRef}
       type="button"
       onClick={onClick}
       aria-label={
@@ -249,4 +249,4 @@ export function MinimizedRadioButton({
       </svg>
     </button>
   );
-}
+});

@@ -73,6 +73,7 @@ export interface Poem {
   year: number;
   excerpt: string;
   content: string;
+  contentTruncated?: boolean;
   note?: string;
   fontSize?: 'sm' | 'base' | 'lg' | 'xl' | '2xl';
   textAlign?: 'left' | 'center' | 'right';
@@ -221,6 +222,7 @@ export interface BlogPost {
   coverImage?: string;
   excerpt: string;
   content: string;
+  contentTruncated?: boolean;
   viewsCount: number;
 }
 

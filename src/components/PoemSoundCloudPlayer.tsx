@@ -325,10 +325,10 @@ export function PoemSoundCloudPlayer({
   return (
     <div
       style={containerStyle}
-      className={`rounded-2xl p-3.5 sm:p-4 space-y-3 backdrop-blur-sm transition-colors ${
+      className={`rounded-2xl p-3.5 sm:p-4 space-y-3 transition-colors ${
         hasCustomBackground
           ? ''
-          : 'bg-[#F5F4EE]/90 dark:bg-[#1E1E1E]/90'
+          : 'bg-[#F5F4EE] dark:bg-[#1E1E1E]'
       }`}
     >
       <div className="flex items-center gap-3">

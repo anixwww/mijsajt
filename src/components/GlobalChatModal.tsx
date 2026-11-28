@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { Check, CornerUpLeft, LogIn, MessagesSquare, Send, Trash2, User, X } from 'lucide-react';
+import { List, useDynamicRowHeight, type ListImperativeAPI, type RowComponentProps } from 'react-window';
 import type { GlobalChatMessage, GuestUser, UserTopBadges } from '../types.ts';
 import { UserRankBadges } from './UserRankBadges.tsx';
 import {
@@ -71,6 +72,258 @@ function formatMessageTime(isoStr: string): string {
   }
 }
 
+interface ChatMessageRowData {
+  messages: GlobalChatMessage[];
+  guestUserUid?: string;
+  guestUserFirebaseUid?: string;
+  isAdmin: boolean;
+  confirmDeleteId: string | null;
+  onReply: (msg: GlobalChatMessage) => void;
+  onDelete: (id: string) => void;
+  onJumpToMessage: (id: string) => void;
+}
+
+const ChatMessageItem = memo(function ChatMessageItem({
+  msg,
+  isLast,
+  guestUserUid,
+  guestUserFirebaseUid,
+  isAdmin,
+  confirmDeleteId,
+  onReply,
+  onDelete,
+  onJumpToMessage,
+}: {
+  msg: GlobalChatMessage;
+  isLast: boolean;
+  guestUserUid?: string;
+  guestUserFirebaseUid?: string;
+  isAdmin: boolean;
+  confirmDeleteId: string | null;
+  onReply: (msg: GlobalChatMessage) => void;
+  onDelete: (id: string) => void;
+  onJumpToMessage: (id: string) => void;
+}) {
+  const isOwn = Boolean(
+    guestUserUid &&
+      (msg.authorUid === guestUserUid ||
+        (guestUserFirebaseUid && msg.authorUid === guestUserFirebaseUid))
+  );
+  const canDelete = isOwn || isAdmin;
+  const isConfirming = confirmDeleteId === msg.id;
+  const isAdminMsg = Boolean(msg.isAdmin);
+  const donorRank = !isAdminMsg ? msg.authorBadges?.donorRank : undefined;
+  const isTop3Donor = donorRank === 1 || donorRank === 2 || donorRank === 3;
+  const isTop1Activity = !isAdminMsg && msg.authorBadges?.activityRank === 1;
+  const hasFramedCard = isTop3Donor || isTop1Activity;
+  const hasDonorCustomText = Boolean(
+    !isAdminMsg &&
+      isTop3Donor &&
+      msg.authorDonorText &&
+      msg.authorDonorText.trim()
+  );
+
+  const outerFrameClass =
+    donorRank === 1
+      ? 'rounded-2xl p-[1.5px] bg-gradient-to-br from-[#FFF1B8] via-[#D4AF37] to-[#F5D061] shadow-[0_12px_32px_-12px_rgba(234,179,8,0.6)]'
+      : donorRank === 2
+        ? 'rounded-2xl p-[1.5px] bg-gradient-to-br from-[#F8FAFC] via-[#94A3B8] to-[#E2E8F0] shadow-[0_12px_30px_-12px_rgba(203,213,225,0.52)]'
+        : donorRank === 3
+          ? 'rounded-2xl p-[1.5px] bg-gradient-to-br from-[#F6C89F] via-[#B87333] to-[#E09F67] shadow-[0_12px_30px_-12px_rgba(217,119,6,0.5)]'
+          : 'rounded-2xl p-[1.5px] bg-gradient-to-br from-[#F3D999]/85 via-[#B8860B]/50 to-[#EBD08A]/80 shadow-[0_10px_28px_-14px_rgba(217,119,6,0.4)]';
+
+  const innerSurfaceClass =
+    donorRank === 1
+      ? 'relative rounded-[14.5px] bg-gradient-to-br from-[#352B14] via-[#272014] to-[#1D180F] ring-1 ring-inset ring-[#FFE89E]/35'
+      : donorRank === 2
+        ? 'relative rounded-[14.5px] bg-gradient-to-br from-[#2B313B] via-[#21262E] to-[#191C23] ring-1 ring-inset ring-[#E2E8F0]/30'
+        : donorRank === 3
+          ? 'relative rounded-[14.5px] bg-gradient-to-br from-[#332217] via-[#271B14] to-[#1E1510] ring-1 ring-inset ring-[#F3BC8D]/30'
+          : 'relative rounded-[14.5px] bg-gradient-to-br from-[#2B271E] via-[#24211B] to-[#1F1D18]';
+
+  const filigreeCornerColor =
+    donorRank === 1
+      ? 'border-[#FFE58F]/85'
+      : donorRank === 2
+        ? 'border-[#E2E8F0]/80'
+        : donorRank === 3
+          ? 'border-[#F3BC8D]/80'
+          : 'border-[#F3D999]/55';
+
+  const avatarRingClass =
+    donorRank === 1
+      ? 'ring-1 ring-[#FFE58F]/85 shadow-[0_0_14px_-3px_rgba(250,204,21,0.65)]'
+      : donorRank === 2
+        ? 'ring-1 ring-[#E2E8F0]/80 shadow-[0_0_12px_-3px_rgba(226,232,240,0.55)]'
+        : donorRank === 3
+          ? 'ring-1 ring-[#F3BC8D]/80 shadow-[0_0_12px_-3px_rgba(217,119,6,0.5)]'
+          : isTop1Activity
+            ? 'ring-1 ring-[#F3D999]/75 shadow-[0_0_12px_-3px_rgba(243,217,153,0.42)]'
+            : '';
+
+  const donorCustomTextColorClass =
+    donorRank === 1
+      ? 'text-[#FDE68A]'
+      : donorRank === 2
+        ? 'text-[#E2E8F0]'
+        : 'text-[#F6CFA9]';
+
+  const messageCardBody = (
+    <div
+      id={hasFramedCard ? undefined : `chat-msg-${msg.id}`}
+      className={`flex items-start gap-2.5 p-2.5 sm:p-3 transition-colors ${
+        hasFramedCard
+          ? innerSurfaceClass
+          : `rounded-xl ${isOwn && !isAdminMsg ? 'bg-[#303531]' : 'bg-[#262626]'}`
+      }`}
+    >
+      {hasFramedCard && (
+        <>
+          <span
+            aria-hidden="true"
+            className={`pointer-events-none absolute top-1.5 left-1.5 w-2.5 h-2.5 border-t border-l rounded-tl-[5px] ${filigreeCornerColor}`}
+          />
+          <span
+            aria-hidden="true"
+            className={`pointer-events-none absolute top-1.5 right-1.5 w-2.5 h-2.5 border-t border-r rounded-tr-[5px] ${filigreeCornerColor}`}
+          />
+          <span
+            aria-hidden="true"
+            className={`pointer-events-none absolute bottom-1.5 left-1.5 w-2.5 h-2.5 border-b border-l rounded-bl-[5px] ${filigreeCornerColor}`}
+          />
+          <span
+            aria-hidden="true"
+            className={`pointer-events-none absolute bottom-1.5 right-1.5 w-2.5 h-2.5 border-b border-r rounded-br-[5px] ${filigreeCornerColor}`}
+          />
+        </>
+      )}
+
+      <div
+        className={`relative z-10 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#323232] flex items-center justify-center overflow-hidden text-[#E5E5E5] shrink-0 mt-0.5 ${avatarRingClass}`}
+      >
+        <ChatAvatar photoUrl={msg.authorPhotoUrl} />
+      </div>
+
+      <div className="relative z-10 min-w-0 flex-1 space-y-1">
+        <div className="flex items-center justify-between gap-2 min-w-0">
+          <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+            <span className="text-xs font-semibold text-[#FAF9F5] truncate max-w-full">
+              {msg.authorName}
+            </span>
+            {!isAdminMsg && <UserRankBadges badges={msg.authorBadges} size="xs" />}
+            {isAdminMsg && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#E5E5E5] text-[#181818] font-semibold shrink-0">
+                Адмін
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="text-[10px] text-[#C4BFB4] tabular-nums whitespace-nowrap">
+              {formatMessageTime(msg.createdAt)}
+            </span>
+            <button
+              type="button"
+              onClick={() => onReply(msg)}
+              title="Відповісти"
+              aria-label={`Відповісти ${msg.authorName}`}
+              className="p-1 rounded text-[#C4BFB4] hover:text-[#FAF9F5] hover:bg-white/10 transition-colors cursor-pointer"
+            >
+              <CornerUpLeft className="w-3.5 h-3.5" />
+            </button>
+            {canDelete && (
+              <button
+                type="button"
+                onClick={() => onDelete(msg.id)}
+                className={`px-1 py-0.5 rounded transition-colors cursor-pointer ${
+                  isConfirming
+                    ? 'bg-red-500 text-white text-[10px] font-semibold px-1.5'
+                    : 'text-[#C4BFB4] hover:text-red-400'
+                }`}
+                title={
+                  isConfirming
+                    ? 'Натисніть ще раз для видалення'
+                    : 'Видалити повідомлення'
+                }
+                aria-label="Видалити повідомлення"
+              >
+                {isConfirming ? 'Видалити?' : <Trash2 className="w-3.5 h-3.5" />}
+              </button>
+            )}
+          </div>
+        </div>
+
+        {hasDonorCustomText && (
+          <p className={`text-[11px] italic leading-snug break-words ${donorCustomTextColorClass}`}>
+            {msg.authorDonorText}
+          </p>
+        )}
+
+        {msg.replyTo && (
+          <button
+            type="button"
+            onClick={() => onJumpToMessage(msg.replyTo!.id)}
+            className="w-full text-left px-2.5 py-1.5 rounded-lg bg-black/28 border border-white/10 hover:bg-black/38 transition-colors cursor-pointer"
+          >
+            <span className="block text-[10px] font-semibold text-[#D6D3CB] truncate">
+              {msg.replyTo.authorName}
+            </span>
+            <span className="block text-[11px] text-[#C4BFB4] truncate">
+              {msg.replyTo.text}
+            </span>
+          </button>
+        )}
+        <p className="text-xs sm:text-[13px] text-[#F4F1EA] leading-relaxed break-words whitespace-pre-wrap">
+          {msg.text}
+        </p>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className={isLast ? 'pb-3 sm:pb-4' : 'pb-2.5'}>
+      {hasFramedCard ? (
+        <div id={`chat-msg-${msg.id}`} className={outerFrameClass}>
+          {messageCardBody}
+        </div>
+      ) : (
+        messageCardBody
+      )}
+    </div>
+  );
+});
+
+function ChatMessageRow({
+  ariaAttributes,
+  index,
+  style,
+  messages,
+  guestUserUid,
+  guestUserFirebaseUid,
+  isAdmin,
+  confirmDeleteId,
+  onReply,
+  onDelete,
+  onJumpToMessage,
+}: RowComponentProps<ChatMessageRowData>): ReactElement | null {
+  const msg = messages[index];
+  if (!msg) return null;
+  return (
+    <div {...ariaAttributes} style={style}>
+      <ChatMessageItem
+        msg={msg}
+        isLast={index === messages.length - 1}
+        guestUserUid={guestUserUid}
+        guestUserFirebaseUid={guestUserFirebaseUid}
+        isAdmin={isAdmin}
+        confirmDeleteId={confirmDeleteId}
+        onReply={onReply}
+        onDelete={onDelete}
+        onJumpToMessage={onJumpToMessage}
+      />
+    </div>
+  );
+}
+
 export function GlobalChatModal({
   isOpen,
   onClose,
@@ -114,7 +367,13 @@ export function GlobalChatModal({
   const authorMetaByUidRef = useRef<Record<string, ChatAuthorMeta>>(
     initialCacheRef.current?.authorMetaByUid || {}
   );
-  const listRef = useRef<HTMLDivElement | null>(null);
+  const listRef = useRef<ListImperativeAPI | null>(null);
+  const messagesCountRef = useRef(messages.length);
+  messagesCountRef.current = messages.length;
+  const dynamicRowHeight = useDynamicRowHeight({
+    defaultRowHeight: 88,
+    key: `${isOpen ? 'open' : 'closed'}-${messages[0]?.id ?? 'empty'}`,
+  });
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const shouldAutoScrollRef = useRef(true);
   const getGuestTokenRef = useRef(getGuestToken);
@@ -122,14 +381,19 @@ export function GlobalChatModal({
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
-  const scrollToBottom = useCallback((smooth = false) => {
-    const el = listRef.current;
-    if (!el) return;
-    el.scrollTo({
-      top: el.scrollHeight,
-      behavior: smooth ? 'smooth' : 'auto',
-    });
-  }, []);
+  const scrollToBottom = useCallback(
+    (smooth = false) => {
+      const api = listRef.current;
+      const count = messagesCountRef.current;
+      if (!api || count <= 0) return;
+      api.scrollToRow({
+        index: count - 1,
+        align: 'end',
+        behavior: smooth ? 'smooth' : 'auto',
+      });
+    },
+    [listRef]
+  );
 
   const scrollToBottomRef = useRef(scrollToBottom);
   scrollToBottomRef.current = scrollToBottom;
@@ -637,12 +901,47 @@ export function GlobalChatModal({
     }
   };
 
-  const handleScroll = () => {
-    const el = listRef.current;
+  const handleScroll = useCallback(() => {
+    const el = listRef.current?.element;
     if (!el) return;
     const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
     shouldAutoScrollRef.current = distFromBottom < 80;
-  };
+  }, [listRef]);
+
+  const handleReplyMessage = useCallback(
+    (msg: GlobalChatMessage) => {
+      if (!guestUser) {
+        onClose();
+        onOpenAuthModal();
+        return;
+      }
+      setReplyingTo(msg);
+      window.requestAnimationFrame(() => inputRef.current?.focus());
+    },
+    [guestUser, onClose, onOpenAuthModal]
+  );
+
+  const handleJumpToMessage = useCallback(
+    (targetId: string) => {
+      const targetIndex = messages.findIndex((m) => m.id === targetId);
+      if (targetIndex >= 0 && listRef.current) {
+        listRef.current.scrollToRow({
+          index: targetIndex,
+          align: 'center',
+          behavior: 'smooth',
+        });
+      }
+    },
+    [listRef, messages]
+  );
+
+  useEffect(() => {
+    if (!isOpen || !shouldAutoScrollRef.current || messages.length === 0) return;
+    const frameId = window.requestAnimationFrame(() => {
+      scrollToBottomRef.current(false);
+    });
+    return () => window.cancelAnimationFrame(frameId);
+  }, [isOpen, messages.length]);
 
   const sendViaHttp = async (params: {
     id: string;
@@ -902,10 +1201,39 @@ export function GlobalChatModal({
     }
   };
 
+  const handleDeleteRef = useRef(handleDelete);
+  handleDeleteRef.current = handleDelete;
+  const stableDeleteHandler = useCallback((id: string) => {
+    void handleDeleteRef.current(id);
+  }, []);
+
+  const chatRowProps = useMemo<ChatMessageRowData>(
+    () => ({
+      messages,
+      guestUserUid: guestUser?.uid,
+      guestUserFirebaseUid: guestUser?.firebaseUid,
+      isAdmin,
+      confirmDeleteId,
+      onReply: handleReplyMessage,
+      onDelete: stableDeleteHandler,
+      onJumpToMessage: handleJumpToMessage,
+    }),
+    [
+      messages,
+      guestUser?.uid,
+      guestUser?.firebaseUid,
+      isAdmin,
+      confirmDeleteId,
+      handleReplyMessage,
+      stableDeleteHandler,
+      handleJumpToMessage,
+    ]
+  );
+
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-black/65 backdrop-blur-sm animate-fadeIn"
+      className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-black/65 backdrop-blur-xs animate-fadeIn"
       role="dialog"
       aria-modal="true"
       aria-labelledby="global-chat-title"
@@ -956,17 +1284,13 @@ export function GlobalChatModal({
         </div>
 
         {/* Message List */}
-        <div
-          ref={listRef}
-          onScroll={handleScroll}
-          className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-4 space-y-2.5"
-        >
+        <div className="flex-1 min-h-0 overflow-hidden">
           {loadingInitial && messages.length === 0 ? (
-            <div className="h-full flex items-center justify-center text-sm text-[#C4BFB4] animate-pulse">
+            <div className="h-full p-3 sm:p-4 flex items-center justify-center text-sm text-[#C4BFB4] animate-pulse">
               Завантаження чату...
             </div>
           ) : messages.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center px-4 gap-2 text-[#C4BFB4]">
+            <div className="h-full p-3 sm:p-4 flex flex-col items-center justify-center text-center gap-2 text-[#C4BFB4]">
               <MessagesSquare className="w-8 h-8 opacity-40" />
               <p className="text-sm font-medium text-[#F4F1EA]">Поки немає повідомлень</p>
               <p className="text-xs text-[#C4BFB4]">
@@ -974,207 +1298,16 @@ export function GlobalChatModal({
               </p>
             </div>
           ) : (
-            messages.map((msg) => {
-              const isOwn = Boolean(
-                guestUser &&
-                  (msg.authorUid === guestUser.uid ||
-                    (guestUser.firebaseUid && msg.authorUid === guestUser.firebaseUid))
-              );
-              const canDelete = isOwn || isAdmin;
-              const isConfirming = confirmDeleteId === msg.id;
-              const isAdminMsg = Boolean(msg.isAdmin);
-              const donorRank = !isAdminMsg ? msg.authorBadges?.donorRank : undefined;
-              const isTop3Donor = donorRank === 1 || donorRank === 2 || donorRank === 3;
-              const isTop1Activity = !isAdminMsg && msg.authorBadges?.activityRank === 1;
-              const hasFramedCard = isTop3Donor || isTop1Activity;
-              const hasDonorCustomText = Boolean(
-                !isAdminMsg &&
-                  isTop3Donor &&
-                  msg.authorDonorText &&
-                  msg.authorDonorText.trim()
-              );
-
-              const outerFrameClass =
-                donorRank === 1
-                  ? 'rounded-2xl p-[1.5px] bg-gradient-to-br from-[#FFF1B8] via-[#D4AF37] to-[#F5D061] shadow-[0_12px_32px_-12px_rgba(234,179,8,0.6)]'
-                  : donorRank === 2
-                    ? 'rounded-2xl p-[1.5px] bg-gradient-to-br from-[#F8FAFC] via-[#94A3B8] to-[#E2E8F0] shadow-[0_12px_30px_-12px_rgba(203,213,225,0.52)]'
-                    : donorRank === 3
-                      ? 'rounded-2xl p-[1.5px] bg-gradient-to-br from-[#F6C89F] via-[#B87333] to-[#E09F67] shadow-[0_12px_30px_-12px_rgba(217,119,6,0.5)]'
-                      : 'rounded-2xl p-[1.5px] bg-gradient-to-br from-[#F3D999]/85 via-[#B8860B]/50 to-[#EBD08A]/80 shadow-[0_10px_28px_-14px_rgba(217,119,6,0.4)]';
-
-              const innerSurfaceClass =
-                donorRank === 1
-                  ? 'relative rounded-[14.5px] bg-gradient-to-br from-[#352B14] via-[#272014] to-[#1D180F] ring-1 ring-inset ring-[#FFE89E]/35'
-                  : donorRank === 2
-                    ? 'relative rounded-[14.5px] bg-gradient-to-br from-[#2B313B] via-[#21262E] to-[#191C23] ring-1 ring-inset ring-[#E2E8F0]/30'
-                    : donorRank === 3
-                      ? 'relative rounded-[14.5px] bg-gradient-to-br from-[#332217] via-[#271B14] to-[#1E1510] ring-1 ring-inset ring-[#F3BC8D]/30'
-                      : 'relative rounded-[14.5px] bg-gradient-to-br from-[#2B271E] via-[#24211B] to-[#1F1D18]';
-
-              const filigreeCornerColor =
-                donorRank === 1
-                  ? 'border-[#FFE58F]/85'
-                  : donorRank === 2
-                    ? 'border-[#E2E8F0]/80'
-                    : donorRank === 3
-                      ? 'border-[#F3BC8D]/80'
-                      : 'border-[#F3D999]/55';
-
-              const avatarRingClass =
-                donorRank === 1
-                  ? 'ring-1 ring-[#FFE58F]/85 shadow-[0_0_14px_-3px_rgba(250,204,21,0.65)]'
-                  : donorRank === 2
-                    ? 'ring-1 ring-[#E2E8F0]/80 shadow-[0_0_12px_-3px_rgba(226,232,240,0.55)]'
-                    : donorRank === 3
-                      ? 'ring-1 ring-[#F3BC8D]/80 shadow-[0_0_12px_-3px_rgba(217,119,6,0.5)]'
-                      : isTop1Activity
-                        ? 'ring-1 ring-[#F3D999]/75 shadow-[0_0_12px_-3px_rgba(243,217,153,0.42)]'
-                        : '';
-
-              const donorCustomTextColorClass =
-                donorRank === 1
-                  ? 'text-[#FDE68A]'
-                  : donorRank === 2
-                    ? 'text-[#E2E8F0]'
-                    : 'text-[#F6CFA9]';
-
-              const messageCardBody = (
-                <div
-                  id={hasFramedCard ? undefined : `chat-msg-${msg.id}`}
-                  className={`flex items-start gap-2.5 p-2.5 sm:p-3 transition-colors ${
-                    hasFramedCard
-                      ? innerSurfaceClass
-                      : `rounded-xl ${isOwn && !isAdminMsg ? 'bg-[#303531]' : 'bg-[#262626]'}`
-                  }`}
-                >
-                  {hasFramedCard && (
-                    <>
-                      <span
-                        aria-hidden="true"
-                        className={`pointer-events-none absolute top-1.5 left-1.5 w-2.5 h-2.5 border-t border-l rounded-tl-[5px] ${filigreeCornerColor}`}
-                      />
-                      <span
-                        aria-hidden="true"
-                        className={`pointer-events-none absolute top-1.5 right-1.5 w-2.5 h-2.5 border-t border-r rounded-tr-[5px] ${filigreeCornerColor}`}
-                      />
-                      <span
-                        aria-hidden="true"
-                        className={`pointer-events-none absolute bottom-1.5 left-1.5 w-2.5 h-2.5 border-b border-l rounded-bl-[5px] ${filigreeCornerColor}`}
-                      />
-                      <span
-                        aria-hidden="true"
-                        className={`pointer-events-none absolute bottom-1.5 right-1.5 w-2.5 h-2.5 border-b border-r rounded-br-[5px] ${filigreeCornerColor}`}
-                      />
-                    </>
-                  )}
-
-                  <div
-                    className={`relative z-10 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#323232] flex items-center justify-center overflow-hidden text-[#E5E5E5] shrink-0 mt-0.5 ${avatarRingClass}`}
-                  >
-                    <ChatAvatar photoUrl={msg.authorPhotoUrl} />
-                  </div>
-
-                  <div className="relative z-10 min-w-0 flex-1 space-y-1">
-                    <div className="flex items-center justify-between gap-2 min-w-0">
-                      <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-                        <span className="text-xs font-semibold text-[#FAF9F5] truncate max-w-full">
-                          {msg.authorName}
-                        </span>
-                        {!isAdminMsg && <UserRankBadges badges={msg.authorBadges} size="xs" />}
-                        {isAdminMsg && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#E5E5E5] text-[#181818] font-semibold shrink-0">
-                            Адмін
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <span className="text-[10px] text-[#C4BFB4] tabular-nums whitespace-nowrap">
-                          {formatMessageTime(msg.createdAt)}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (!guestUser) {
-                              onClose();
-                              onOpenAuthModal();
-                              return;
-                            }
-                            setReplyingTo(msg);
-                            window.requestAnimationFrame(() => inputRef.current?.focus());
-                          }}
-                          title="Відповісти"
-                          aria-label={`Відповісти ${msg.authorName}`}
-                          className="p-1 rounded text-[#C4BFB4] hover:text-[#FAF9F5] hover:bg-white/10 transition-colors cursor-pointer"
-                        >
-                          <CornerUpLeft className="w-3.5 h-3.5" />
-                        </button>
-                        {canDelete && (
-                          <button
-                            type="button"
-                            onClick={() => void handleDelete(msg.id)}
-                            className={`px-1 py-0.5 rounded transition-colors cursor-pointer ${
-                              isConfirming
-                                ? 'bg-red-500 text-white text-[10px] font-semibold px-1.5'
-                                : 'text-[#C4BFB4] hover:text-red-400'
-                            }`}
-                            title={
-                              isConfirming
-                                ? 'Натисніть ще раз для видалення'
-                                : 'Видалити повідомлення'
-                            }
-                            aria-label="Видалити повідомлення"
-                          >
-                            {isConfirming ? 'Видалити?' : <Trash2 className="w-3.5 h-3.5" />}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    {hasDonorCustomText && (
-                      <p className={`text-[11px] italic leading-snug break-words ${donorCustomTextColorClass}`}>
-                        {msg.authorDonorText}
-                      </p>
-                    )}
-
-                    {msg.replyTo && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const targetEl = document.getElementById(`chat-msg-${msg.replyTo!.id}`);
-                          targetEl?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        }}
-                        className="w-full text-left px-2.5 py-1.5 rounded-lg bg-black/28 border border-white/10 hover:bg-black/38 transition-colors cursor-pointer"
-                      >
-                        <span className="block text-[10px] font-semibold text-[#D6D3CB] truncate">
-                          {msg.replyTo.authorName}
-                        </span>
-                        <span className="block text-[11px] text-[#C4BFB4] truncate">
-                          {msg.replyTo.text}
-                        </span>
-                      </button>
-                    )}
-                    <p className="text-xs sm:text-[13px] text-[#F4F1EA] leading-relaxed break-words whitespace-pre-wrap">
-                      {msg.text}
-                    </p>
-                  </div>
-                </div>
-              );
-
-              if (hasFramedCard) {
-                return (
-                  <div
-                    key={msg.id}
-                    id={`chat-msg-${msg.id}`}
-                    className={outerFrameClass}
-                  >
-                    {messageCardBody}
-                  </div>
-                );
-              }
-
-              return <div key={msg.id}>{messageCardBody}</div>;
-            })
+            <List
+              listRef={listRef}
+              rowCount={messages.length}
+              rowHeight={dynamicRowHeight}
+              rowComponent={ChatMessageRow}
+              rowProps={chatRowProps}
+              overscanCount={6}
+              onScroll={handleScroll}
+              className="h-full w-full overflow-x-hidden px-3 sm:px-4 pt-3 sm:pt-4"
+            />
           )}
         </div>
 

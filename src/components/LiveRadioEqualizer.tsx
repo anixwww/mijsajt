@@ -1,4 +1,5 @@
-import { useEffect, useRef, type RefObject } from 'react';
+import { memo, useEffect, useRef, type RefObject } from 'react';
+import { useViewportActivity } from '../hooks/useViewportActivity.ts';
 import {
   computeLiveFrequencyBands,
   EQUALIZER_BAND_COUNT,
@@ -27,7 +28,7 @@ const BAND_DECAY = [0.16, 0.18, 0.21, 0.24, 0.27, 0.32, 0.36, 0.42, 0.48];
 const WAVE_BAND_INDICES = [0, 1, 2, 4, 5, 7, 8] as const;
 const IDLE_WAVE_LEVELS: readonly number[] = [0.22, 0.42, 0.62, 0.46, 0.7, 0.4, 0.2];
 
-export function LiveRadioEqualizer({
+export const LiveRadioEqualizer = memo(function LiveRadioEqualizer({
   isPlaying,
   tone = 'muted',
   size = 'md',
@@ -41,6 +42,8 @@ export function LiveRadioEqualizer({
   const isWave = variant === 'wave';
   const renderedIndices = isWave ? WAVE_BAND_INDICES : [0, 1, 2, 3, 4, 5, 6, 7, 8];
 
+  const containerRef = useRef<HTMLSpanElement | null>(null);
+  const { isActive: viewportActive, reducedMotion } = useViewportActivity(containerRef);
   const barRefs = useRef<Array<HTMLSpanElement | null>>([]);
   const smoothedRef = useRef<number[]>([...IDLE_EQUALIZER_LEVELS]);
   const targetRef = useRef<number[]>([...IDLE_EQUALIZER_LEVELS]);
@@ -102,11 +105,7 @@ export function LiveRadioEqualizer({
       return;
     }
 
-    const prefersReducedMotion =
-      typeof window !== 'undefined' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    if (prefersReducedMotion) {
+    if (reducedMotion || !viewportActive) {
       const staticActive = isMuted
         ? [0.16, 0.18, 0.16, 0.18, 0.16, 0.15, 0.14, 0.14, 0.14]
         : [0.74, 0.92, 0.78, 0.66, 0.84, 0.72, 0.6, 0.48, 0.38];
@@ -144,7 +143,7 @@ export function LiveRadioEqualizer({
     return () => {
       window.cancelAnimationFrame(rafId);
     };
-  }, [isPlaying, isMuted, isWave, haloRef, progressCircleRef, progressCircumference]);
+  }, [isPlaying, isMuted, isWave, haloRef, progressCircleRef, progressCircumference, viewportActive, reducedMotion]);
 
   const containerDimensions = isWave
     ? 'h-[18px] gap-[1.75px] items-center'
@@ -169,6 +168,7 @@ export function LiveRadioEqualizer({
 
   return (
     <span
+      ref={containerRef}
       aria-hidden="true"
       className={`inline-flex shrink-0 ${containerDimensions} ${className}`}
     >
@@ -192,4 +192,4 @@ export function LiveRadioEqualizer({
       })}
     </span>
   );
-}
+});

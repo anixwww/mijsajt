@@ -13,7 +13,7 @@ import {
   ZoomIn,
 } from 'lucide-react';
 import { AnimatePresence, m, type PanInfo } from 'motion/react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type {
   GuestUser,
@@ -116,7 +116,7 @@ const SWIPE_VARIANTS = {
   }),
 };
 
-export function PoetrySection({
+export const PoetrySection = memo(function PoetrySection({
   poems,
   weeklyPoems = [],
   weeklyCurrentPeriod,
@@ -154,10 +154,12 @@ export function PoetrySection({
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const [zoomedPhotoUrl, setZoomedPhotoUrl] = useState<string | null>(null);
   const [submitModalOpen, setSubmitModalOpen] = useState(false);
+  const [loadingFullPoemId, setLoadingFullPoemId] = useState<string | null>(null);
 
   const viewedSessionRef = useRef<Set<string>>(new Set());
   const handledDeepLinkRef = useRef<string | null>(null);
   const sortMenuRef = useRef<HTMLDivElement | null>(null);
+  const fetchingPoemIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (!sortMenuOpen) return;
@@ -351,6 +353,55 @@ export function PoetrySection({
     }
   }, [currentPoem, onPoemViewed]);
 
+  const hydratePoemContent = useCallback(
+    async (poem: Poem, showSpinner = false): Promise<string> => {
+      if (!poem.contentTruncated) return poem.content;
+      if (fetchingPoemIdsRef.current.has(poem.id)) return poem.content;
+      fetchingPoemIdsRef.current.add(poem.id);
+      if (showSpinner) setLoadingFullPoemId(poem.id);
+      try {
+        const res = await fetch(`/api/poems/${encodeURIComponent(poem.id)}/read`);
+        if (!res.ok) return poem.content;
+        const data = (await res.json()) as { content?: string };
+        if (typeof data.content === 'string') {
+          onPoemUpdated({
+            ...poem,
+            content: data.content,
+            contentTruncated: false,
+          });
+          return data.content;
+        }
+        return poem.content;
+      } catch {
+        return poem.content;
+      } finally {
+        fetchingPoemIdsRef.current.delete(poem.id);
+        if (showSpinner) {
+          setLoadingFullPoemId((prev) => (prev === poem.id ? null : prev));
+        }
+      }
+    },
+    [onPoemUpdated]
+  );
+
+  // Lazy-load full text of truncated poems on display and prefetch immediate neighbors
+  useEffect(() => {
+    if (!currentPoem) return;
+    if (currentPoem.contentTruncated) {
+      void hydratePoemContent(currentPoem, true);
+    }
+    if (sortedPoems.length > 1) {
+      const nextIdx = (safeIndex + 1) % sortedPoems.length;
+      const prevIdx = (safeIndex - 1 + sortedPoems.length) % sortedPoems.length;
+      const nextPoem = sortedPoems[nextIdx];
+      const prevPoem = sortedPoems[prevIdx];
+      if (nextPoem?.contentTruncated) void hydratePoemContent(nextPoem, false);
+      if (prevPoem && prevPoem.id !== nextPoem?.id && prevPoem.contentTruncated) {
+        void hydratePoemContent(prevPoem, false);
+      }
+    }
+  }, [currentPoem, safeIndex, sortedPoems, hydratePoemContent]);
+
   const goToIndex = useCallback(
     (nextIdx: number, dir: number) => {
       if (sortedPoems.length === 0) return;
@@ -479,9 +530,12 @@ export function PoetrySection({
 
   const handleCopyPoem = async (poem: Poem) => {
     trackClick(`copy_poem:${poem.id}`,`Копіювання вірша: «${poem.title}»`,'action');
+    const resolvedContent = poem.contentTruncated
+      ? await hydratePoemContent(poem, false)
+      : poem.content;
     const authorLabel =
       poem.isCommunity && poem.authorName ? poem.authorName : 'Андрій Даньків';
-    const fullText =`${poem.title}\n\n${poem.content}\n\n— ${authorLabel}`;
+    const fullText =`${poem.title}\n\n${resolvedContent}\n\n— ${authorLabel}`;
     try {
       await navigator.clipboard.writeText(fullText);
       setCopiedId(poem.id);
@@ -793,11 +847,17 @@ export function PoetrySection({
             >
               <span
                 aria-hidden="true"
-                className="pointer-events-none absolute -left-2 -top-2 w-7 h-7 rounded-full bg-[#38BDF8]/30 blur-md group-hover:bg-[#7DD3FC]/45 transition-colors duration-300"
+                style={{
+                  background: 'radial-gradient(circle, rgba(56, 189, 248, 0.34) 0%, transparent 72%)',
+                }}
+                className="pointer-events-none absolute -left-2 -top-2 w-8 h-8 rounded-full opacity-85 group-hover:opacity-100 transition-opacity duration-300"
               />
               <span
                 aria-hidden="true"
-                className="pointer-events-none absolute -right-2 -bottom-2 w-7 h-7 rounded-full bg-[#818CF8]/25 blur-md group-hover:bg-[#A5B4FC]/40 transition-colors duration-300"
+                style={{
+                  background: 'radial-gradient(circle, rgba(129, 140, 248, 0.3) 0%, transparent 72%)',
+                }}
+                className="pointer-events-none absolute -right-2 -bottom-2 w-8 h-8 rounded-full opacity-85 group-hover:opacity-100 transition-opacity duration-300"
               />
               <svg
                 aria-hidden="true"
@@ -917,7 +977,7 @@ export function PoetrySection({
                               referrerPolicy="no-referrer"
                               className="w-full max-h-[480px] object-cover mx-auto block transition-transform duration-300 group-hover:scale-[1.01]"
                             />
-                            <span className="absolute right-3 bottom-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-black/55 backdrop-blur-xs text-white text-[11px] font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                            <span className="absolute right-3 bottom-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-black/72 text-white text-[11px] font-medium opacity-0 group-hover:opacity-100 transition-opacity">
                               <ZoomIn className="w-3.5 h-3.5" />
                               <span>Переглянути</span>
                             </span>
@@ -1273,7 +1333,7 @@ export function PoetrySection({
                       hasCustomSurface
                         ? 'bg-transparent'
                         : isHomeSurfaceTab
-                          ? 'bg-white/62 dark:bg-[#2B2B2B]/52 backdrop-blur-xl shadow-[0_18px_42px_-22px_rgba(24,48,33,0.28)] dark:shadow-[0_20px_46px_-20px_rgba(0,0,0,0.82)]'
+                          ? 'bg-white dark:bg-[#2B2B2B] shadow-[0_18px_42px_-22px_rgba(24,48,33,0.28)] dark:shadow-[0_20px_46px_-20px_rgba(0,0,0,0.82)]'
                           : 'bg-white dark:bg-[#262626]'
                     }`
               }`}
@@ -1315,7 +1375,7 @@ export function PoetrySection({
                         referrerPolicy="no-referrer"
                         className="w-full max-h-[480px] object-cover mx-auto block transition-transform duration-300 group-hover:scale-[1.01]"
                       />
-                      <span className="absolute right-3 bottom-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-black/55 backdrop-blur-xs text-white text-[11px] font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                      <span className="absolute right-3 bottom-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-black/72 text-white text-[11px] font-medium opacity-0 group-hover:opacity-100 transition-opacity">
                         <ZoomIn className="w-3.5 h-3.5" />
                         <span>Переглянути</span>
                       </span>
@@ -1430,6 +1490,12 @@ export function PoetrySection({
                 >
                   {currentPoem.content}
                 </div>
+
+                {loadingFullPoemId === currentPoem.id && currentPoem.contentTruncated && (
+                  <p className="mt-3 text-xs opacity-70 animate-pulse">
+                    Завантаження повного тексту...
+                  </p>
+                )}
 
                 {currentPoem.note && (
                   <p
@@ -1928,4 +1994,4 @@ export function PoetrySection({
       />
     </section>
   );
-}
+});

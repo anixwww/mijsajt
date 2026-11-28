@@ -1,8 +1,7 @@
-import { Award, Check, Clock, ExternalLink, ShoppingBag, Star, Tag, X } from 'lucide-react';
+import { Award, Check, ExternalLink, ShoppingBag, Star, Tag, X } from 'lucide-react';
 import { AnimatePresence, m } from 'motion/react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  formatPromoCountdown,
   getEffectivePriceUah,
   isPhysicalProduct,
   parseStoreProductPromo,
@@ -15,6 +14,7 @@ import { setActiveMoment, trackClick } from '../utils/analytics.ts';
 import { useTouchFeedback } from '../utils/useTouchFeedback.ts';
 import { EditorialImage } from './EditorialImage.tsx';
 import { EmptySectionState } from './EmptySectionState.tsx';
+import { PromoCountdown } from './PromoCountdown.tsx';
 import { ReviewsBlock } from './ReviewsBlock.tsx';
 
 interface StoreSectionProps {
@@ -90,7 +90,7 @@ function ColumnsLayoutIcon({ columns }: { columns: StoreViewColumns }) {
   );
 }
 
-export function StoreSection({
+export const StoreSection = memo(function StoreSection({
   products,
   cartIds,
   unlockedMap,
@@ -107,27 +107,8 @@ export function StoreSection({
 }: StoreSectionProps) {
   const [inspectProductId, setInspectProductId] = useState<string | null>(null);
   const [viewColumns, setViewColumns] = useState<StoreViewColumns>(getInitialStoreViewColumns);
-  const [nowMs, setNowMs] = useState(() => Date.now());
   const handledDeepLinkRef = useRef<string | null>(null);
   const { getTouchProps, isTouchActive } = useTouchFeedback();
-
-  const hasActiveCountdown = useMemo(
-    () =>
-      products.some((product) => {
-        if (!product.promoActive) return false;
-        const { promoEndsAt } = parseStoreProductPromo(product);
-        if (!promoEndsAt) return false;
-        const targetMs = Date.parse(promoEndsAt);
-        return Number.isFinite(targetMs) && targetMs > nowMs;
-      }),
-    [products, nowMs]
-  );
-
-  useEffect(() => {
-    if (!hasActiveCountdown) return;
-    const timer = window.setInterval(() => setNowMs(Date.now()), 1000);
-    return () => window.clearInterval(timer);
-  }, [hasActiveCountdown]);
 
   useEffect(() => {
     if (!initialProductId) {
@@ -270,12 +251,14 @@ export function StoreSection({
               const promoText = product.promoActive
                 ? parsedPromo.cleanPromoLabel || (!parsedPromo.isBestseller && !hasCatalogDiscount ? 'Акція' : '')
                 : '';
-              const countdownText =
-                product.promoActive && parsedPromo.promoEndsAt
-                  ? formatPromoCountdown(parsedPromo.promoEndsAt, nowMs)
-                  : null;
+              const hasFutureCountdown = Boolean(
+                product.promoActive &&
+                  parsedPromo.promoEndsAt &&
+                  Number.isFinite(Date.parse(parsedPromo.promoEndsAt)) &&
+                  Date.parse(parsedPromo.promoEndsAt) > Date.now()
+              );
               const hasPromoBadge =
-                parsedPromo.isBestseller || Boolean(promoText) || hasCatalogDiscount || Boolean(countdownText);
+                parsedPromo.isBestseller || Boolean(promoText) || hasCatalogDiscount || hasFutureCountdown;
               const isSingle = viewColumns === 1;
               const isCompactThree = viewColumns === 3;
 
@@ -318,7 +301,7 @@ export function StoreSection({
                         >
                           {parsedPromo.isBestseller && (
                             <span
-                              className={`inline-flex items-center gap-1 rounded-md bg-[#2A2012]/92 backdrop-blur-xs text-[#F7DF9C] font-semibold tracking-wide shadow-sm ${
+                              className={`inline-flex items-center gap-1 rounded-md bg-[#2A2012]/95 text-[#F7DF9C] font-semibold tracking-wide shadow-sm ${
                                 isCompactThree ? 'px-1.5 py-0.5 text-[9px]' : 'px-2 py-0.5 text-[10px]'
                               }`}
                             >
@@ -328,7 +311,7 @@ export function StoreSection({
                           )}
                           {promoText && (
                             <span
-                              className={`inline-flex items-center gap-1 rounded-md bg-[#183624]/92 dark:bg-[#2C2C2C]/92 backdrop-blur-xs text-[#E8F1C8] dark:text-[#F4F1EA] font-semibold tracking-wide shadow-sm max-w-full truncate ${
+                              className={`inline-flex items-center gap-1 rounded-md bg-[#183624]/95 dark:bg-[#2C2C2C]/95 text-[#E8F1C8] dark:text-[#F4F1EA] font-semibold tracking-wide shadow-sm max-w-full truncate ${
                                 isCompactThree ? 'px-1.5 py-0.5 text-[9px]' : 'px-2 py-0.5 text-[10px]'
                               }`}
                             >
@@ -345,15 +328,12 @@ export function StoreSection({
                               −{discountPct}%
                             </span>
                           )}
-                          {countdownText && (
-                            <span
-                              className={`inline-flex items-center gap-1 rounded-md bg-black/78 backdrop-blur-xs text-white font-mono font-semibold tabular-nums shadow-sm ${
-                                isCompactThree ? 'px-1.5 py-0.5 text-[9px]' : 'px-2 py-0.5 text-[10px]'
-                              }`}
-                            >
-                              <Clock className="w-2.5 h-2.5 shrink-0 text-[#BCD369] dark:text-[#E5E5E5]" strokeWidth={2.2} />
-                              <span>{countdownText}</span>
-                            </span>
+                          {hasFutureCountdown && (
+                            <PromoCountdown
+                              endsAtIso={parsedPromo.promoEndsAt}
+                              variant="card"
+                              isCompact={isCompactThree}
+                            />
                           )}
                         </div>
                       )}
@@ -563,10 +543,12 @@ export function StoreSection({
                         </h3>
                         {(() => {
                           const modalParsed = parseStoreProductPromo(inspectProduct);
-                          const modalCountdown =
-                            inspectProduct.promoActive && modalParsed.promoEndsAt
-                              ? formatPromoCountdown(modalParsed.promoEndsAt, nowMs)
-                              : null;
+                          const hasModalCountdown = Boolean(
+                            inspectProduct.promoActive &&
+                              modalParsed.promoEndsAt &&
+                              Number.isFinite(Date.parse(modalParsed.promoEndsAt)) &&
+                              Date.parse(modalParsed.promoEndsAt) > Date.now()
+                          );
                           const modalPromoText = inspectProduct.promoActive
                             ? modalParsed.cleanPromoLabel ||
                               (!modalParsed.isBestseller && !(inspectProduct.discountPercent ?? 0)
@@ -577,7 +559,7 @@ export function StoreSection({
                             modalParsed.isBestseller ||
                             Boolean(modalPromoText) ||
                             (inspectProduct.discountPercent ?? 0) > 0 ||
-                            Boolean(modalCountdown);
+                            hasModalCountdown;
                           if (!hasAnyBadge) return null;
                           return (
                             <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
@@ -598,11 +580,11 @@ export function StoreSection({
                                   −{Math.max(0, Math.min(90, Math.round(Number(inspectProduct.discountPercent) || 0)))}%
                                 </span>
                               )}
-                              {modalCountdown && (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-[#141413] dark:bg-black/70 text-white font-mono text-[11px] font-semibold tabular-nums">
-                                  <Clock className="w-3 h-3 shrink-0 text-[#BCD369] dark:text-[#E5E5E5]" strokeWidth={2} />
-                                  <span>До кінця акції: {modalCountdown}</span>
-                                </span>
+                              {hasModalCountdown && (
+                                <PromoCountdown
+                                  endsAtIso={modalParsed.promoEndsAt}
+                                  variant="modal"
+                                />
                               )}
                             </div>
                           );
@@ -717,4 +699,4 @@ export function StoreSection({
       </AnimatePresence>
     </section>
   );
-}
+});

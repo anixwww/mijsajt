@@ -26,7 +26,7 @@ import {
   X,
 } from'lucide-react';
 import { AnimatePresence, m, useMotionValue, useSpring } from 'motion/react';
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import {
   getProseDiscountCalculation,
@@ -183,7 +183,7 @@ function formatUkrainianWords(count: number): string {
   return `${abs.toLocaleString('uk-UA')} ${unit}`;
 }
 
-export function ProseSection({
+export const ProseSection = memo(function ProseSection({
   proseList,
   weeklyProse = [],
   weeklyCurrentPeriod,
@@ -1296,7 +1296,7 @@ export function ProseSection({
           data-touch-active={isTouchActive(work.id) ?'true': undefined}
           className={`touch-card group w-full h-full rounded-2xl p-4 sm:p-6 flex flex-col justify-between text-left transition-all duration-150 ${
             isHomeSurfaceTab
-              ? 'bg-white/62 dark:bg-[#2B2B2B]/52 hover:bg-white/78 dark:hover:bg-[#323232]/65 backdrop-blur-xl shadow-[0_18px_42px_-22px_rgba(24,48,33,0.28)] hover:shadow-[0_22px_48px_-20px_rgba(24,48,33,0.36)] dark:shadow-[0_20px_46px_-20px_rgba(0,0,0,0.82)] dark:hover:shadow-[0_24px_52px_-18px_rgba(0,0,0,0.9)]'
+              ? 'bg-white dark:bg-[#2B2B2B] hover:bg-[#FAF9F5] dark:hover:bg-[#323232] shadow-[0_18px_42px_-22px_rgba(24,48,33,0.28)] hover:shadow-[0_22px_48px_-20px_rgba(24,48,33,0.36)] dark:shadow-[0_20px_46px_-20px_rgba(0,0,0,0.82)] dark:hover:shadow-[0_24px_52px_-18px_rgba(0,0,0,0.9)]'
               : 'bg-white dark:bg-[#262626]'
           }`}
         >
@@ -1622,7 +1622,7 @@ export function ProseSection({
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-              className="perf-card rounded-2xl p-5 sm:p-8 md:p-10 bg-white/62 dark:bg-[#2B2B2B]/52 backdrop-blur-xl shadow-[0_18px_42px_-22px_rgba(24,48,33,0.28)] dark:shadow-[0_20px_46px_-20px_rgba(0,0,0,0.82)] space-y-6"
+              className="perf-card rounded-2xl p-5 sm:p-8 md:p-10 bg-white dark:bg-[#2B2B2B] shadow-[0_18px_42px_-22px_rgba(24,48,33,0.28)] dark:shadow-[0_20px_46px_-20px_rgba(0,0,0,0.82)] space-y-6"
             >
               {/* Weekly Header + Archive Switcher + Font/Copy Controls */}
               <div className="pb-4 border-b border-[#E6E3DA] dark:border-[#343434] flex flex-wrap items-center justify-between gap-3">
@@ -1793,7 +1793,7 @@ export function ProseSection({
                         />
                         <span
                           aria-hidden="true"
-                          className="absolute bottom-2.5 right-2.5 inline-flex items-center justify-center w-8 h-8 rounded-lg bg-black/50 text-white backdrop-blur-xs opacity-80 group-hover:opacity-100 transition-opacity"
+                          className="absolute bottom-2.5 right-2.5 inline-flex items-center justify-center w-8 h-8 rounded-lg bg-black/70 text-white opacity-85 group-hover:opacity-100 transition-opacity"
                         >
                           <Maximize2 className="w-3.5 h-3.5" strokeWidth={2} />
                         </span>
@@ -1940,7 +1940,7 @@ export function ProseSection({
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-              className="perf-card rounded-2xl p-5 sm:p-8 md:p-10 bg-white/62 dark:bg-[#2B2B2B]/52 backdrop-blur-xl shadow-[0_18px_42px_-22px_rgba(24,48,33,0.28)] dark:shadow-[0_20px_46px_-20px_rgba(0,0,0,0.82)] space-y-5"
+              className="perf-card rounded-2xl p-5 sm:p-8 md:p-10 bg-white dark:bg-[#2B2B2B] shadow-[0_18px_42px_-22px_rgba(24,48,33,0.28)] dark:shadow-[0_20px_46px_-20px_rgba(0,0,0,0.82)] space-y-5"
             >
               <div className="pb-4 border-b border-[#E6E3DA] dark:border-[#343434] space-y-0.5">
                 <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#2C5937] dark:text-[#BCD369]">
@@ -2006,7 +2006,7 @@ export function ProseSection({
               </div>
             </m.article>
           ) : (
-            <div className="perf-card rounded-2xl p-6 sm:p-10 bg-white/62 dark:bg-[#2B2B2B]/52 backdrop-blur-xl shadow-[0_18px_42px_-22px_rgba(24,48,33,0.28)] dark:shadow-[0_20px_46px_-20px_rgba(0,0,0,0.82)] text-center space-y-3">
+            <div className="perf-card rounded-2xl p-6 sm:p-10 bg-white dark:bg-[#2B2B2B] shadow-[0_18px_42px_-22px_rgba(24,48,33,0.28)] dark:shadow-[0_20px_46px_-20px_rgba(0,0,0,0.82)] text-center space-y-3">
               <div className="inline-flex items-center justify-center w-11 h-11 rounded-xl bg-[#EAE7DF] dark:bg-[#323232] text-[#2C5937] dark:text-[#BCD369] mx-auto">
                 <Award className="w-5 h-5" strokeWidth={1.8} />
               </div>
@@ -2038,10 +2038,16 @@ export function ProseSection({
           <>
         {proseSourceTab === 'author' && proseTelegramDiscountPercent > 0 && (
           <div className="mb-6 relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#183624] via-[#224A32] to-[#142A1D] dark:from-[#262626] dark:via-[#2C2C2C] dark:to-[#202020] p-4 sm:p-5 text-white shadow-lg">
-            <div className="absolute -right-6 -bottom-6 w-32 h-32 bg-[#3A7552]/20 dark:bg-white/5 rounded-full blur-2xl pointer-events-none" />
+            <div
+              aria-hidden="true"
+              style={{
+                background: 'radial-gradient(circle, rgba(58, 117, 82, 0.28) 0%, transparent 72%)',
+              }}
+              className="absolute -right-6 -bottom-6 w-40 h-40 rounded-full pointer-events-none"
+            />
             <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3.5">
               <div className="flex items-start gap-3 min-w-0">
-                <span className="w-10 h-10 rounded-xl bg-white/15 backdrop-blur-md flex items-center justify-center text-[#BCD369] dark:text-[#E5E5E5] shrink-0 mt-0.5 shadow-inner">
+                <span className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center text-[#BCD369] dark:text-[#E5E5E5] shrink-0 mt-0.5 shadow-inner">
                   <Send className="w-5 h-5" strokeWidth={2} />
                 </span>
                 <div className="space-y-0.5 min-w-0">
@@ -2450,7 +2456,7 @@ export function ProseSection({
                           />
                           <span
                             aria-hidden="true"
-                            className="absolute bottom-2.5 right-2.5 inline-flex items-center justify-center w-8 h-8 rounded-lg bg-black/50 text-white backdrop-blur-xs opacity-80 group-hover:opacity-100 transition-opacity"
+                            className="absolute bottom-2.5 right-2.5 inline-flex items-center justify-center w-8 h-8 rounded-lg bg-black/70 text-white opacity-85 group-hover:opacity-100 transition-opacity"
                           >
                             <Maximize2 className="w-3.5 h-3.5" strokeWidth={2} />
                           </span>
@@ -3584,4 +3590,4 @@ export function ProseSection({
       />
     </section>
   );
-}
+});
