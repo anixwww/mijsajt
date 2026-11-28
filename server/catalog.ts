@@ -2961,13 +2961,16 @@ export function registerCatalogRoutes(app: express.Express): void {
       }
 
       const contentType = (response.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
-      if (!contentType.startsWith('image/')) {
-        res.status(400).json({ error: 'Посилання не веде на зображення.' });
+      const allowedImageTypes = new Set(['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif']);
+      if (!allowedImageTypes.has(contentType)) {
+        res.status(400).json({ error: 'Дозволені лише зображення форматів PNG, JPEG, WEBP або GIF.' });
         return;
       }
 
       res.setHeader('Content-Type', contentType);
       res.setHeader('Cache-Control', 'private, max-age=300');
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.setHeader('Content-Security-Policy', "sandbox; default-src 'none'; img-src 'self' data:;");
       res.setHeader('X-Content-Type-Options', 'nosniff');
       res.send(response.buffer);
     } catch {

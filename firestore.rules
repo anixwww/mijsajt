@@ -692,7 +692,7 @@ service cloud.firestore {
     }
 
     match /test/connection {
-      allow get: if true;
+      allow read, write: if false;
     }
 
     match /admins/{adminId} {
