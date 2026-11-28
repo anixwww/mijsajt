@@ -9,6 +9,7 @@ import {
   CornerUpLeft,
   FileText,
   Flag,
+  History,
   LogIn,
   MessagesSquare,
   Paperclip,
@@ -43,6 +44,7 @@ import { triggerHapticFeedback, triggerLikeHapticFeedback } from '../utils/hapti
 import { UserRankBadges } from './UserRankBadges.tsx';
 import {
   deleteChatMessageDirectInFirestore,
+  fetchOlderGlobalChatMessagesFromFirestore,
   generateChatMessageId,
   getCachedGlobalChatState,
   prewarmChatFirestore,
@@ -895,10 +897,16 @@ export const GlobalChatModal = memo(function GlobalChatModal({
   const [messages, setMessages] = useState<GlobalChatMessage[]>(
     () => initialCacheRef.current?.messages || []
   );
-  const [chatMeta, setChatMeta] = useState<ChatMetaState>({
-    pinnedMessage: null,
-    slowModeSeconds: 0,
-  });
+  const [chatMeta, setChatMeta] = useState<ChatMetaState>(
+    () =>
+      initialCacheRef.current?.chatMeta || {
+        pinnedMessage: null,
+        slowModeSeconds: 0,
+      }
+  );
+  const [hasMoreHistory, setHasMoreHistory] = useState(false);
+  const [loadingOlderHistory, setLoadingOlderHistory] = useState(false);
+  const [isNearTop, setIsNearTop] = useState(false);
   const [myMute, setMyMute] = useState<ChatMutedUserEntry | null>(null);
   const [mutedUsers, setMutedUsers] = useState<Record<string, ChatMutedUserEntry>>({});
   const [reports, setReports] = useState<ChatReportRecord[]>([]);
@@ -957,12 +965,18 @@ export const GlobalChatModal = memo(function GlobalChatModal({
   const pendingSendTimersRef = useRef<Map<string, number>>(new Map());
   const pendingIdsRef = useRef<Set<string>>(new Set());
   const deletedIdsRef = useRef<Set<string>>(new Set());
+  const firestoreKnownIdsRef = useRef<Set<string>>(new Set());
+  const pendingHistoryAnchorIdRef = useRef<string | null>(null);
+  const chatMetaRef = useRef<ChatMetaState>(chatMeta);
+  chatMetaRef.current = chatMeta;
   const authorMetaByUidRef = useRef<Record<string, ChatAuthorMeta>>(
     initialCacheRef.current?.authorMetaByUid || {}
   );
   const listRef = useRef<ListImperativeAPI | null>(null);
   const messagesCountRef = useRef(messages.length);
   messagesCountRef.current = messages.length;
+  const messagesRefSnapshot = useRef(messages);
+  messagesRefSnapshot.current = messages;
   const dynamicRowHeight = useDynamicRowHeight({
     defaultRowHeight: 88,
     key: `${isOpen ? 'open' : 'closed'}-${messages[0]?.id ?? 'empty'}`,
@@ -1092,11 +1106,25 @@ export const GlobalChatModal = memo(function GlobalChatModal({
             if (deletedIdsRef.current.has(existing.id)) continue;
             const isPending = pendingIdsRef.current.has(existing.id);
             const inWindow = incomingIds.has(existing.id);
-            const olderThanWindow =
-              isWindowTruncated && (Date.parse(existing.createdAt) || 0) < oldestIncomingMs;
-            if (isPending || inWindow || olderThanWindow) {
+            const existingMs = Date.parse(existing.createdAt) || 0;
+            const olderThanWindow = isWindowTruncated && existingMs < oldestIncomingMs;
+            // Preserve non-Firestore messages (e.g. PIN guest / SQLite history) alongside Firestore updates
+            const notOwnedByFirestoreSnapshot = !firestoreKnownIdsRef.current.has(existing.id);
+            if (isPending || inWindow || olderThanWindow || notOwnedByFirestoreSnapshot) {
               byId.set(existing.id, enrichWithMeta(existing));
             }
+          }
+
+          for (const knownId of Array.from(firestoreKnownIdsRef.current)) {
+            if (incomingIds.has(knownId)) continue;
+            const prevEntry = prev.find((p) => p.id === knownId);
+            const prevMs = prevEntry ? Date.parse(prevEntry.createdAt) || 0 : 0;
+            if (!isWindowTruncated || prevMs >= oldestIncomingMs) {
+              firestoreKnownIdsRef.current.delete(knownId);
+            }
+          }
+          for (const id of incomingIds) {
+            firestoreKnownIdsRef.current.add(id);
           }
         } else {
           for (const existing of prev) {
@@ -1153,9 +1181,9 @@ export const GlobalChatModal = memo(function GlobalChatModal({
             if (ta !== tb) return ta - tb;
             return a.id.localeCompare(b.id);
           })
-          .slice(-200);
+          .slice(-1000);
 
-        saveCachedGlobalChatState(sorted, metaMap);
+        saveCachedGlobalChatState(sorted, metaMap, chatMetaRef.current);
         return sorted;
       });
     },
@@ -1228,6 +1256,7 @@ export const GlobalChatModal = memo(function GlobalChatModal({
     let unsubscribeFirestore: () => void = () => {};
     shouldAutoScrollRef.current = true;
     setIsScrolledUp(false);
+    setIsNearTop(false);
     setUnreadWhileScrolled(0);
     setError(null);
     prewarmChatFirestore();
@@ -1243,6 +1272,9 @@ export const GlobalChatModal = memo(function GlobalChatModal({
       onMessages: (fsMessages) => {
         if (unmounted) return;
         setLoadingInitial(false);
+        if (fsMessages.length >= 100) {
+          setHasMoreHistory(true);
+        }
         mergeIncomingMessagesRef.current(fsMessages, 'firestore');
         if (shouldAutoScrollRef.current) {
           window.requestAnimationFrame(() => scrollToBottomRef.current(false));
@@ -1270,6 +1302,7 @@ export const GlobalChatModal = memo(function GlobalChatModal({
         if (!res.ok) return;
         const json = (await res.json()) as {
           messages?: GlobalChatMessage[];
+          hasMore?: boolean;
           onlineCount?: number;
           chatMeta?: ChatMetaState;
           currentUserBadges?: UserTopBadges;
@@ -1282,8 +1315,12 @@ export const GlobalChatModal = memo(function GlobalChatModal({
         if (Array.isArray(json.messages)) {
           mergeIncomingMessagesRef.current(json.messages, 'merge');
         }
+        if (json.hasMore) {
+          setHasMoreHistory(true);
+        }
         if (json.chatMeta) {
           setChatMeta(json.chatMeta);
+          saveCachedGlobalChatState(messagesRefSnapshot.current, authorMetaByUidRef.current, json.chatMeta);
         }
         if (typeof json.onlineCount === 'number') {
           setOnlineCount(Math.max(1, json.onlineCount));
@@ -1351,6 +1388,7 @@ export const GlobalChatModal = memo(function GlobalChatModal({
           const payload = JSON.parse(event.data as string) as {
             type?: string;
             messages?: GlobalChatMessage[];
+            hasMore?: boolean;
             message?: GlobalChatMessage;
             chatMeta?: ChatMetaState;
             clientMessageId?: string;
@@ -1377,8 +1415,12 @@ export const GlobalChatModal = memo(function GlobalChatModal({
               setLoadingInitial(false);
               window.requestAnimationFrame(() => scrollToBottomRef.current(false));
             }
+            if (payload.hasMore) {
+              setHasMoreHistory(true);
+            }
             if (payload.chatMeta) {
               setChatMeta(payload.chatMeta);
+              saveCachedGlobalChatState(messagesRefSnapshot.current, authorMetaByUidRef.current, payload.chatMeta);
             }
             if (typeof payload.onlineCount === 'number') {
               setOnlineCount(Math.max(1, payload.onlineCount));
@@ -1388,12 +1430,17 @@ export const GlobalChatModal = memo(function GlobalChatModal({
 
           if (payload.type === 'chat:refresh' && Array.isArray(payload.messages)) {
             mergeIncomingMessagesRef.current(payload.messages, 'merge');
-            if (payload.chatMeta) setChatMeta(payload.chatMeta);
+            if (payload.hasMore) setHasMoreHistory(true);
+            if (payload.chatMeta) {
+              setChatMeta(payload.chatMeta);
+              saveCachedGlobalChatState(messagesRefSnapshot.current, authorMetaByUidRef.current, payload.chatMeta);
+            }
             return;
           }
 
           if (payload.type === 'chat:meta' && payload.chatMeta) {
             setChatMeta(payload.chatMeta);
+            saveCachedGlobalChatState(messagesRefSnapshot.current, authorMetaByUidRef.current, payload.chatMeta);
             return;
           }
 
@@ -1688,12 +1735,72 @@ export const GlobalChatModal = memo(function GlobalChatModal({
     if (!el) return;
     const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
     const nearBottom = distFromBottom < 80;
+    const nearTop = el.scrollTop <= 72;
     shouldAutoScrollRef.current = nearBottom;
     setIsScrolledUp(!nearBottom);
+    setIsNearTop(nearTop);
     if (nearBottom) {
       setUnreadWhileScrolled(0);
     }
   }, [listRef]);
+
+  const handleLoadOlderMessages = useCallback(async () => {
+    if (loadingOlderHistory || messages.length === 0) return;
+    const oldestMsg = messages[0];
+    if (!oldestMsg?.createdAt) return;
+
+    setLoadingOlderHistory(true);
+    shouldAutoScrollRef.current = false;
+    pendingHistoryAnchorIdRef.current = oldestMsg.id;
+
+    try {
+      const token = await getGuestTokenRef.current().catch(() => null);
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const [serverRes, fsResult] = await Promise.all([
+        fetch(
+          `/api/chat/messages?before=${encodeURIComponent(oldestMsg.createdAt)}&limit=80`,
+          { headers }
+        )
+          .then(async (r) => {
+            if (!r.ok) return null;
+            return (await r.json()) as {
+              messages?: GlobalChatMessage[];
+              hasMore?: boolean;
+            };
+          })
+          .catch(() => null),
+        fetchOlderGlobalChatMessagesFromFirestore({
+          beforeCreatedAt: oldestMsg.createdAt,
+          limitCount: 80,
+        }).catch(() => ({ messages: [] as GlobalChatMessage[], hasMore: false })),
+      ]);
+
+      const combinedOlder: GlobalChatMessage[] = [
+        ...(Array.isArray(serverRes?.messages) ? serverRes.messages : []),
+        ...(Array.isArray(fsResult?.messages) ? fsResult.messages : []),
+      ];
+
+      if (fsResult?.messages?.length) {
+        for (const m of fsResult.messages) {
+          firestoreKnownIdsRef.current.add(m.id);
+        }
+      }
+
+      if (combinedOlder.length > 0) {
+        mergeIncomingMessagesRef.current(combinedOlder, 'merge');
+      } else {
+        pendingHistoryAnchorIdRef.current = null;
+      }
+
+      setHasMoreHistory(Boolean(serverRes?.hasMore || fsResult?.hasMore));
+    } catch {
+      pendingHistoryAnchorIdRef.current = null;
+    } finally {
+      setLoadingOlderHistory(false);
+    }
+  }, [loadingOlderHistory, messages]);
 
   const handleJumpToMessage = useCallback(
     (targetId: string) => {
@@ -1716,12 +1823,29 @@ export const GlobalChatModal = memo(function GlobalChatModal({
   );
 
   useEffect(() => {
-    if (!isOpen || !shouldAutoScrollRef.current || messages.length === 0) return;
+    if (!isOpen || messages.length === 0) return;
+    if (pendingHistoryAnchorIdRef.current) {
+      const anchorId = pendingHistoryAnchorIdRef.current;
+      pendingHistoryAnchorIdRef.current = null;
+      const anchorIdx = messages.findIndex((m) => m.id === anchorId);
+      if (anchorIdx > 0 && listRef.current) {
+        const frameId = window.requestAnimationFrame(() => {
+          listRef.current?.scrollToRow({
+            index: anchorIdx,
+            align: 'start',
+            behavior: 'auto',
+          });
+        });
+        return () => window.cancelAnimationFrame(frameId);
+      }
+      return;
+    }
+    if (!shouldAutoScrollRef.current) return;
     const frameId = window.requestAnimationFrame(() => {
       scrollToBottomRef.current(false);
     });
     return () => window.cancelAnimationFrame(frameId);
-  }, [isOpen, messages.length]);
+  }, [isOpen, messages, messages.length]);
 
   // Search matches
   const searchMatchIds = useMemo(() => {
@@ -2369,8 +2493,8 @@ export const GlobalChatModal = memo(function GlobalChatModal({
     };
 
     setMessages((prev) => {
-      const next = [...prev, optimisticMessage].slice(-200);
-      saveCachedGlobalChatState(next, authorMetaByUidRef.current);
+      const next = [...prev, optimisticMessage].slice(-1000);
+      saveCachedGlobalChatState(next, authorMetaByUidRef.current, chatMetaRef.current);
       return next;
     });
     setDraft('');
@@ -2765,6 +2889,18 @@ export const GlobalChatModal = memo(function GlobalChatModal({
                 </button>
               </div>
             )}
+            {hasMoreHistory && (
+              <button
+                type="button"
+                onClick={() => void handleLoadOlderMessages()}
+                disabled={loadingOlderHistory}
+                title="Завантажити раніші повідомлення для пошуку"
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-white/8 hover:bg-white/15 text-[11px] text-parchment hover:text-paper transition-colors shrink-0 cursor-pointer disabled:opacity-50"
+              >
+                <History className="w-3 h-3" />
+                <span>{loadingOlderHistory ? '...' : 'Раніше'}</span>
+              </button>
+            )}
             {searchQuery && (
               <button
                 type="button"
@@ -2944,6 +3080,22 @@ export const GlobalChatModal = memo(function GlobalChatModal({
 
         {/* Message List */}
         <div className="relative flex-1 min-h-0 overflow-hidden">
+          {messages.length > 0 && hasMoreHistory && (isNearTop || messages.length <= 105) && (
+            <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20">
+              <button
+                type="button"
+                onClick={() => void handleLoadOlderMessages()}
+                disabled={loadingOlderHistory}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-night-card/95 border border-white/15 shadow-lg text-[11px] font-medium text-paper hover:bg-night-elevated transition-all cursor-pointer disabled:opacity-60"
+              >
+                <History className={`w-3.5 h-3.5 ${loadingOlderHistory ? 'animate-spin' : ''}`} />
+                <span>
+                  {loadingOlderHistory ? 'Завантаження історії...' : 'Показати попередні повідомлення'}
+                </span>
+              </button>
+            </div>
+          )}
+
           {loadingInitial && messages.length === 0 ? (
             <div className="h-full p-3 sm:p-4 flex items-center justify-center text-sm text-parchment animate-pulse">
               Завантаження чату...

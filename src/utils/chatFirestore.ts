@@ -5,12 +5,12 @@ import {
   handleFirestoreError,
   OperationType,
 } from '../firebase.ts';
-import type { GlobalChatMessage, UserTopBadges } from '../types.ts';
+import type { ChatMetaState, GlobalChatMessage, UserTopBadges } from '../types.ts';
 
 const CHAT_COLLECTION = 'chatMessages';
 const CHAT_CACHE_STORAGE_KEY = 'dankiv_global_chat_cache_v1';
+const CHAT_CACHE_LIMIT = 250;
 const VALID_ID_RE = /^[a-zA-Z0-9_-]{1,128}$/;
-const ADMIN_EMAILS = new Set(['admin@example.com']);
 
 export interface ChatAuthorMeta {
   badges?: UserTopBadges;
@@ -21,11 +21,13 @@ export interface ChatAuthorMeta {
 interface PersistedChatCache {
   messages: GlobalChatMessage[];
   authorMetaByUid: Record<string, ChatAuthorMeta>;
+  chatMeta?: ChatMetaState;
   updatedAt: number;
 }
 
 let memoryMessagesCache: GlobalChatMessage[] | null = null;
 let memoryAuthorMetaCache: Record<string, ChatAuthorMeta> | null = null;
+let memoryChatMetaCache: ChatMetaState | undefined = undefined;
 let prewarmStarted = false;
 
 function normalizeAuthorMetaMap(raw: unknown): Record<string, ChatAuthorMeta> {
@@ -56,6 +58,7 @@ function loadCacheFromStorage(): PersistedChatCache {
     return {
       messages: memoryMessagesCache,
       authorMetaByUid: memoryAuthorMetaCache,
+      chatMeta: memoryChatMetaCache,
       updatedAt: Date.now(),
     };
   }
@@ -78,14 +81,18 @@ function loadCacheFromStorage(): PersistedChatCache {
             (m): m is GlobalChatMessage =>
               Boolean(m && typeof m.id === 'string' && typeof m.text === 'string')
           )
-          .slice(-100)
+          .slice(-CHAT_CACHE_LIMIT)
       : [];
     const authorMetaByUid = normalizeAuthorMetaMap(parsed.authorMetaByUid);
+    const chatMeta =
+      parsed.chatMeta && typeof parsed.chatMeta === 'object' ? parsed.chatMeta : undefined;
     memoryMessagesCache = messages;
     memoryAuthorMetaCache = authorMetaByUid;
+    memoryChatMetaCache = chatMeta;
     return {
       messages,
       authorMetaByUid,
+      chatMeta,
       updatedAt: typeof parsed.updatedAt === 'number' ? parsed.updatedAt : 0,
     };
   } catch {
@@ -98,19 +105,22 @@ function loadCacheFromStorage(): PersistedChatCache {
 export function getCachedGlobalChatState(): {
   messages: GlobalChatMessage[];
   authorMetaByUid: Record<string, ChatAuthorMeta>;
+  chatMeta?: ChatMetaState;
 } {
   const cached = loadCacheFromStorage();
   return {
     messages: cached.messages,
     authorMetaByUid: cached.authorMetaByUid,
+    chatMeta: cached.chatMeta,
   };
 }
 
 export function saveCachedGlobalChatState(
   messages: GlobalChatMessage[],
-  authorMetaByUid: Record<string, ChatAuthorMeta>
+  authorMetaByUid: Record<string, ChatAuthorMeta>,
+  chatMeta?: ChatMetaState
 ): void {
-  const trimmedMessages = messages.slice(-100);
+  const trimmedMessages = messages.slice(-CHAT_CACHE_LIMIT);
   const trimmedMeta: Record<string, ChatAuthorMeta> = {};
   const entries = Object.entries(authorMetaByUid);
   for (const [uid, meta] of entries.slice(-250)) {
@@ -120,12 +130,16 @@ export function saveCachedGlobalChatState(
   }
   memoryMessagesCache = trimmedMessages;
   memoryAuthorMetaCache = trimmedMeta;
+  if (chatMeta !== undefined) {
+    memoryChatMetaCache = chatMeta;
+  }
 
   if (typeof window === 'undefined') return;
   try {
     const payload: PersistedChatCache = {
       messages: trimmedMessages,
       authorMetaByUid: trimmedMeta,
+      ...(memoryChatMetaCache ? { chatMeta: memoryChatMetaCache } : {}),
       updatedAt: Date.now(),
     };
     window.localStorage.setItem(CHAT_CACHE_STORAGE_KEY, JSON.stringify(payload));
@@ -263,6 +277,51 @@ export async function subscribeGlobalChatMessages(options: {
   } catch (err) {
     options.onError?.(err);
     return () => {};
+  }
+}
+
+export async function fetchOlderGlobalChatMessagesFromFirestore(options: {
+  beforeCreatedAt: string;
+  limitCount?: number;
+}): Promise<{ messages: GlobalChatMessage[]; hasMore: boolean }> {
+  const parsedMs = Date.parse(options.beforeCreatedAt);
+  if (!Number.isFinite(parsedMs)) {
+    return { messages: [], hasMore: false };
+  }
+  const limitCount = Math.max(10, Math.min(150, options.limitCount ?? 80));
+  try {
+    const [db, { Timestamp, collection, getDocs, limit, orderBy, query, startAfter }] =
+      await Promise.all([getFirebaseDb(), import('firebase/firestore')]);
+
+    const chatQuery = query(
+      collection(db, CHAT_COLLECTION),
+      orderBy('createdAt', 'desc'),
+      startAfter(Timestamp.fromDate(new Date(parsedMs))),
+      limit(limitCount)
+    );
+
+    const snapshot = await getDocs(chatQuery);
+    const mapped: GlobalChatMessage[] = [];
+    snapshot.forEach((docSnap) => {
+      const data = docSnap.data({ serverTimestamps: 'estimate' }) as Record<string, unknown>;
+      const item = mapDocToChatMessage(docSnap.id, data);
+      if (item) mapped.push(item);
+    });
+    mapped.reverse();
+    return {
+      messages: mapped,
+      hasMore: snapshot.size >= limitCount,
+    };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.toLowerCase().includes('permission')) {
+      try {
+        handleFirestoreError(err, OperationType.LIST, CHAT_COLLECTION);
+      } catch {
+        return { messages: [], hasMore: false };
+      }
+    }
+    return { messages: [], hasMore: false };
   }
 }
 

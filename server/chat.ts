@@ -44,6 +44,8 @@ import {
 } from './catalog.ts';
 
 export const CHAT_EDIT_WINDOW_MS = 5 * 60 * 1000;
+export const MAX_STORED_CHAT_MESSAGES = 1000;
+export const DEFAULT_CHAT_PAGE_LIMIT = 100;
 const VALID_ATTACHMENT_TYPES = new Set<ChatAttachmentType>(['poem', 'prose', 'radio']);
 const VALID_REACTION_SET = new Set<string>(CHAT_REACTION_EMOJIS);
 
@@ -303,15 +305,69 @@ export function resolveChatAttachment(
   return undefined;
 }
 
+export function getChatMessagesPage(
+  db: SiteDatabase,
+  options?: {
+    before?: string;
+    limit?: number;
+    badgeLookup?: ReturnType<typeof createBadgeLookup>;
+    photoLookup?: ReturnType<typeof createAccountPhotoLookup>;
+    donorTextLookup?: ReturnType<typeof createDonorTextLookup>;
+  }
+): {
+  messages: GlobalChatMessage[];
+  hasMore: boolean;
+  totalCount: number;
+} {
+  const rawList = Array.isArray(db.chatMessages) ? db.chatMessages : [];
+  const sorted = [...rawList].sort((a, b) => {
+    const ta = Date.parse(a.createdAt) || 0;
+    const tb = Date.parse(b.createdAt) || 0;
+    if (ta !== tb) return ta - tb;
+    return a.id.localeCompare(b.id);
+  });
+
+  const requestedLimit = Number(options?.limit);
+  const clampedLimit = Number.isFinite(requestedLimit)
+    ? Math.max(1, Math.min(200, Math.floor(requestedLimit)))
+    : DEFAULT_CHAT_PAGE_LIMIT;
+
+  const cleanBefore = typeof options?.before === 'string' ? options.before.trim() : '';
+  let windowSource = sorted;
+  if (cleanBefore) {
+    const byIdIndex = sorted.findIndex((m) => m.id === cleanBefore);
+    if (byIdIndex >= 0) {
+      windowSource = sorted.slice(0, byIdIndex);
+    } else {
+      const beforeMs = Date.parse(cleanBefore);
+      if (Number.isFinite(beforeMs)) {
+        windowSource = sorted.filter((m) => (Date.parse(m.createdAt) || 0) < beforeMs);
+      }
+    }
+  }
+
+  const pageRaw = windowSource.slice(-clampedLimit);
+  const hasMore = windowSource.length > pageRaw.length;
+  const badgeLookup = options?.badgeLookup ?? createBadgeLookup(db);
+  const photoLookup = options?.photoLookup ?? createAccountPhotoLookup(db);
+  const donorTextLookup = options?.donorTextLookup ?? createDonorTextLookup(db);
+
+  return {
+    messages: pageRaw.map((msg) =>
+      enrichChatMessageWithBadges(msg, badgeLookup, photoLookup, donorTextLookup)
+    ),
+    hasMore,
+    totalCount: sorted.length,
+  };
+}
+
 export function broadcastGlobalChatRefresh(db: SiteDatabase): void {
-  const badgeLookup = createBadgeLookup(db);
-  const photoLookup = createAccountPhotoLookup(db);
-  const donorTextLookup = createDonorTextLookup(db);
+  const page = getChatMessagesPage(db, { limit: DEFAULT_CHAT_PAGE_LIMIT });
   broadcastChatEvent({
     type: 'chat:refresh',
-    messages: (db.chatMessages || [])
-      .slice(-100)
-      .map((msg) => enrichChatMessageWithBadges(msg, badgeLookup, photoLookup, donorTextLookup)),
+    messages: page.messages,
+    hasMore: page.hasMore,
+    totalCount: page.totalCount,
     chatMeta: getPublicChatMeta(db),
   });
 }
@@ -408,8 +464,8 @@ export function appendChatMessage(
     db.chatMessages = [];
   }
   db.chatMessages.push(record);
-  if (db.chatMessages.length > 200) {
-    db.chatMessages = db.chatMessages.slice(-200);
+  if (db.chatMessages.length > MAX_STORED_CHAT_MESSAGES) {
+    db.chatMessages = db.chatMessages.slice(-MAX_STORED_CHAT_MESSAGES);
   }
   const nowMs = Date.now();
   lastChatSentAtByUid.set(account.uid, nowMs);
@@ -820,17 +876,27 @@ export function registerChatRoutes(app: express.Express): void {
       : undefined;
     const myMute = optionalAuth ? getActiveMuteForAccount(db, optionalAuth.account) : null;
 
+    const beforeCursor = typeof req.query.before === 'string' ? req.query.before.trim() : undefined;
+    const requestedLimit = typeof req.query.limit === 'string' ? Number(req.query.limit) : undefined;
+    const page = getChatMessagesPage(db, {
+      before: beforeCursor || undefined,
+      limit: requestedLimit,
+      badgeLookup,
+      photoLookup,
+      donorTextLookup,
+    });
+
     res.setHeader('Vary', 'Authorization, Cookie');
-    if (optionalAuth) {
+    if (optionalAuth || beforeCursor) {
       res.setHeader('Cache-Control', 'private, no-store, no-cache, must-revalidate');
     } else {
       res.setHeader('Cache-Control', 'public, max-age=10, stale-while-revalidate=30');
     }
 
     res.json({
-      messages: (db.chatMessages || [])
-        .slice(-100)
-        .map((msg) => enrichChatMessageWithBadges(msg, badgeLookup, photoLookup, donorTextLookup)),
+      messages: page.messages,
+      hasMore: page.hasMore,
+      totalCount: page.totalCount,
       onlineCount: chatClients.size,
       chatMeta: getPublicChatMeta(db),
       ...(currentUserBadges ? { currentUserBadges } : {}),
@@ -1256,15 +1322,13 @@ export function attachChatWebSocket(httpServer: http.Server): void {
     const db = ensureDatabase();
     const sendInitSnapshot = (targetDb: SiteDatabase) => {
       if (ws.readyState !== WebSocket.OPEN) return;
-      const badgeLookup = createBadgeLookup(targetDb);
-      const photoLookup = createAccountPhotoLookup(targetDb);
-      const donorTextLookup = createDonorTextLookup(targetDb);
+      const page = getChatMessagesPage(targetDb, { limit: DEFAULT_CHAT_PAGE_LIMIT });
       ws.send(
         JSON.stringify({
           type: 'chat:init',
-          messages: (targetDb.chatMessages || [])
-            .slice(-100)
-            .map((msg) => enrichChatMessageWithBadges(msg, badgeLookup, photoLookup, donorTextLookup)),
+          messages: page.messages,
+          hasMore: page.hasMore,
+          totalCount: page.totalCount,
           onlineCount: chatClients.size,
           chatMeta: getPublicChatMeta(targetDb),
         })

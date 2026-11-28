@@ -6,6 +6,8 @@ import {
   CHAT_EDIT_WINDOW_MS,
   createChatReport,
   editChatMessage,
+  getChatMessagesPage,
+  MAX_STORED_CHAT_MESSAGES,
   setChatSlowMode,
   setPinnedChatMessage,
   setUserChatMute,
@@ -235,4 +237,49 @@ test('User mute blocks messaging until unmuted and reports prevent self-reportin
   assert.strictEqual(report2.ok, true);
   if (report2.ok) assert.strictEqual(report2.alreadyReported, true);
   assert.strictEqual(db.chatReports?.length, 1);
+});
+
+test('Chat retains more than 200 messages and supports chronological cursor pagination', () => {
+  const db = createTestDb();
+  const alice = makeUser('user_history_alice', 'Аліна');
+  db.guestAccounts.push(alice);
+
+  const baseMs = Date.UTC(2026, 10, 1, 12, 0, 0);
+  for (let i = 0; i < 240; i += 1) {
+    const res = appendChatMessage(db, alice, `Повідомлення №${i + 1}`, undefined, {
+      id: `chat_hist_${String(i).padStart(3, '0')}`,
+      skipFirestoreSync: true,
+    });
+    assert.strictEqual(res.ok, true);
+    const stored = db.chatMessages[db.chatMessages.length - 1];
+    stored.createdAt = new Date(baseMs + i * 1000).toISOString();
+  }
+
+  assert.strictEqual(MAX_STORED_CHAT_MESSAGES, 1000);
+  assert.strictEqual(db.chatMessages.length, 240);
+
+  const latestPage = getChatMessagesPage(db, { limit: 100 });
+  assert.strictEqual(latestPage.totalCount, 240);
+  assert.strictEqual(latestPage.hasMore, true);
+  assert.strictEqual(latestPage.messages.length, 100);
+  assert.strictEqual(latestPage.messages[0].text, 'Повідомлення №141');
+  assert.strictEqual(latestPage.messages[99].text, 'Повідомлення №240');
+
+  const olderPageByTime = getChatMessagesPage(db, {
+    before: latestPage.messages[0].createdAt,
+    limit: 80,
+  });
+  assert.strictEqual(olderPageByTime.hasMore, true);
+  assert.strictEqual(olderPageByTime.messages.length, 80);
+  assert.strictEqual(olderPageByTime.messages[0].text, 'Повідомлення №61');
+  assert.strictEqual(olderPageByTime.messages[79].text, 'Повідомлення №140');
+
+  const earliestPageById = getChatMessagesPage(db, {
+    before: olderPageByTime.messages[0].id,
+    limit: 80,
+  });
+  assert.strictEqual(earliestPageById.hasMore, false);
+  assert.strictEqual(earliestPageById.messages.length, 60);
+  assert.strictEqual(earliestPageById.messages[0].text, 'Повідомлення №1');
+  assert.strictEqual(earliestPageById.messages[59].text, 'Повідомлення №60');
 });
