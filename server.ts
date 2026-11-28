@@ -11,6 +11,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { createServer as createViteServer } from 'vite';
 import { WebSocket, WebSocketServer } from 'ws';
+import sharp from 'sharp';
 import {
   DEFAULT_AUTHOR_ABOUT_TEXT,
   DEFAULT_AUTHOR_PHOTO_URL,
@@ -5628,15 +5629,25 @@ async function startServer() {
       return;
     }
 
-    const filename = `poem-sub-${Date.now()}-${crypto.randomBytes(4).toString('hex')}.${ext}`;
-    fs.writeFileSync(path.join(UPLOADS_DIR, filename), buffer);
+    let processedBuffer = buffer;
+    try {
+      processedBuffer = await sharp(buffer)
+        .resize({ width: 1600, withoutEnlargement: true })
+        .jpeg({ quality: 85, progressive: true })
+        .toBuffer();
+    } catch {
+      processedBuffer = buffer;
+    }
+
+    const filename = `poem-sub-${Date.now()}-${crypto.randomBytes(4).toString('hex')}.jpg`;
+    fs.writeFileSync(path.join(UPLOADS_DIR, filename), processedBuffer);
     missingUploadCache.delete(filename);
 
     let cloudSynced = false;
     if (auth.firebaseIdToken) {
-      const mime = ext === 'jpg' ? 'image/jpeg' : `image/${ext}`;
+      const mime = 'image/jpeg';
       try {
-        cloudSynced = await saveMediaAssetToFirestore(filename, mime, buffer, auth.firebaseIdToken);
+        cloudSynced = await saveMediaAssetToFirestore(filename, mime, processedBuffer, auth.firebaseIdToken);
       } catch {
         cloudSynced = false;
       }
@@ -6067,15 +6078,25 @@ async function startServer() {
       return;
     }
 
-    const filename = `prose-sub-${Date.now()}-${crypto.randomBytes(4).toString('hex')}.${ext}`;
-    fs.writeFileSync(path.join(UPLOADS_DIR, filename), buffer);
+    let processedBuffer = buffer;
+    try {
+      processedBuffer = await sharp(buffer)
+        .resize({ width: 1600, withoutEnlargement: true })
+        .jpeg({ quality: 85, progressive: true })
+        .toBuffer();
+    } catch {
+      processedBuffer = buffer;
+    }
+
+    const filename = `prose-sub-${Date.now()}-${crypto.randomBytes(4).toString('hex')}.jpg`;
+    fs.writeFileSync(path.join(UPLOADS_DIR, filename), processedBuffer);
     missingUploadCache.delete(filename);
 
     let cloudSynced = false;
     if (auth.firebaseIdToken) {
-      const mime = ext === 'jpg' ? 'image/jpeg' : `image/${ext}`;
+      const mime = 'image/jpeg';
       try {
-        cloudSynced = await saveMediaAssetToFirestore(filename, mime, buffer, auth.firebaseIdToken);
+        cloudSynced = await saveMediaAssetToFirestore(filename, mime, processedBuffer, auth.firebaseIdToken);
       } catch {
         cloudSynced = false;
       }
@@ -11014,16 +11035,26 @@ async function startServer() {
       return;
     }
 
-    const filename = `cover-${Date.now()}-${crypto.randomBytes(4).toString('hex')}.${ext}`;
-    fs.writeFileSync(path.join(UPLOADS_DIR, filename), buffer);
+    let processedBuffer = buffer;
+    try {
+      processedBuffer = await sharp(buffer)
+        .resize({ width: 1600, withoutEnlargement: true })
+        .jpeg({ quality: 85, progressive: true })
+        .toBuffer();
+    } catch {
+      processedBuffer = buffer;
+    }
+
+    const filename = `cover-${Date.now()}-${crypto.randomBytes(4).toString('hex')}.jpg`;
+    fs.writeFileSync(path.join(UPLOADS_DIR, filename), processedBuffer);
     missingUploadCache.delete(filename);
 
     let cloudSynced = false;
     const adminToken = extractBearerToken(req);
     if (adminToken) {
-      const mime = ext === 'jpg' ? 'image/jpeg' : `image/${ext}`;
+      const mime = 'image/jpeg';
       try {
-        cloudSynced = await saveMediaAssetToFirestore(filename, mime, buffer, adminToken);
+        cloudSynced = await saveMediaAssetToFirestore(filename, mime, processedBuffer, adminToken);
       } catch {
         cloudSynced = false;
       }
@@ -12341,6 +12372,7 @@ async function startServer() {
   app.post('/api/monobank/webhook', async (req, res) => {
     const monobankToken = getMonobankToken();
     if (!monobankToken) {
+      console.warn('⚠️ [Monobank Webhook] Received webhook call, but Monobank token (MONOBANK_TOKEN / MONOBANK_ACQUIRING_TOKEN) is not configured.');
       res.status(200).json({ ok: true });
       return;
     }

@@ -881,7 +881,7 @@ export function PoetrySection({
                             hasCustomSurface
                               ? 'bg-transparent'
                               : isHomeSurfaceTab
-                                ? 'bg-white/62 dark:bg-[#2B2B2B]/52 backdrop-blur-xl shadow-[0_18px_42px_-22px_rgba(24,48,33,0.28)] dark:shadow-[0_20px_46px_-20px_rgba(0,0,0,0.82)]'
+                                ? 'bg-white dark:bg-[#2B2B2B] shadow-[0_18px_42px_-22px_rgba(24,48,33,0.28)] dark:shadow-[0_20px_46px_-20px_rgba(0,0,0,0.82)]'
                                 : 'bg-white dark:bg-[#262626]'
                           }`
                     }`}
@@ -1204,7 +1204,7 @@ export function PoetrySection({
             );
           })()
         ) : (
-          <div className="perf-card rounded-2xl p-6 sm:p-10 bg-white/62 dark:bg-[#2B2B2B]/52 backdrop-blur-xl shadow-[0_18px_42px_-22px_rgba(24,48,33,0.28)] dark:shadow-[0_20px_46px_-20px_rgba(0,0,0,0.82)] text-center space-y-3">
+          <div className="perf-card rounded-2xl p-6 sm:p-10 bg-white dark:bg-[#2B2B2B] shadow-[0_18px_42px_-22px_rgba(24,48,33,0.28)] dark:shadow-[0_20px_46px_-20px_rgba(0,0,0,0.82)] text-center space-y-3">
             <div className="inline-flex items-center justify-center w-11 h-11 rounded-xl bg-[#EAE7DF] dark:bg-[#323232] text-[#2C5937] dark:text-[#BCD369] mx-auto">
               <Award className="w-5 h-5" strokeWidth={1.8} />
             </div>

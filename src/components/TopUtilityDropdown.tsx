@@ -9,13 +9,15 @@ import {
   X,
 } from 'lucide-react';
 import { AnimatePresence, m } from 'motion/react';
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { getMessagingInstance } from '../firebase.ts';
 import { usePWAInstall } from '../hooks/usePWAInstall.ts';
 import type { FeedbackRecord, GuestUser } from '../types.ts';
 import { trackClick } from '../utils/analytics.ts';
 import { PWAInstallGuideModal } from './PWAInstallButton.tsx';
-import { SiteFeedbackModal } from './SiteFeedbackModal.tsx';
+const SiteFeedbackModal = lazy(() =>
+  import('./SiteFeedbackModal.tsx').then((m) => ({ default: m.SiteFeedbackModal }))
+);
 
 interface TopUtilityDropdownProps {
   isRadioEnabled: boolean;
@@ -691,15 +693,19 @@ export function TopUtilityDropdown({
         isInIframe={isPWAInIframe}
       />
 
-      <SiteFeedbackModal
-        isOpen={feedbackOpen}
-        onClose={() => setFeedbackOpen(false)}
-        guestUser={guestUser}
-        getGuestToken={getGuestToken}
-        items={siteFeedbackItems}
-        onItemsChange={onSiteFeedbackItemsChange}
-        onRepliesMarkedRead={onFeedbackRepliesMarkedRead}
-      />
+      {feedbackOpen && (
+        <Suspense fallback={null}>
+          <SiteFeedbackModal
+            isOpen={feedbackOpen}
+            onClose={() => setFeedbackOpen(false)}
+            guestUser={guestUser}
+            getGuestToken={getGuestToken}
+            items={siteFeedbackItems}
+            onItemsChange={onSiteFeedbackItemsChange}
+            onRepliesMarkedRead={onFeedbackRepliesMarkedRead}
+          />
+        </Suspense>
+      )}
 
       {!menuOpen && notifNotice && (
         <div className="absolute right-0 top-full mt-2 z-40 w-[min(90vw,24rem)] px-3.5 py-2.5 rounded-xl bg-emerald-100/95 dark:bg-[#262626] text-[11px] text-emerald-900 dark:text-[#F4F1EA] shadow-md flex flex-wrap items-center justify-end gap-2 text-right">

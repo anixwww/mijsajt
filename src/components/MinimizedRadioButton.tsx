@@ -169,7 +169,7 @@ export function MinimizedRadioButton({
           ? `Радіо · ${trackTitle}`
           : 'Радіостанція'
       }
-      className="group fixed bottom-[74px] sm:bottom-[78px] right-3.5 sm:right-6 z-30 w-9 h-9 rounded-full bg-[#FAF9F5]/94 dark:bg-[#202020]/95 text-[#2C5937] dark:text-[#E5E5E5] backdrop-blur-md shadow-[0_6px_18px_-5px_rgba(20,20,19,0.22)] dark:shadow-[0_8px_22px_-6px_rgba(0,0,0,0.72)] flex items-center justify-center hover:scale-105 active:scale-[0.94] transition-transform duration-150 cursor-pointer overflow-hidden"
+      className="group fixed bottom-[74px] sm:bottom-[78px] right-3.5 sm:right-6 z-30 w-9 h-9 rounded-full bg-[#FAF9F5] dark:bg-[#202020] text-[#2C5937] dark:text-[#E5E5E5] shadow-[0_6px_18px_-5px_rgba(20,20,19,0.22)] dark:shadow-[0_8px_22px_-6px_rgba(0,0,0,0.72)] flex items-center justify-center hover:scale-105 active:scale-[0.94] transition-transform duration-150 cursor-pointer overflow-hidden"
     >
       {/* Subtle bass-reactive ambient halo */}
       <span

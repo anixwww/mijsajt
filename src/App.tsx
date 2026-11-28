@@ -9,9 +9,6 @@ import { PoetrySpaceBackdrop } from './components/PoetrySpaceBackdrop.tsx';
 import { SectionSkeleton } from './components/SectionSkeleton.tsx';
 import { SiteBottomNav } from './components/SiteBottomNav.tsx';
 import { FALLBACK_SOCIAL_LINKS } from './components/SocialIcons.tsx';
-import { UserLeaderboardModal } from './components/UserLeaderboardModal.tsx';
-import { GlobalChatModal } from './components/GlobalChatModal.tsx';
-import { MusicSelectionsModal } from './components/MusicSelectionsModal.tsx';
 import { FirstVisitAuthHint } from './components/FirstVisitAuthHint.tsx';
 import { prewarmChatFirestore, subscribeGlobalChatMessages } from './utils/chatFirestore.ts';
 import {
@@ -53,6 +50,15 @@ const StoreSection = lazy(() =>
 );
 const TelegramVerifyModal = lazy(() =>
   import('./components/TelegramVerifyModal.tsx').then((m) => ({ default: m.TelegramVerifyModal }))
+);
+const GlobalChatModal = lazy(() =>
+  import('./components/GlobalChatModal.tsx').then((m) => ({ default: m.GlobalChatModal }))
+);
+const UserLeaderboardModal = lazy(() =>
+  import('./components/UserLeaderboardModal.tsx').then((m) => ({ default: m.UserLeaderboardModal }))
+);
+const MusicSelectionsModal = lazy(() =>
+  import('./components/MusicSelectionsModal.tsx').then((m) => ({ default: m.MusicSelectionsModal }))
 );
 import { getCachedAuthUser, getFirebaseAuth, testFirestoreConnection } from './firebase.ts';
 import {
@@ -397,69 +403,89 @@ export default function App() {
     let active = true;
     let unsubscribeFs: () => void = () => {};
     let fallbackTimer: number | null = null;
-    prewarmChatFirestore();
+    let idleHandle: number | null = null;
 
-    const ownUids = new Set(
-      [guestUser.uid, guestUser.firebaseUid].filter((v): v is string => Boolean(v))
-    );
-
-    const evaluateMessages = (list: GlobalChatMessage[]) => {
+    const runChatSub = () => {
       if (!active) return;
-      const lastReadTime = Number(localStorage.getItem('dankiv_last_read_chat_reply') || '0');
-      const hasUnread = list.some((msg) => {
-        if (!msg.replyTo) return false;
-        if (!ownUids.has(msg.replyTo.authorUid)) return false;
-        if (ownUids.has(msg.authorUid)) return false;
-        const msgTime = new Date(msg.createdAt).getTime();
-        return msgTime > lastReadTime;
-      });
-      setHasUnreadReply(hasUnread);
-    };
+      prewarmChatFirestore();
 
-    const startFallbackPoll = () => {
-      if (fallbackTimer !== null) return;
-      const checkReplies = async () => {
-        try {
-          const token =
-            guestSessionTokenRef.current ||
-            (typeof getGuestToken === 'function' ? await getGuestToken() : null);
-          const headers: Record<string, string> = {};
-          if (token) headers['Authorization'] = `Bearer ${token}`;
+      const ownUids = new Set(
+        [guestUser.uid, guestUser.firebaseUid].filter((v): v is string => Boolean(v))
+      );
 
-          const res = await fetch('/api/chat/messages', { headers });
-          if (!res.ok) return;
-          const json = await res.json();
-          if (active && Array.isArray(json.messages)) {
-            evaluateMessages(json.messages as GlobalChatMessage[]);
-          }
-        } catch {
-          // Ignore
-        }
+      const evaluateMessages = (list: GlobalChatMessage[]) => {
+        if (!active) return;
+        const lastReadTime = Number(localStorage.getItem('dankiv_last_read_chat_reply') || '0');
+        const hasUnread = list.some((msg) => {
+          if (!msg.replyTo) return false;
+          if (!ownUids.has(msg.replyTo.authorUid)) return false;
+          if (ownUids.has(msg.authorUid)) return false;
+          const msgTime = new Date(msg.createdAt).getTime();
+          return msgTime > lastReadTime;
+        });
+        setHasUnreadReply(hasUnread);
       };
-      void checkReplies();
-      fallbackTimer = window.setInterval(() => {
+
+      const startFallbackPoll = () => {
+        if (fallbackTimer !== null) return;
+        const checkReplies = async () => {
+          try {
+            const token =
+              guestSessionTokenRef.current ||
+              (typeof getGuestToken === 'function' ? await getGuestToken() : null);
+            const headers: Record<string, string> = {};
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+
+            const res = await fetch('/api/chat/messages', { headers });
+            if (!res.ok) return;
+            const json = await res.json();
+            if (active && Array.isArray(json.messages)) {
+              evaluateMessages(json.messages as GlobalChatMessage[]);
+            }
+          } catch {
+            // Ignore
+          }
+        };
         void checkReplies();
-      }, 30000);
+        fallbackTimer = window.setInterval(() => {
+          void checkReplies();
+        }, 30000);
+      };
+
+      void subscribeGlobalChatMessages({
+        limitCount: 30,
+        onMessages: (fsMessages) => {
+          evaluateMessages(fsMessages);
+        },
+        onError: () => {
+          startFallbackPoll();
+        },
+      }).then((unsub) => {
+        if (!active) {
+          unsub();
+        } else {
+          unsubscribeFs = unsub;
+        }
+      });
     };
 
-    void subscribeGlobalChatMessages({
-      limitCount: 30,
-      onMessages: (fsMessages) => {
-        evaluateMessages(fsMessages);
-      },
-      onError: () => {
-        startFallbackPoll();
-      },
-    }).then((unsub) => {
-      if (!active) {
-        unsub();
-      } else {
-        unsubscribeFs = unsub;
-      }
-    });
+    if (typeof window !== 'undefined' && typeof (window as any).requestIdleCallback === 'function') {
+      idleHandle = (window as any).requestIdleCallback(() => {
+        if (active) runChatSub();
+      }, { timeout: 4000 });
+    } else {
+      idleHandle = window.setTimeout(() => {
+        if (active) runChatSub();
+      }, 1500) as any;
+    }
 
     return () => {
       active = false;
+      if (typeof window !== 'undefined' && typeof (window as any).cancelIdleCallback === 'function' && typeof idleHandle === 'number') {
+        (window as any).cancelIdleCallback(idleHandle);
+      } else if (idleHandle !== null) {
+        window.clearTimeout(idleHandle as any);
+      }
       unsubscribeFs();
       if (fallbackTimer !== null) {
         window.clearInterval(fallbackTimer);
@@ -644,9 +670,30 @@ export default function App() {
   }, [guestUser?.uid, getGuestToken]);
 
   useEffect(() => {
-    void testFirestoreConnection();
-    const timer = window.setTimeout(() => prewarmChatFirestore(), 600);
-    return () => window.clearTimeout(timer);
+    let idleHandle: number | null = null;
+    let timer: number | null = null;
+
+    const runPrewarm = () => {
+      void testFirestoreConnection();
+      timer = window.setTimeout(() => prewarmChatFirestore(), 1500);
+    };
+
+    if (typeof window !== 'undefined' && typeof (window as any).requestIdleCallback === 'function') {
+      idleHandle = (window as any).requestIdleCallback(runPrewarm, { timeout: 5000 });
+    } else {
+      idleHandle = window.setTimeout(runPrewarm, 2500) as any;
+    }
+
+    return () => {
+      if (typeof window !== 'undefined' && 'cancelIdleCallback' in window && typeof idleHandle === 'number') {
+        window.cancelIdleCallback(idleHandle);
+      } else if (idleHandle !== null) {
+        window.clearTimeout(idleHandle as number);
+      }
+      if (timer !== null) {
+        window.clearTimeout(timer);
+      }
+    };
   }, []);
 
   const fetchCatalog = useCallback(async () => {
@@ -3117,38 +3164,50 @@ export default function App() {
 
 
         {/* User Leaderboard Modal */}
-        <UserLeaderboardModal
-          isOpen={leaderboardOpen}
-          onClose={handleCloseLeaderboard}
-          guestUser={guestUser}
-          isAdmin={isAdmin}
-          getAdminToken={getAdminToken}
-          getGuestToken={getGuestToken}
-          authToken={guestSessionTokenRef.current}
-        />
+        {leaderboardOpen && (
+          <Suspense fallback={null}>
+            <UserLeaderboardModal
+              isOpen={leaderboardOpen}
+              onClose={handleCloseLeaderboard}
+              guestUser={guestUser}
+              isAdmin={isAdmin}
+              getAdminToken={getAdminToken}
+              getGuestToken={getGuestToken}
+              authToken={guestSessionTokenRef.current}
+            />
+          </Suspense>
+        )}
 
         {/* Global Community Chat Modal */}
-        <GlobalChatModal
-          isOpen={chatOpen}
-          onClose={handleCloseChat}
-          guestUser={guestUser}
-          isAdmin={isAdmin}
-          getGuestToken={getGuestToken}
-          onOpenAuthModal={handleOpenAuthModalStable}
-          onGuestUserUpdated={handleGuestUserUpdated}
-        />
+        {chatOpen && (
+          <Suspense fallback={null}>
+            <GlobalChatModal
+              isOpen={chatOpen}
+              onClose={handleCloseChat}
+              guestUser={guestUser}
+              isAdmin={isAdmin}
+              getGuestToken={getGuestToken}
+              onOpenAuthModal={handleOpenAuthModalStable}
+              onGuestUserUpdated={handleGuestUserUpdated}
+            />
+          </Suspense>
+        )}
 
         {/* Monthly / Weekly Music Selections Modal */}
-        <MusicSelectionsModal
-          isOpen={musicSelectionsOpen}
-          onClose={handleCloseMusicSelections}
-          selections={weeklyMusicSelections}
-          currentPeriod={catalog?.weeklyCurrentPeriod}
-          isAdmin={isAdmin}
-          getAdminToken={getAdminToken}
-          onSelectionsUpdated={handleWeeklySelectionsUpdated}
-          onBeforePlay={handlePauseRadio}
-        />
+        {musicSelectionsOpen && (
+          <Suspense fallback={null}>
+            <MusicSelectionsModal
+              isOpen={musicSelectionsOpen}
+              onClose={handleCloseMusicSelections}
+              selections={weeklyMusicSelections}
+              currentPeriod={catalog?.weeklyCurrentPeriod}
+              isAdmin={isAdmin}
+              getAdminToken={getAdminToken}
+              onSelectionsUpdated={handleWeeklySelectionsUpdated}
+              onBeforePlay={handlePauseRadio}
+            />
+          </Suspense>
+        )}
 
         <FirstVisitAuthHint
           guestUser={guestUser}

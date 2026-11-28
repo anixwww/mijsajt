@@ -166,7 +166,7 @@ const VITRINE_GLASS_SHELL =
   'group/card relative overflow-hidden rounded-2xl shadow-[0_18px_42px_-22px_rgba(24,48,33,0.28)] hover:shadow-[0_22px_48px_-20px_rgba(24,48,33,0.36)] dark:shadow-[0_20px_46px_-20px_rgba(0,0,0,0.82)] dark:hover:shadow-[0_24px_52px_-18px_rgba(0,0,0,0.9)] transition-all duration-300';
 
 const VITRINE_GLASS_BASE =
-  `${VITRINE_GLASS_SHELL} bg-white/62 dark:bg-[#2B2B2B]/52 hover:bg-white/78 dark:hover:bg-[#323232]/65 backdrop-blur-xl`;
+  `${VITRINE_GLASS_SHELL} bg-white dark:bg-[#2B2B2B] hover:bg-[#FAF9F5] dark:hover:bg-[#323232]`;
 
 const VITRINE_GLASS_CARD = `${VITRINE_GLASS_BASE} p-4 sm:p-5`;
 
