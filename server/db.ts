@@ -335,20 +335,29 @@ export function verifySameOrigin(req: Request): boolean {
   }
 
   const allowedHosts = new Set<string>();
-  const rawForwarded = req.get('x-forwarded-host');
   const rawHost = req.get('host');
-  if (rawForwarded) {
-    for (const h of rawForwarded.split(',')) {
-      const clean = h.trim().toLowerCase();
-      if (clean) allowedHosts.add(clean);
-    }
-  }
   if (rawHost) {
     for (const h of rawHost.split(',')) {
       const clean = h.trim().toLowerCase();
       if (clean) allowedHosts.add(clean);
     }
   }
+
+  const trustProxy =
+    process.env.TRUST_PROXY === 'true' ||
+    process.env.NODE_ENV === 'production' ||
+    Boolean(req.app?.get?.('trust proxy'));
+
+  if (trustProxy) {
+    const rawForwarded = req.get('x-forwarded-host');
+    if (rawForwarded) {
+      for (const h of rawForwarded.split(',')) {
+        const clean = h.trim().toLowerCase();
+        if (clean) allowedHosts.add(clean);
+      }
+    }
+  }
+
   if (process.env.APP_URL) {
     try {
       allowedHosts.add(new URL(process.env.APP_URL).host.toLowerCase());
@@ -357,10 +366,13 @@ export function verifySameOrigin(req: Request): boolean {
     }
   }
 
+  if (allowedHosts.size === 0) {
+    return false;
+  }
+
   const checkHostMatch = (targetUrlStr: string): boolean => {
     try {
       const targetHost = new URL(targetUrlStr).host.toLowerCase();
-      if (allowedHosts.size === 0) return true;
       return allowedHosts.has(targetHost);
     } catch {
       return false;
@@ -374,9 +386,15 @@ export function verifySameOrigin(req: Request): boolean {
     return checkHostMatch(referer);
   }
 
-  if (req.method === 'GET' || req.method === 'HEAD' || req.headers['x-requested-with']) {
+  if (secFetchSite === 'same-origin' || secFetchSite === 'same-site') {
     return true;
   }
+
+  const isReadMethod = req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS';
+  if (isReadMethod) {
+    return true;
+  }
+
   return false;
 }
 
