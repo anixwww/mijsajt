@@ -1923,7 +1923,7 @@ export async function ensureAvailableAuthorPhotos(db: SiteDatabase): Promise<voi
   if (changed) {
     db.authorPhotos = resolved;
     db.authorPhotoUrl = resolved[0];
-    saveDatabase(db, { bumpCatalogRevision: true });
+    saveDatabase(db, { bumpCatalogRevision: true, slices: ['meta'] });
   }
 }
 
@@ -2003,13 +2003,13 @@ export function registerCatalogRoutes(app: express.Express): void {
       const bearerToken = extractBearerToken(req);
       if (bearerToken) {
         const radioChanged = await hydrateAuthorizedProseAndRadio(db, bearerToken);
-        if (radioChanged) saveDatabase(db);
+        if (radioChanged) saveDatabase(db, { slices: ['prose', 'radio'] });
       }
     }
 
     const weeklyRollover = ensureWeeklyWinnersUpToDate(db);
     if (weeklyRollover.changed) {
-      saveDatabase(db);
+      saveDatabase(db, { slices: ['poems', 'prose'] });
     }
 
     res.setHeader('Vary', 'Authorization, Cookie');
@@ -2153,7 +2153,9 @@ export function registerCatalogRoutes(app: express.Express): void {
     const db = ensureDatabase();
     if (!cloudSyncState.publicHydrated) {
       const hydrated = await hydratePublicCatalogFromFirestore(db);
-      if (hydrated) saveDatabase(db);
+      if (hydrated) {
+        saveDatabase(db, { slices: ['meta', 'poems', 'prose', 'blog', 'products', 'radio'] });
+      }
     }
     res.setHeader('Vary', 'Authorization, Cookie');
     const bearer = extractBearerToken(req);
@@ -2178,7 +2180,7 @@ export function registerCatalogRoutes(app: express.Express): void {
     }
     if (authResult.provider === 'google' && !cloudSyncState.radioHydrated) {
       const changed = await hydrateAuthorizedProseAndRadio(db, bearer);
-      if (changed) saveDatabase(db);
+      if (changed) saveDatabase(db, { slices: ['prose', 'radio'] });
     }
     res.setHeader('Cache-Control', 'private, no-store, no-cache, must-revalidate');
     res.json({
@@ -2991,7 +2993,7 @@ export function registerCatalogRoutes(app: express.Express): void {
     if (fbUid && auth.firebaseIdToken) {
       const hydrated = await hydrateUserPoemSubmissionsFromFirestore(db, fbUid, auth.firebaseIdToken);
       if (hydrated) {
-        saveDatabase(db);
+        saveDatabase(db, { slices: ['poems'] });
       }
     }
 
@@ -3156,7 +3158,7 @@ export function registerCatalogRoutes(app: express.Express): void {
       db.poemSubmissions = [];
     }
     db.poemSubmissions.unshift(submission);
-    saveDatabase(db);
+    saveDatabase(db, { slices: ['poems'] });
 
     let cloudSynced = false;
     if (auth.firebaseIdToken) {
@@ -3184,7 +3186,7 @@ export function registerCatalogRoutes(app: express.Express): void {
     const fbUid = auth.firebaseClaims?.uid || auth.account.googleUid || '';
     if (fbUid && auth.firebaseIdToken && !(db.poemSubmissions || []).some((s) => s.id === id)) {
       const hydrated = await hydrateUserPoemSubmissionsFromFirestore(db, fbUid, auth.firebaseIdToken);
-      if (hydrated) saveDatabase(db);
+      if (hydrated) saveDatabase(db, { slices: ['poems'] });
     }
 
     const submission = (db.poemSubmissions || []).find((s) => s.id === id);
@@ -3240,7 +3242,7 @@ export function registerCatalogRoutes(app: express.Express): void {
     );
     const unpublishedLive = db.poems.length !== beforePoems;
 
-    saveDatabase(db);
+    saveDatabase(db, { slices: ['poems'] });
 
     let cloudSynced = false;
     if (auth.firebaseIdToken) {
@@ -3321,7 +3323,7 @@ export function registerCatalogRoutes(app: express.Express): void {
     if (fbUid && auth.firebaseIdToken) {
       const hydrated = await hydrateUserProseSubmissionsFromFirestore(db, fbUid, auth.firebaseIdToken);
       if (hydrated) {
-        saveDatabase(db);
+        saveDatabase(db, { slices: ['prose'] });
       }
     }
 
@@ -3447,7 +3449,7 @@ export function registerCatalogRoutes(app: express.Express): void {
       db.proseSubmissions = [];
     }
     db.proseSubmissions.unshift(submission);
-    saveDatabase(db);
+    saveDatabase(db, { slices: ['prose'] });
 
     let cloudSynced = false;
     if (auth.firebaseIdToken) {
@@ -3475,7 +3477,7 @@ export function registerCatalogRoutes(app: express.Express): void {
     const fbUid = auth.firebaseClaims?.uid || auth.account.googleUid || '';
     if (fbUid && auth.firebaseIdToken && !(db.proseSubmissions || []).some((s) => s.id === id)) {
       const hydrated = await hydrateUserProseSubmissionsFromFirestore(db, fbUid, auth.firebaseIdToken);
-      if (hydrated) saveDatabase(db);
+      if (hydrated) saveDatabase(db, { slices: ['prose'] });
     }
 
     const submission = (db.proseSubmissions || []).find((s) => s.id === id);
@@ -3547,7 +3549,7 @@ export function registerCatalogRoutes(app: express.Express): void {
     );
     const unpublishedLive = db.prose.length !== beforeProse;
 
-    saveDatabase(db);
+    saveDatabase(db, { slices: ['prose'] });
 
     let cloudSynced = false;
     if (auth.firebaseIdToken) {
@@ -4249,7 +4251,7 @@ export function registerCatalogRoutes(app: express.Express): void {
     };
 
     db.feedback.unshift(record);
-    saveDatabase(db);
+    saveDatabase(db, { slices: ['community'] });
 
     if (optionalAuth?.firebaseIdToken && optionalAuth?.firebaseClaims?.email_verified) {
       void syncSiteFeedbackToFirestore(record, optionalAuth.firebaseIdToken);
@@ -4275,7 +4277,7 @@ export function registerCatalogRoutes(app: express.Express): void {
         optionalAuth.firebaseIdToken
       );
       if (hydrated) {
-        saveDatabase(db);
+        saveDatabase(db, { slices: ['community'] });
       }
     }
 
@@ -4324,7 +4326,7 @@ export function registerCatalogRoutes(app: express.Express): void {
     });
 
     if (updatedItems.length > 0) {
-      saveDatabase(db);
+      saveDatabase(db, { slices: ['community'] });
       if (authResult.firebaseIdToken && authResult.firebaseClaims?.email_verified) {
         for (const item of updatedItems) {
           void syncSiteFeedbackToFirestore(item, authResult.firebaseIdToken);

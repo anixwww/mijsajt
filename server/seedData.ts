@@ -213,6 +213,7 @@ export interface GuestAccountRecord {
   pinHash?: string;
   pinSalt?: string;
   pinFailedAttempts?: number;
+  pinFailedAttemptsByIp?: Record<string, { count: number; lockedUntil?: string }>;
   pinLockedUntil?: string;
   pinUpdatedAt?: string;
   likedPoemIds?: string[];

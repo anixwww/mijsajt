@@ -64,21 +64,20 @@ let appCheckInitialized = false;
 
 export async function initFirebaseAppCheck(): Promise<void> {
   if (appCheckInitialized || typeof window === 'undefined') return;
+  const siteKey =
+    (import.meta.env.VITE_FIREBASE_APP_CHECK_SITE_KEY as string | undefined)?.trim() ||
+    firebaseConfig.recaptchaSiteKey?.trim();
+  if (!siteKey) return;
   appCheckInitialized = true;
   try {
     const [app, { initializeAppCheck, ReCaptchaV3Provider }] = await Promise.all([
       getFirebaseApp(),
       import('firebase/app-check'),
     ]);
-    const siteKey =
-      (import.meta.env.VITE_FIREBASE_APP_CHECK_SITE_KEY as string | undefined)?.trim() ||
-      firebaseConfig.recaptchaSiteKey?.trim();
-    if (siteKey) {
-      initializeAppCheck(app, {
-        provider: new ReCaptchaV3Provider(siteKey),
-        isTokenAutoRefreshEnabled: true,
-      });
-    }
+    initializeAppCheck(app, {
+      provider: new ReCaptchaV3Provider(siteKey),
+      isTokenAutoRefreshEnabled: true,
+    });
   } catch {
     // App Check optional fallback
   }

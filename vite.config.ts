@@ -110,6 +110,9 @@ export default defineConfig(() => {
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
     },
     build: {
+      // Lazy @firebase/firestore chunk is ~584 KB minified; keep threshold just above it
+      // so real chunk regressions still trigger build warnings.
+      chunkSizeWarningLimit: 600,
       rollupOptions: {
         output: {
           manualChunks(id) {
@@ -117,8 +120,28 @@ export default defineConfig(() => {
             if (/\/node_modules\/(react|react-dom|scheduler)\//.test(normalizedId)) {
               return 'vendor-react';
             }
+            if (/\/node_modules\/(firebase\/auth|@firebase\/auth)/.test(normalizedId)) {
+              return 'vendor-firebase-auth';
+            }
+            if (
+              /\/node_modules\/(firebase\/firestore|@firebase\/firestore|@firebase\/webchannel-wrapper)/.test(
+                normalizedId
+              )
+            ) {
+              return 'vendor-firebase-firestore';
+            }
+            if (
+              /\/node_modules\/(firebase\/messaging|@firebase\/messaging|@firebase\/installations)/.test(
+                normalizedId
+              )
+            ) {
+              return 'vendor-firebase-messaging';
+            }
+            if (/\/node_modules\/(firebase\/app-check|@firebase\/app-check)/.test(normalizedId)) {
+              return 'vendor-firebase-appcheck';
+            }
             if (/\/node_modules\/(firebase|@firebase)\//.test(normalizedId)) {
-              return 'vendor-firebase';
+              return 'vendor-firebase-core';
             }
             if (/\/node_modules\/(motion|framer-motion|motion-dom|motion-utils)\//.test(normalizedId)) {
               return 'vendor-motion';

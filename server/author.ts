@@ -95,6 +95,7 @@ import {
   validateExternalImageUrlForProxy,
   visitorIpSet,
 } from './db.ts';
+import type { DbSliceKey } from './sqliteStore.ts';
 import {
   authenticateAdminRequest,
   cloudPoemLikesByPoemId,
@@ -338,13 +339,15 @@ export function registerAuthorMiddlewareAndRawRoutes(app: express.Express): void
     const db = ensureDatabase();
     if (!cloudSyncState.publicHydrated) {
       const hadPublic = await hydratePublicCatalogFromFirestore(db);
-      if (hadPublic) saveDatabase(db);
+      if (hadPublic) {
+        saveDatabase(db, { slices: ['meta', 'poems', 'prose', 'blog', 'products', 'radio'] });
+      }
     }
     if (!cloudSyncState.adminSecretsHydrated && token) {
       const hadSecrets = await hydrateAdminSecretsFromFirestore(db, token, {
         onTelegramBotToken: applyCloudTelegramBotToken,
       });
-      if (hadSecrets) saveDatabase(db);
+      if (hadSecrets) saveDatabase(db, { slices: ['meta'] });
     }
 
     const revBefore = getCatalogRevision();
@@ -553,7 +556,14 @@ export function registerAuthorRoutes(app: express.Express): void {
           hydrateAdminSiteFeedbackFromFirestore(db, adminToken),
         ]);
       if (poemSubsHydrated || proseSubsHydrated || ordersHydrated || feedbackHydrated) {
-        saveDatabase(db, { ordersDirty: ordersHydrated });
+        const dirtySlices: DbSliceKey[] = [];
+        if (poemSubsHydrated) dirtySlices.push('poems');
+        if (proseSubsHydrated) dirtySlices.push('prose');
+        if (feedbackHydrated) dirtySlices.push('community');
+        saveDatabase(db, {
+          ...(dirtySlices.length > 0 ? { slices: dirtySlices } : {}),
+          ordersDirty: ordersHydrated,
+        });
       }
     }
     const adminOrders: OrderRecord[] = db.orders.map((order) => {
@@ -820,7 +830,7 @@ export function registerAuthorRoutes(app: express.Express): void {
     const adminToken = extractBearerToken(req);
     if (adminToken) {
       const hydrated = await hydrateAdminSiteFeedbackFromFirestore(db, adminToken);
-      if (hydrated) saveDatabase(db);
+      if (hydrated) saveDatabase(db, { slices: ['community'] });
     }
     const sorted = [...(db.feedback || [])].sort(
       (a, b) => (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0)
@@ -866,7 +876,7 @@ export function registerAuthorRoutes(app: express.Express): void {
 
     items[targetIndex] = updated;
     db.feedback = items;
-    saveDatabase(db);
+    saveDatabase(db, { slices: ['community'] });
 
     const adminToken = extractBearerToken(req);
     if (adminToken) {
@@ -895,7 +905,7 @@ export function registerAuthorRoutes(app: express.Express): void {
     };
     items[targetIndex] = updated;
     db.feedback = items;
-    saveDatabase(db);
+    saveDatabase(db, { slices: ['community'] });
 
     const adminToken = extractBearerToken(req);
     if (adminToken) {
@@ -915,7 +925,7 @@ export function registerAuthorRoutes(app: express.Express): void {
       res.status(404).json({ error: 'Відгук не знайдено.' });
       return;
     }
-    saveDatabase(db);
+    saveDatabase(db, { slices: ['community'] });
     const adminToken = extractBearerToken(req);
     if (adminToken) {
       void deleteSiteFeedbackInFirestore(id, adminToken);
@@ -952,7 +962,7 @@ export function registerAuthorRoutes(app: express.Express): void {
           ? acc.likedPoemIds.filter((pid) => pid !== id)
           : [],
       }));
-      saveDatabase(db);
+      saveDatabase(db, { slices: ['poems', 'products', 'community'] });
       const adminToken = extractBearerToken(req);
       if (adminToken) {
         void deleteReviewsForTargetInFirestore('poem', id, adminToken);
@@ -984,7 +994,7 @@ export function registerAuthorRoutes(app: express.Express): void {
           (r) => !(r.targetType === 'prose' && r.targetId === id)
         );
       }
-      saveDatabase(db);
+      saveDatabase(db, { slices: ['prose', 'products'] });
       const adminToken = extractBearerToken(req);
       if (adminToken) {
         void deleteReviewsForTargetInFirestore('prose', id, adminToken);
@@ -1000,7 +1010,7 @@ export function registerAuthorRoutes(app: express.Express): void {
         return;
       }
       delete db.blogViews[id];
-      saveDatabase(db);
+      saveDatabase(db, { slices: ['blog'] });
       res.json({ deletedId: id });
       return;
     }
@@ -1188,7 +1198,7 @@ export function registerAuthorRoutes(app: express.Express): void {
       poem.authorName = authorName.trim() ? authorName.trim().slice(0, 80) : undefined;
     }
 
-    saveDatabase(db);
+    saveDatabase(db, { slices: ['poems'] });
     res.json({ item: poem });
   });
 
@@ -1223,7 +1233,7 @@ export function registerAuthorRoutes(app: express.Express): void {
     }
 
     db.poems = reordered;
-    saveDatabase(db);
+    saveDatabase(db, { slices: ['poems'] });
     res.json({ poems: db.poems });
   });
 
@@ -1233,7 +1243,7 @@ export function registerAuthorRoutes(app: express.Express): void {
     const adminToken = extractBearerToken(req);
     if (adminToken) {
       const hydrated = await hydrateAdminPoemSubmissionsFromFirestore(db, adminToken);
-      if (hydrated) saveDatabase(db);
+      if (hydrated) saveDatabase(db, { slices: ['poems'] });
     }
     const items = [...(db.poemSubmissions || [])].sort(
       (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)
@@ -1400,7 +1410,7 @@ export function registerAuthorRoutes(app: express.Express): void {
       }
     }
 
-    saveDatabase(db);
+    saveDatabase(db, { slices: ['poems'] });
     const adminToken = extractBearerToken(req);
     if (adminToken) {
       await syncPoemSubmissionToFirestore(submission, adminToken);
@@ -1592,7 +1602,7 @@ export function registerAuthorRoutes(app: express.Express): void {
     submission.status = 'approved';
     submission.publishedPoemId = publishedPoem.id;
     submission.updatedAt = new Date().toISOString();
-    saveDatabase(db);
+    saveDatabase(db, { slices: ['poems'] });
 
     const adminToken = extractBearerToken(req);
     if (adminToken) {
@@ -1641,7 +1651,7 @@ export function registerAuthorRoutes(app: express.Express): void {
     }
     submission.status = 'rejected';
     submission.updatedAt = new Date().toISOString();
-    saveDatabase(db);
+    saveDatabase(db, { slices: ['poems'] });
 
     const adminToken = extractBearerToken(req);
     if (adminToken) {
@@ -1661,7 +1671,7 @@ export function registerAuthorRoutes(app: express.Express): void {
       res.status(404).json({ error: 'Заявку не знайдено.' });
       return;
     }
-    saveDatabase(db);
+    saveDatabase(db, { slices: ['poems'] });
 
     const adminToken = extractBearerToken(req);
     if (adminToken) {
@@ -1677,7 +1687,7 @@ export function registerAuthorRoutes(app: express.Express): void {
     const adminToken = extractBearerToken(req);
     if (adminToken) {
       const hydrated = await hydrateAdminProseSubmissionsFromFirestore(db, adminToken);
-      if (hydrated) saveDatabase(db);
+      if (hydrated) saveDatabase(db, { slices: ['prose'] });
     }
     const items = [...(db.proseSubmissions || [])].sort(
       (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)
@@ -1788,7 +1798,7 @@ export function registerAuthorRoutes(app: express.Express): void {
       }
     }
 
-    saveDatabase(db);
+    saveDatabase(db, { slices: ['prose'] });
     const adminToken = extractBearerToken(req);
     if (adminToken) {
       await syncProseSubmissionToFirestore(submission, adminToken);
@@ -1933,7 +1943,7 @@ export function registerAuthorRoutes(app: express.Express): void {
     submission.status = 'approved';
     submission.publishedProseId = publishedProse.id;
     submission.updatedAt = new Date().toISOString();
-    saveDatabase(db);
+    saveDatabase(db, { slices: ['prose'] });
 
     const adminToken = extractBearerToken(req);
     if (adminToken) {
@@ -1984,7 +1994,7 @@ export function registerAuthorRoutes(app: express.Express): void {
     }
     submission.status = 'rejected';
     submission.updatedAt = new Date().toISOString();
-    saveDatabase(db);
+    saveDatabase(db, { slices: ['prose'] });
 
     const adminToken = extractBearerToken(req);
     if (adminToken) {
@@ -2004,7 +2014,7 @@ export function registerAuthorRoutes(app: express.Express): void {
       res.status(404).json({ error: 'Заявку не знайдено.' });
       return;
     }
-    saveDatabase(db);
+    saveDatabase(db, { slices: ['prose'] });
 
     const adminToken = extractBearerToken(req);
     if (adminToken) {
@@ -2074,7 +2084,7 @@ export function registerAuthorRoutes(app: express.Express): void {
       }
     }
 
-    saveDatabase(db);
+    saveDatabase(db, { slices: ['blog'] });
     res.json({ item: enrichBlogPost(post, db) });
   });
 
@@ -2476,7 +2486,7 @@ export function registerAuthorRoutes(app: express.Express): void {
     }
 
     if (mutated) {
-      saveDatabase(db);
+      saveDatabase(db, { slices: ['radio'] });
     }
 
     res.status(mutated ? 201 : 200).json({
@@ -2538,7 +2548,7 @@ export function registerAuthorRoutes(app: express.Express): void {
       });
     }
     db.radioTracks = sanitized;
-    saveDatabase(db);
+    saveDatabase(db, { slices: ['radio'] });
     res.json({ radioTracks: db.radioTracks });
   });
 
@@ -2599,7 +2609,7 @@ export function registerAuthorRoutes(app: express.Express): void {
       db.radioTracks = reordered.map((t, idx) => ({ ...t, order: idx }));
     }
 
-    saveDatabase(db);
+    saveDatabase(db, { slices: ['radio'] });
     res.json({ radioTracks: db.radioTracks });
   });
 
@@ -2613,7 +2623,7 @@ export function registerAuthorRoutes(app: express.Express): void {
       .map((t, idx) => ({ ...t, order: idx }));
     const deletedLocally = db.radioTracks.length !== before;
     if (deletedLocally) {
-      saveDatabase(db);
+      saveDatabase(db, { slices: ['radio'] });
     }
 
     const token = extractBearerToken(req);
@@ -2722,7 +2732,7 @@ export function registerAuthorRoutes(app: express.Express): void {
     }
 
     db.weeklyMusicSelections = sortWeeklyMusicSelections(db.weeklyMusicSelections);
-    saveDatabase(db);
+    saveDatabase(db, { slices: ['radio'] });
 
     const token = extractBearerToken(req);
     if (token) {
@@ -2798,7 +2808,7 @@ export function registerAuthorRoutes(app: express.Express): void {
 
     list[idx] = updated;
     db.weeklyMusicSelections = sortWeeklyMusicSelections(list);
-    saveDatabase(db);
+    saveDatabase(db, { slices: ['radio'] });
 
     const token = extractBearerToken(req);
     if (token) {
@@ -2819,7 +2829,7 @@ export function registerAuthorRoutes(app: express.Express): void {
     db.weeklyMusicSelections = sortWeeklyMusicSelections(list.filter((s) => s.id !== id));
     const deletedLocally = db.weeklyMusicSelections.length !== before;
     if (deletedLocally) {
-      saveDatabase(db);
+      saveDatabase(db, { slices: ['radio'] });
     }
 
     const token = extractBearerToken(req);
@@ -2865,7 +2875,7 @@ export function registerAuthorRoutes(app: express.Express): void {
       ...item,
       order: idx,
     }));
-    saveDatabase(db);
+    saveDatabase(db, { slices: ['radio'] });
     res.status(201).json({
       selection,
       monthlySelections: getSortedSelections(db),
@@ -2909,7 +2919,7 @@ export function registerAuthorRoutes(app: express.Express): void {
 
     list[idx] = updated;
     db.monthlySelections = list;
-    saveDatabase(db);
+    saveDatabase(db, { slices: ['radio'] });
     res.json({
       selection: updated,
       monthlySelections: getSortedSelections(db),
@@ -2924,7 +2934,7 @@ export function registerAuthorRoutes(app: express.Express): void {
       .filter((s) => s.id !== id)
       .map((s, idx) => ({ ...s, order: idx }));
     if (db.monthlySelections.length !== before) {
-      saveDatabase(db);
+      saveDatabase(db, { slices: ['radio'] });
     }
     res.json({
       deletedId: id,
@@ -3062,7 +3072,7 @@ export function registerAuthorRoutes(app: express.Express): void {
     if (addedTracks.length > 0) {
       list[selIndex] = updated;
       db.monthlySelections = list;
-      saveDatabase(db);
+      saveDatabase(db, { slices: ['radio'] });
     }
 
     res.status(addedTracks.length > 0 ? 201 : 200).json({
@@ -3112,7 +3122,7 @@ export function registerAuthorRoutes(app: express.Express): void {
     };
     list[selIndex] = updated;
     db.monthlySelections = list;
-    saveDatabase(db);
+    saveDatabase(db, { slices: ['radio'] });
     res.json({
       selection: updated,
       monthlySelections: getSortedSelections(db),
@@ -3169,7 +3179,7 @@ export function registerAuthorRoutes(app: express.Express): void {
     };
     list[selIndex] = updatedSelection;
     db.monthlySelections = list;
-    saveDatabase(db);
+    saveDatabase(db, { slices: ['radio'] });
     res.json({
       selection: updatedSelection,
       track: updatedTrack,
@@ -3196,7 +3206,7 @@ export function registerAuthorRoutes(app: express.Express): void {
     if (nextTracks.length !== selection.tracks.length) {
       list[selIndex] = updatedSelection;
       db.monthlySelections = list;
-      saveDatabase(db);
+      saveDatabase(db, { slices: ['radio'] });
     }
     res.json({
       deletedTrackId: trackId,
@@ -3227,7 +3237,7 @@ export function registerAuthorRoutes(app: express.Express): void {
     }
     const { pdfFileName: _n, pdfFileSize: _s, pdfStorageKey: _k, ...rest } = existing;
     db.prose[index] = { ...rest };
-    saveDatabase(db);
+    saveDatabase(db, { slices: ['prose'] });
     res.json({ item: enrichProseForAuthor(db.prose[index], db) });
   });
 
@@ -3297,7 +3307,7 @@ export function registerAuthorRoutes(app: express.Express): void {
       status: nextStatus,
       moodboardUrls: nextMoodboardUrls,
     };
-    saveDatabase(db);
+    saveDatabase(db, { slices: ['prose'] });
     res.json({ item: enrichProseForAuthor(db.prose[index], db) });
   });
 
@@ -3368,7 +3378,7 @@ export function registerAuthorRoutes(app: express.Express): void {
         fallbackPages: db.prose[index].pages,
       }),
     };
-    saveDatabase(db);
+    saveDatabase(db, { slices: ['prose'] });
     res.status(201).json({ chapter: newChapter, item: enrichProseForAuthor(db.prose[index], db) });
   });
 
@@ -3399,7 +3409,7 @@ export function registerAuthorRoutes(app: express.Express): void {
         fallbackPages: db.prose[index].pages,
       }),
     };
-    saveDatabase(db);
+    saveDatabase(db, { slices: ['prose'] });
     res.json({ item: enrichProseForAuthor(db.prose[index], db) });
   });
 
@@ -3423,7 +3433,7 @@ export function registerAuthorRoutes(app: express.Express): void {
       color: safeColor,
     };
     db.proseTags.push(newTag);
-    saveDatabase(db);
+    saveDatabase(db, { slices: ['prose'] });
     res.status(201).json({ tag: newTag, proseTags: db.proseTags });
   });
 
@@ -3449,7 +3459,7 @@ export function registerAuthorRoutes(app: express.Express): void {
       label: nextLabel,
       color: nextColor,
     };
-    saveDatabase(db);
+    saveDatabase(db, { slices: ['prose'] });
     res.json({ tag: db.proseTags[index], proseTags: db.proseTags });
   });
 
@@ -3467,7 +3477,7 @@ export function registerAuthorRoutes(app: express.Express): void {
       ...work,
       tagIds: (work.tagIds || []).filter((tid) => tid !== id),
     }));
-    saveDatabase(db);
+    saveDatabase(db, { slices: ['prose'] });
     res.json({ deletedId: id, proseTags: db.proseTags });
   });
 
@@ -3820,7 +3830,7 @@ export function registerAuthorRoutes(app: express.Express): void {
       db.interviews = nextInterviews;
     }
 
-    saveDatabase(db);
+    saveDatabase(db, { slices: ['meta'] });
     res.json({
       heroLeadText: db.heroLeadText,
       authorAboutText: db.authorAboutText,
@@ -3872,7 +3882,7 @@ export function registerAuthorRoutes(app: express.Express): void {
       }
       const clamped = Math.max(0, Math.min(90, Math.round(numeric)));
       db.proseTelegramDiscountPercent = clamped;
-      saveDatabase(db);
+      saveDatabase(db, { slices: ['meta'] });
       res.json({ proseTelegramDiscountPercent: clamped });
       return;
     }
@@ -3894,7 +3904,7 @@ export function registerAuthorRoutes(app: express.Express): void {
         Math.min(90, Math.round(Number(proseTelegramDiscountPercent)))
       );
     }
-    saveDatabase(db);
+    saveDatabase(db, { slices: ['meta'] });
     res.json({
       proseAuthDiscountPercent: db.proseAuthDiscountPercent,
       proseTelegramDiscountPercent: db.proseTelegramDiscountPercent ?? 50,
@@ -3916,7 +3926,7 @@ export function registerAuthorRoutes(app: express.Express): void {
     }
     const clamped = Math.max(0, Math.min(90, Math.round(numeric)));
     db.proseTelegramDiscountPercent = clamped;
-    saveDatabase(db);
+    saveDatabase(db, { slices: ['meta'] });
     res.json({ proseTelegramDiscountPercent: clamped });
   });
 
@@ -3929,7 +3939,7 @@ export function registerAuthorRoutes(app: express.Express): void {
       return;
     }
     msg.read = true;
-    saveDatabase(db);
+    saveDatabase(db, { slices: ['community'] });
     res.json({ contactMessages: db.contactMessages });
   });
 
@@ -3942,7 +3952,7 @@ export function registerAuthorRoutes(app: express.Express): void {
       res.status(404).json({ error: 'Повідомлення не знайдено.' });
       return;
     }
-    saveDatabase(db);
+    saveDatabase(db, { slices: ['community'] });
     res.json({ contactMessages: db.contactMessages });
   });
 
@@ -4133,7 +4143,7 @@ export function registerAuthorRoutes(app: express.Express): void {
       ebookStorageKey: undefined,
     };
     db.products[index] = updated;
-    saveDatabase(db);
+    saveDatabase(db, { slices: ['products'] });
     res.json({ product: updated });
   });
 
@@ -4164,7 +4174,7 @@ export function registerAuthorRoutes(app: express.Express): void {
         (r) => !(r.targetType === 'product' && r.targetId === id)
       );
     }
-    saveDatabase(db);
+    saveDatabase(db, { slices: ['products'] });
     res.json({ deletedId: id });
   });
 
@@ -4245,7 +4255,7 @@ export function registerAuthorRoutes(app: express.Express): void {
     };
 
     db.products.unshift(newProduct);
-    saveDatabase(db);
+    saveDatabase(db, { slices: ['products'] });
     res.status(201).json({ product: newProduct });
   });
 
@@ -4357,7 +4367,7 @@ export function registerAuthorRoutes(app: express.Express): void {
         db.poems.unshift(poem);
       }
 
-      saveDatabase(db);
+      saveDatabase(db, { slices: ['poems'] });
       res.status(201).json({ item: poem });
       return;
     }
@@ -4450,7 +4460,7 @@ export function registerAuthorRoutes(app: express.Express): void {
           : {}),
       };
       db.prose.unshift(prose);
-      saveDatabase(db);
+      saveDatabase(db, { slices: ['prose'] });
       res.status(201).json({ item: enrichProseForAuthor(prose, db) });
       return;
     }
@@ -4476,7 +4486,7 @@ export function registerAuthorRoutes(app: express.Express): void {
         content: contentStr,
       };
       db.blog.unshift(post);
-      saveDatabase(db);
+      saveDatabase(db, { slices: ['blog'] });
       res.status(201).json({ item: enrichBlogPost(post, db) });
       return;
     }

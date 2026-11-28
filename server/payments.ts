@@ -1559,7 +1559,7 @@ export function registerPaymentRoutes(app: express.Express): void {
         const bearer = extractBearerToken(req);
         if (bearer) {
           const hydrated = await hydrateSingleAuthorizedProse(db, work.id, bearer);
-          if (hydrated) saveDatabase(db);
+          if (hydrated) saveDatabase(db, { slices: ['prose'] });
         }
       }
       res.json({

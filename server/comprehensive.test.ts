@@ -3,6 +3,7 @@ import assert from 'node:assert';
 import { verifyMonobankWebhookSignature } from './payments.ts';
 import { ensureDatabase, saveDatabase, verifySameOrigin } from './db.ts';
 import type { Request } from 'express';
+import type { OrderRecord } from '../src/types.ts';
 
 test('Monobank webhook signature verification fails with invalid X-Sign (returns 401 equivalent)', async () => {
   const invalidSig = 'invalid-base64-signature';
@@ -14,17 +15,19 @@ test('Monobank webhook signature verification fails with invalid X-Sign (returns
 test('Order pending to paid transition logic updates order and payment status', () => {
   const db = ensureDatabase();
   const testOrderCode = `ord-${Date.now()}`;
-  const order = {
+  const order: OrderRecord = {
     orderCode: testOrderCode,
+    buyerName: 'Test User',
+    buyerEmail: 'test@example.com',
     createdAt: new Date().toISOString(),
-    items: [{ productId: 'prod-1', title: 'Test Product', priceUah: 100, type: 'ebook' as const }],
-    totalAmountUah: 100,
-    customer: { name: 'Test User', email: 'test@example.com' },
+    totalUah: 100,
+    items: [{ productId: 'prod-1', orderCode: testOrderCode, title: 'Test Product', type: 'ebook' as const, purchasedAt: new Date().toISOString() }],
     payment: {
-      provider: 'monobank' as const,
       status: 'pending' as const,
-      invoiceId: 'inv-test-123',
-      amountUah: 100,
+      providerLabel: 'Monobank',
+      method: 'monobank' as const,
+      transactionId: 'inv-test-123',
+      paidAt: new Date().toISOString(),
     },
   };
 

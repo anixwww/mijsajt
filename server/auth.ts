@@ -16,6 +16,7 @@ import {
   saveDatabase,
   verifySameOrigin,
 } from './db.ts';
+import type { DbSliceKey } from './sqliteStore.ts';
 import {
   cloudSyncState,
   hydrateAdminSecretsFromFirestore,
@@ -578,8 +579,28 @@ export async function ensureAllPublicStateHydrated(db: SiteDatabase): Promise<bo
   const weeklyRollover = ensureWeeklyWinnersUpToDate(db);
 
   if (publicRes || communityRes || likesRes || radioLikesRes || weeklyRollover.changed) {
+    const dirtySlices = new Set<DbSliceKey>();
+    if (publicRes) {
+      dirtySlices.add('meta');
+      dirtySlices.add('poems');
+      dirtySlices.add('prose');
+      dirtySlices.add('blog');
+      dirtySlices.add('products');
+      dirtySlices.add('radio');
+    }
+    if (communityRes || likesRes || radioLikesRes) {
+      dirtySlices.add('community');
+    }
+    if (weeklyRollover.changed) {
+      dirtySlices.add('poems');
+      dirtySlices.add('prose');
+    }
     bumpCatalogRevision();
-    saveDatabase(db, { bumpCatalogRevision: false, flushDelayMs: 300 });
+    saveDatabase(db, {
+      bumpCatalogRevision: false,
+      flushDelayMs: 300,
+      slices: Array.from(dirtySlices),
+    });
     return true;
   }
   return false;
@@ -1027,7 +1048,11 @@ export function registerAuthRoutes(
           onTelegramBotToken: applyCloudTelegramBotToken,
         });
         if (hadPublic || hadSecrets) {
-          saveDatabase(db);
+          saveDatabase(db, {
+            slices: hadPublic
+              ? ['meta', 'poems', 'prose', 'blog', 'products', 'radio']
+              : ['meta'],
+          });
         }
         if (!cloudSyncState.cloudConfigExists) {
           queueDatabaseSyncToFirestore(structuredClone(db), token, claims.uid);
@@ -1191,7 +1216,9 @@ export function registerAuthRoutes(
       const db = ensureDatabase();
       if (!cloudSyncState.publicHydrated) {
         const hadPublic = await hydratePublicCatalogFromFirestore(db);
-        if (hadPublic) saveDatabase(db);
+        if (hadPublic) {
+          saveDatabase(db, { slices: ['meta', 'poems', 'prose', 'blog', 'products', 'radio'] });
+        }
       }
       const { account } = findOrCreateGoogleGuestAccount(db, claims);
       const hydratedFromFs = await hydrateAccountLikesFromFirestoreIfNeeded(
