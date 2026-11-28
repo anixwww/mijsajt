@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="uk" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#18231C" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Андрій Даньків" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/pwa-192x192.png" />
+    <title>Андрій Даньків — Вірші, Проза, Блог, Крамниця</title>
+    <meta
+      name="description"
+      content="Офіційний сайт письменника Андрія Даньківа: поезія, мала і велика проза, авторський блог та крамниця електронних книг і гостьового доступу до поточних романів у Google Документах."
+    />
+    <meta property="og:title" content="Андрій Даньків — Письменник" />
+    <meta
+      property="og:description"
+      content="Вірші, проза, блог та крамниця електронних книг і рукописів у процесі написання."
+    />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600&display=swap"
+    />
+    <script>
+      document.documentElement.classList.add('dark');
+      try {
+        localStorage.removeItem('dankiv_theme_dark');
+      } catch (e) {}
+    </script>
+  </head>
+  <body class="bg-[#121513] text-[#ECEAE4] antialiased selection:bg-[#315E3C] selection:text-white">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

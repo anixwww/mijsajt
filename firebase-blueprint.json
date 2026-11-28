@@ -1,0 +1,1019 @@
+{
+  "entities": {
+    "UserPrivateProfile": {
+      "title": "UserPrivateProfile",
+      "description": "Private user account metadata containing PII such as email.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 254
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "likedPoemIds": {
+          "type": "array",
+          "description": "Up to 500 liked poem IDs saved for the user."
+        },
+        "likedRadioTrackIds": {
+          "type": "array",
+          "description": "Up to 500 liked radio track IDs saved for the user."
+        },
+        "donorChatText": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "totalTimeSeconds": {
+          "type": "number"
+        },
+        "lastSeenAt": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "email", "displayName", "createdAt"]
+    },
+    "PublicUserProfile": {
+      "title": "PublicUserProfile",
+      "description": "Public non-PII user profile used for leaderboards, badges, likes, and chat display.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "guestUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "photoUrl": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "likedPoemIds": {
+          "type": "array",
+          "description": "Up to 500 liked poem IDs."
+        },
+        "likedRadioTrackIds": {
+          "type": "array",
+          "description": "Up to 500 liked radio track IDs."
+        },
+        "totalTimeSeconds": {
+          "type": "number"
+        },
+        "purchasesCount": {
+          "type": "number"
+        },
+        "donorChatText": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "lastSeenAt": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "displayName", "createdAt", "updatedAt"]
+    },
+    "Review": {
+      "title": "Review",
+      "description": "Public reader comment and optional rating (0.1-5.0) on a poem, prose work, or store book.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "targetType": {
+          "type": "string",
+          "enum": ["poem", "prose", "product"]
+        },
+        "targetId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "authorUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "authorName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "authorPhotoUrl": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "rating": {
+          "type": ["number", "null"],
+          "description": "Optional swipeable rating from 0.1 to 5.0 or null for comment-only reviews"
+        },
+        "comment": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 1500
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "targetType", "targetId", "authorUid", "authorName", "rating", "comment", "createdAt"]
+    },
+    "WorkVote": {
+      "title": "WorkVote",
+      "description": "Per-user persisted rating (0.1-5.0) for a poem, prose work, or store product.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 300,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "targetType": {
+          "type": "string",
+          "enum": ["poem", "prose", "product"]
+        },
+        "targetId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "rating": {
+          "type": "number"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "targetType", "targetId", "userId", "rating", "createdAt", "updatedAt"]
+    },
+    "ChatMessage": {
+      "title": "ChatMessage",
+      "description": "Global community chat message.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "authorUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "authorName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "authorPhotoUrl": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "isAdmin": {
+          "type": "boolean"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 600
+        },
+        "replyTo": {
+          "type": "object"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "authorUid", "authorName", "text", "createdAt"]
+    },
+    "Donation": {
+      "title": "Donation",
+      "description": "Verified supporter donation entry displayed on the donor leaderboard.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "guestUid": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "photoUrl": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "amountUah": {
+          "type": "number"
+        },
+        "note": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "donatedAt": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "displayName", "amountUah", "donatedAt", "createdAt"]
+    },
+    "RadioTrack": {
+      "title": "RadioTrack",
+      "description": "SoundCloud track entry persisted in the site radio playlist.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "artist": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 140
+        },
+        "soundcloudUrl": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 500,
+          "pattern": "^https?://.+"
+        },
+        "embedTargetUrl": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 500,
+          "pattern": "^https?://.+"
+        },
+        "artworkUrl": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 500
+        },
+        "station": {
+          "type": "string",
+          "enum": ["indie", "electronic"]
+        },
+        "order": {
+          "type": "number",
+          "description": "Zero-based sequential playback position in the radio loop."
+        },
+        "visibility": {
+          "type": "string",
+          "enum": ["authenticated"]
+        },
+        "createdByUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "artist",
+        "soundcloudUrl",
+        "embedTargetUrl",
+        "artworkUrl",
+        "station",
+        "order",
+        "visibility",
+        "createdByUid",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "SiteConfig": {
+      "title": "SiteConfig",
+      "description": "Persisted home page copy, author photos, social links, interviews, prose tags, and discount configuration.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "heroLeadText": { "type": "string", "minLength": 0, "maxLength": 2000 },
+        "authorAboutText": { "type": "string", "minLength": 0, "maxLength": 10000 },
+        "authorPhotoUrl": { "type": "string", "minLength": 0, "maxLength": 500 },
+        "authorPhotos": { "type": "array", "description": "Up to 20 author photo URLs." },
+        "socialLinks": { "type": "array", "description": "Up to 20 social link entries." },
+        "monobankJarUrl": { "type": "string", "minLength": 0, "maxLength": 500 },
+        "monobankModalTitle": { "type": "string", "minLength": 0, "maxLength": 120 },
+        "monobankModalSubtitle": { "type": "string", "minLength": 0, "maxLength": 300 },
+        "monobankCardLabel": { "type": "string", "minLength": 0, "maxLength": 80 },
+        "monobankModalText": { "type": "string", "minLength": 0, "maxLength": 1500 },
+        "monobankEmptyText": { "type": "string", "minLength": 0, "maxLength": 1000 },
+        "contactEmail": { "type": "string", "minLength": 0, "maxLength": 254 },
+        "interviews": { "type": "array", "description": "Up to 50 interview items." },
+        "homeActionAboutTitle": { "type": "string", "minLength": 0, "maxLength": 120 },
+        "homeActionContactTitle": { "type": "string", "minLength": 0, "maxLength": 120 },
+        "homeActionMonobankTitle": { "type": "string", "minLength": 0, "maxLength": 120 },
+        "homeActionInterviewsTitle": { "type": "string", "minLength": 0, "maxLength": 120 },
+        "homeRepeaters": {
+          "type": "object",
+          "description": "Admin configuration for the 4 home page repeaters (mode and item count)."
+        },
+        "proseAuthDiscountPercent": { "type": "number" },
+        "proseTelegramDiscountPercent": { "type": "number" },
+        "telegramChannelId": { "type": "string", "minLength": 0, "maxLength": 200 },
+        "storeAuthDiscountPercent": { "type": "number" },
+        "proseTags": { "type": "array", "description": "Up to 50 prose tag definitions." },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "id",
+        "heroLeadText",
+        "authorAboutText",
+        "authorPhotoUrl",
+        "authorPhotos",
+        "socialLinks",
+        "monobankJarUrl",
+        "contactEmail",
+        "interviews",
+        "homeActionAboutTitle",
+        "homeActionContactTitle",
+        "homeActionMonobankTitle",
+        "homeActionInterviewsTitle",
+        "proseAuthDiscountPercent",
+        "storeAuthDiscountPercent",
+        "proseTags",
+        "updatedAt"
+      ]
+    },
+    "Poem": {
+      "title": "Poem",
+      "description": "Persisted poem entry for the Poetry section.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "cycle": { "type": "string", "minLength": 0, "maxLength": 160 },
+        "year": { "type": "number" },
+        "excerpt": { "type": "string", "minLength": 0, "maxLength": 1000 },
+        "content": { "type": "string", "minLength": 0, "maxLength": 50000 },
+        "note": { "type": "string", "minLength": 0, "maxLength": 1000 },
+        "fontSize": { "type": "string", "minLength": 0, "maxLength": 10 },
+        "textAlign": { "type": "string", "minLength": 0, "maxLength": 10 },
+        "lineSpacing": { "type": "string", "minLength": 0, "maxLength": 10 },
+        "textColor": { "type": "string", "minLength": 0, "maxLength": 32 },
+        "backgroundColor": { "type": "string", "minLength": 0, "maxLength": 32 },
+        "imageUrl": { "type": "string", "minLength": 0, "maxLength": 1000 },
+        "imagePalette": {
+          "type": "object",
+          "description": "Extracted dominant color palette for the poem image.",
+          "properties": {
+            "background": { "type": "string", "minLength": 4, "maxLength": 32 },
+            "secondaryBackground": { "type": "string", "minLength": 4, "maxLength": 32 },
+            "text": { "type": "string", "minLength": 4, "maxLength": 32 },
+            "isDark": { "type": "boolean" }
+          }
+        },
+        "soundcloudTrack": {
+          "type": "object",
+          "description": "Attached SoundCloud track metadata for the poem.",
+          "properties": {
+            "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+            "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+            "artist": { "type": "string", "minLength": 1, "maxLength": 140 },
+            "soundcloudUrl": { "type": "string", "minLength": 10, "maxLength": 500 },
+            "embedTargetUrl": { "type": "string", "minLength": 10, "maxLength": 500 },
+            "artworkUrl": { "type": "string", "minLength": 0, "maxLength": 500 }
+          }
+        },
+        "soundcloudTracks": {
+          "type": "array",
+          "description": "List of up to 10 attached SoundCloud tracks for the poem.",
+          "maxItems": 10,
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+              "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+              "artist": { "type": "string", "minLength": 1, "maxLength": 140 },
+              "soundcloudUrl": { "type": "string", "minLength": 10, "maxLength": 500 },
+              "embedTargetUrl": { "type": "string", "minLength": 10, "maxLength": 500 },
+              "artworkUrl": { "type": "string", "minLength": 0, "maxLength": 500 }
+            }
+          }
+        },
+        "isCommunity": { "type": "boolean" },
+        "authorUid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "authorName": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "authorPhotoUrl": { "type": "string", "minLength": 0, "maxLength": 500 },
+        "submissionId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "workStatus": { "type": "string", "enum": ["completed", "in_progress"] },
+        "order": { "type": "number" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "title", "cycle", "year", "excerpt", "content", "note", "order", "updatedAt"]
+    },
+    "ProseWork": {
+      "title": "ProseWork",
+      "description": "Public metadata and public text for prose works.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 240 },
+        "genre": { "type": "string", "minLength": 0, "maxLength": 120 },
+        "pages": { "type": "number" },
+        "publishedAt": { "type": "string", "minLength": 0, "maxLength": 120 },
+        "slogan": { "type": "string", "minLength": 0, "maxLength": 500 },
+        "excerpt": { "type": "string", "minLength": 0, "maxLength": 2000 },
+        "content": { "type": "string", "minLength": 0, "maxLength": 400000 },
+        "chapters": { "type": "array", "description": "Public chapters when accessMode is public." },
+        "tagIds": { "type": "array", "description": "Assigned prose tag IDs." },
+        "status": { "type": "string", "enum": ["completed", "in_progress"] },
+        "accessMode": { "type": "string", "enum": ["public", "authorized", "paid"] },
+        "requiresAuth": { "type": "boolean" },
+        "isPaid": { "type": "boolean" },
+        "priceUah": { "type": "number" },
+        "moodboardUrls": { "type": "array", "description": "Up to 20 moodboard image URLs." },
+        "isCommunity": { "type": "boolean" },
+        "authorUid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "authorName": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "authorPhotoUrl": { "type": "string", "minLength": 0, "maxLength": 500 },
+        "submissionId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "order": { "type": "number" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "id",
+        "title",
+        "genre",
+        "pages",
+        "publishedAt",
+        "slogan",
+        "excerpt",
+        "content",
+        "chapters",
+        "tagIds",
+        "status",
+        "accessMode",
+        "requiresAuth",
+        "isPaid",
+        "priceUah",
+        "moodboardUrls",
+        "order",
+        "updatedAt"
+      ]
+    },
+    "ProsePrivate": {
+      "title": "ProsePrivate",
+      "description": "Protected full text and chapters for authorized or paid prose works.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "accessMode": { "type": "string", "enum": ["authorized", "paid"] },
+        "content": { "type": "string", "minLength": 0, "maxLength": 400000 },
+        "chapters": { "type": "array", "description": "Protected chapters list." },
+        "pdfStorageKey": { "type": "string", "minLength": 0, "maxLength": 250 },
+        "pdfFileName": { "type": "string", "minLength": 0, "maxLength": 250 },
+        "pdfFileSize": { "type": "number" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "accessMode", "content", "chapters", "pdfStorageKey", "pdfFileName", "pdfFileSize", "updatedAt"]
+    },
+    "BlogPost": {
+      "title": "BlogPost",
+      "description": "Persisted blog article entry.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 240 },
+        "category": { "type": "string", "minLength": 0, "maxLength": 120 },
+        "publishedAt": { "type": "string", "minLength": 0, "maxLength": 120 },
+        "readingMinutes": { "type": "number" },
+        "coverImage": { "type": "string", "minLength": 0, "maxLength": 1000 },
+        "excerpt": { "type": "string", "minLength": 0, "maxLength": 2000 },
+        "content": { "type": "string", "minLength": 0, "maxLength": 200000 },
+        "order": { "type": "number" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "title", "category", "publishedAt", "readingMinutes", "coverImage", "excerpt", "content", "order", "updatedAt"]
+    },
+    "StoreProduct": {
+      "title": "StoreProduct",
+      "description": "Public storefront product catalog item.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "type": { "type": "string", "enum": ["paper_book", "ebook", "wip_gdoc", "poem_frame", "painting"] },
+        "title": { "type": "string", "minLength": 1, "maxLength": 240 },
+        "subtitle": { "type": "string", "minLength": 0, "maxLength": 300 },
+        "priceUah": { "type": "number" },
+        "discountPercent": { "type": "number" },
+        "promoActive": { "type": "boolean" },
+        "promoLabel": { "type": "string", "minLength": 0, "maxLength": 120 },
+        "coverImage": { "type": "string", "minLength": 0, "maxLength": 1000 },
+        "description": { "type": "string", "minLength": 0, "maxLength": 10000 },
+        "sampleExcerpt": { "type": "string", "minLength": 0, "maxLength": 10000 },
+        "formats": { "type": "string", "minLength": 0, "maxLength": 200 },
+        "pages": { "type": "number" },
+        "year": { "type": "number" },
+        "binding": { "type": "string", "minLength": 0, "maxLength": 200 },
+        "dimensions": { "type": "string", "minLength": 0, "maxLength": 200 },
+        "material": { "type": "string", "minLength": 0, "maxLength": 200 },
+        "progressLabel": { "type": "string", "minLength": 0, "maxLength": 200 },
+        "wordCount": { "type": "number" },
+        "lastUpdated": { "type": "string", "minLength": 0, "maxLength": 120 },
+        "order": { "type": "number" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "id",
+        "type",
+        "title",
+        "subtitle",
+        "priceUah",
+        "discountPercent",
+        "promoActive",
+        "promoLabel",
+        "coverImage",
+        "description",
+        "sampleExcerpt",
+        "formats",
+        "pages",
+        "year",
+        "binding",
+        "dimensions",
+        "material",
+        "progressLabel",
+        "wordCount",
+        "lastUpdated",
+        "order",
+        "updatedAt"
+      ]
+    },
+    "ProductSecret": {
+      "title": "ProductSecret",
+      "description": "Protected digital book text and Google Docs guest links restricted to admins.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "gdocGuestUrl": { "type": "string", "minLength": 0, "maxLength": 1000 },
+        "ebookFullText": { "type": "string", "minLength": 0, "maxLength": 400000 },
+        "ebookFileName": { "type": "string", "minLength": 0, "maxLength": 250 },
+        "ebookMimeType": { "type": "string", "minLength": 0, "maxLength": 150 },
+        "ebookFileSize": { "type": "number" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "gdocGuestUrl", "ebookFullText", "ebookFileName", "ebookMimeType", "ebookFileSize", "updatedAt"]
+    },
+    "MediaAsset": {
+      "title": "MediaAsset",
+      "description": "Persisted uploaded image asset served under /uploads/ across deployments.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "filename": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "mimeType": { "type": "string", "minLength": 3, "maxLength": 80 },
+        "dataBase64": { "type": "string", "minLength": 1, "maxLength": 920000 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "filename", "mimeType", "dataBase64", "updatedAt"]
+    },
+    "AdminSecret": {
+      "title": "AdminSecret",
+      "description": "Server integration secrets (such as Telegram Bot API token) restricted strictly to admins.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "telegramBotToken": { "type": "string", "minLength": 0, "maxLength": 200 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "telegramBotToken", "updatedAt"]
+    },
+    "PoemLike": {
+      "title": "PoemLike",
+      "description": "Individual user like marker for a poem so like counts and states persist across server restarts.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 3, "maxLength": 256, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "poemId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "poemId", "userId", "createdAt"]
+    },
+    "PoemSubmission": {
+      "title": "PoemSubmission",
+      "description": "User-submitted poem pending admin review/editing before publishing to community poems.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "authorUid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "authorName": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "authorPhotoUrl": { "type": "string", "minLength": 0, "maxLength": 500 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "cycle": { "type": "string", "minLength": 0, "maxLength": 160 },
+        "year": { "type": "number" },
+        "content": { "type": "string", "minLength": 1, "maxLength": 50000 },
+        "note": { "type": "string", "minLength": 0, "maxLength": 1000 },
+        "fontSize": { "type": "string", "minLength": 0, "maxLength": 10 },
+        "textAlign": { "type": "string", "minLength": 0, "maxLength": 10 },
+        "lineSpacing": { "type": "string", "minLength": 0, "maxLength": 10 },
+        "textColor": { "type": "string", "minLength": 0, "maxLength": 32 },
+        "backgroundColor": { "type": "string", "minLength": 0, "maxLength": 32 },
+        "imageUrl": { "type": "string", "minLength": 0, "maxLength": 1000 },
+        "imagePalette": {
+          "type": "object",
+          "description": "Extracted dominant color palette for the poem image.",
+          "properties": {
+            "background": { "type": "string", "minLength": 4, "maxLength": 32 },
+            "secondaryBackground": { "type": "string", "minLength": 4, "maxLength": 32 },
+            "text": { "type": "string", "minLength": 4, "maxLength": 32 },
+            "isDark": { "type": "boolean" }
+          }
+        },
+        "soundcloudTrack": {
+          "type": "object",
+          "description": "Attached SoundCloud track metadata for the submitted poem.",
+          "properties": {
+            "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+            "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+            "artist": { "type": "string", "minLength": 1, "maxLength": 140 },
+            "soundcloudUrl": { "type": "string", "minLength": 10, "maxLength": 500 },
+            "embedTargetUrl": { "type": "string", "minLength": 10, "maxLength": 500 },
+            "artworkUrl": { "type": "string", "minLength": 0, "maxLength": 500 }
+          }
+        },
+        "soundcloudTracks": {
+          "type": "array",
+          "description": "List of up to 10 attached SoundCloud tracks for the submitted poem.",
+          "maxItems": 10,
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+              "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+              "artist": { "type": "string", "minLength": 1, "maxLength": 140 },
+              "soundcloudUrl": { "type": "string", "minLength": 10, "maxLength": 500 },
+              "embedTargetUrl": { "type": "string", "minLength": 10, "maxLength": 500 },
+              "artworkUrl": { "type": "string", "minLength": 0, "maxLength": 500 }
+            }
+          }
+        },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "workStatus": { "type": "string", "enum": ["completed", "in_progress"] },
+        "moderationNote": { "type": "string", "minLength": 0, "maxLength": 1000 },
+        "publishedPoemId": { "type": "string", "minLength": 0, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "authorUid", "authorName", "title", "cycle", "year", "content", "status", "createdAt", "updatedAt"]
+    },
+    "ProseSubmission": {
+      "title": "ProseSubmission",
+      "description": "User-submitted prose work pending admin review/editing before publishing to community prose.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "authorUid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "authorName": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "authorPhotoUrl": { "type": "string", "minLength": 0, "maxLength": 500 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 240 },
+        "genre": { "type": "string", "minLength": 0, "maxLength": 120 },
+        "slogan": { "type": "string", "minLength": 0, "maxLength": 500 },
+        "excerpt": { "type": "string", "minLength": 0, "maxLength": 2000 },
+        "content": { "type": "string", "minLength": 1, "maxLength": 250000 },
+        "pages": { "type": "number" },
+        "totalWords": { "type": "number" },
+        "moodboardUrls": { "type": "array", "description": "Up to 8 moodboard/cover image URLs." },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "workStatus": { "type": "string", "enum": ["completed", "in_progress"] },
+        "moderationNote": { "type": "string", "minLength": 0, "maxLength": 1000 },
+        "publishedProseId": { "type": "string", "minLength": 0, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "authorUid", "authorName", "title", "genre", "content", "pages", "status", "createdAt", "updatedAt"]
+    },
+    "MonthlySelection": {
+      "title": "MonthlySelection",
+      "description": "Curated monthly SoundCloud music selection collection.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "monthKey": { "type": "string", "minLength": 7, "maxLength": 7, "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "description": { "type": "string", "minLength": 0, "maxLength": 1000 },
+        "tracks": { "type": "array", "description": "Ordered list of SoundCloud tracks in the monthly selection." },
+        "order": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "monthKey", "title", "tracks", "order", "createdAt", "updatedAt"]
+    },
+    "RadioLike": {
+      "title": "RadioLike",
+      "description": "Individual user like marker for a radio track so radio like counts and states persist across server restarts.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 3, "maxLength": 300, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "trackId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "trackId", "userId", "createdAt"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Persisted store or paid prose order with masked display metadata, encrypted PII envelope, and unlocked items.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "orderCode": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "guestUid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "buyerName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "buyerEmail": { "type": "string", "minLength": 3, "maxLength": 254 },
+        "buyerNameMasked": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "buyerEmailMasked": { "type": "string", "minLength": 3, "maxLength": 254 },
+        "buyerEmailHash": { "type": "string", "minLength": 16, "maxLength": 128 },
+        "encryptedPii": { "type": "object" },
+        "integrityVerified": { "type": "boolean" },
+        "piiLocked": { "type": "boolean" },
+        "totalUah": { "type": "number" },
+        "payment": { "type": "object" },
+        "items": { "type": "array", "description": "Up to 50 unlocked order items." },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["orderCode", "buyerName", "buyerEmail", "totalUah", "items", "createdAt"]
+    },
+    "SiteFeedback": {
+      "title": "SiteFeedback",
+      "description": "User feedback about the website with direct inline admin reply and read-status synchronization.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "authorUid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "guestUid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "authorPhotoUrl": { "type": "string", "minLength": 0, "maxLength": 500 },
+        "contact": { "type": "string", "minLength": 0, "maxLength": 100 },
+        "message": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "readByAdmin": { "type": "boolean" },
+        "readByUser": { "type": "boolean" },
+        "adminReply": { "type": "string", "minLength": 0, "maxLength": 2000 },
+        "adminReplyAt": { "type": "string", "minLength": 0, "maxLength": 64 },
+        "adminReplyAuthorName": { "type": "string", "minLength": 0, "maxLength": 80 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "displayName", "message", "readByAdmin", "readByUser", "createdAt", "updatedAt"]
+    },
+    "WeeklyHighlight": {
+      "title": "WeeklyHighlight",
+      "description": "Immutable weekly winning community poem or prose snapshot with fixed author, full text, rating summary, and period.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "targetType": { "type": "string", "enum": ["poem", "prose"] },
+        "weekKey": { "type": "string", "minLength": 7, "maxLength": 10, "pattern": "^[0-9]{4}-W[0-9]{2}$" },
+        "periodStart": { "type": "string", "minLength": 10, "maxLength": 10, "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+        "periodEnd": { "type": "string", "minLength": 10, "maxLength": 10, "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+        "periodLabel": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "selectedAt": { "type": "string", "minLength": 10, "maxLength": 64 },
+        "sourcePoemId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "sourceProseId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "sourceSubmissionId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "authorUid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "authorName": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "authorPhotoUrl": { "type": "string", "minLength": 0, "maxLength": 500 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 240 },
+        "content": { "type": "string", "minLength": 0, "maxLength": 400000 },
+        "cycle": { "type": "string", "minLength": 0, "maxLength": 160 },
+        "year": { "type": "number" },
+        "note": { "type": "string", "minLength": 0, "maxLength": 1000 },
+        "fontSize": { "type": "string", "minLength": 0, "maxLength": 10 },
+        "textAlign": { "type": "string", "minLength": 0, "maxLength": 10 },
+        "lineSpacing": { "type": "string", "minLength": 0, "maxLength": 10 },
+        "textColor": { "type": "string", "minLength": 0, "maxLength": 32 },
+        "backgroundColor": { "type": "string", "minLength": 0, "maxLength": 32 },
+        "imageUrl": { "type": "string", "minLength": 0, "maxLength": 1000 },
+        "imagePalette": { "type": "object" },
+        "soundcloudTrack": { "type": "object" },
+        "soundcloudTracks": { "type": "array", "maxItems": 10 },
+        "genre": { "type": "string", "minLength": 0, "maxLength": 120 },
+        "pages": { "type": "number" },
+        "totalWords": { "type": "number" },
+        "slogan": { "type": "string", "minLength": 0, "maxLength": 500 },
+        "chapters": { "type": "array", "maxItems": 200 },
+        "moodboardUrls": { "type": "array", "maxItems": 20 },
+        "publishedAt": { "type": "string", "minLength": 0, "maxLength": 120 },
+        "ratingAverage": { "type": "number" },
+        "ratingCount": { "type": "number" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "targetType", "weekKey", "periodStart", "periodEnd", "periodLabel", "selectedAt", "authorName", "title", "content", "ratingAverage", "ratingCount", "updatedAt"]
+    },
+    "WeeklyMusicSelection": {
+      "title": "WeeklyMusicSelection",
+      "description": "Cozy weekly music selection curated beside Radio with SoundCloud tracks, optional photos, and freeform text (no title).",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "weekKey": { "type": "string", "minLength": 7, "maxLength": 10, "pattern": "^[0-9]{4}-W[0-9]{2}$" },
+        "periodStart": { "type": "string", "minLength": 10, "maxLength": 10, "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+        "periodEnd": { "type": "string", "minLength": 10, "maxLength": 10, "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+        "periodLabel": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "text": { "type": "string", "minLength": 0, "maxLength": 5000 },
+        "photos": { "type": "array", "maxItems": 12, "description": "Up to 12 cozy photo URLs attached to the weekly music note." },
+        "tracks": { "type": "array", "maxItems": 50, "description": "Up to 50 SoundCloud tracks in the weekly selection." },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "weekKey", "periodStart", "periodEnd", "periodLabel", "photos", "tracks", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserPrivateProfile" },
+      "description": "Private user PII profiles restricted to owner or admin."
+    },
+    "/publicProfiles/{userId}": {
+      "schema": { "$ref": "#/entities/PublicUserProfile" },
+      "description": "Public non-PII user profiles for activity leaderboard, badges, likes, and time tracking."
+    },
+    "/reviews/{reviewId}": {
+      "schema": { "$ref": "#/entities/Review" },
+      "description": "Reader comments and optional ratings for poems, prose, and store items."
+    },
+    "/workVotes/{voteId}": {
+      "schema": { "$ref": "#/entities/WorkVote" },
+      "description": "Per-user persisted ratings (0.1-5.0) for poems, prose, and store items."
+    },
+    "/chatMessages/{messageId}": {
+      "schema": { "$ref": "#/entities/ChatMessage" },
+      "description": "Global community chat messages."
+    },
+    "/donations/{donationId}": {
+      "schema": { "$ref": "#/entities/Donation" },
+      "description": "Verified supporter donation entries for the donor leaderboard."
+    },
+    "/orders/{orderId}": {
+      "schema": { "$ref": "#/entities/Order" },
+      "description": "Persisted orders with encrypted buyer PII, accessible strictly to the order owner or admin."
+    },
+    "/radioTracks/{trackId}": {
+      "schema": { "$ref": "#/entities/RadioTrack" },
+      "description": "Persisted SoundCloud radio playlist tracks readable by authenticated users and managed by admin."
+    },
+    "/radioLikes/{likeId}": {
+      "schema": { "$ref": "#/entities/RadioLike" },
+      "description": "Per-user radio track like markers readable publicly for accurate counts and writable only by the authenticated owner."
+    },
+    "/monthlySelections/{selectionId}": {
+      "schema": { "$ref": "#/entities/MonthlySelection" },
+      "description": "Curated monthly SoundCloud track selections publicly readable and managed by admin."
+    },
+    "/siteConfig/{configId}": {
+      "schema": { "$ref": "#/entities/SiteConfig" },
+      "description": "Persisted site home settings, author bio/photos, social links, interviews, prose tags, and discounts."
+    },
+    "/poems/{poemId}": {
+      "schema": { "$ref": "#/entities/Poem" },
+      "description": "Persisted poems collection."
+    },
+    "/prose/{proseId}": {
+      "schema": { "$ref": "#/entities/ProseWork" },
+      "description": "Persisted prose works catalog and public prose content."
+    },
+    "/prosePrivate/{proseId}": {
+      "schema": { "$ref": "#/entities/ProsePrivate" },
+      "description": "Protected prose full texts and chapters for authorized or paid works."
+    },
+    "/blogPosts/{postId}": {
+      "schema": { "$ref": "#/entities/BlogPost" },
+      "description": "Persisted blog posts collection."
+    },
+    "/products/{productId}": {
+      "schema": { "$ref": "#/entities/StoreProduct" },
+      "description": "Persisted storefront products catalog."
+    },
+    "/productSecrets/{productId}": {
+      "schema": { "$ref": "#/entities/ProductSecret" },
+      "description": "Protected storefront product digital content and Google Docs links."
+    },
+    "/mediaAssets/{assetId}": {
+      "schema": { "$ref": "#/entities/MediaAsset" },
+      "description": "Persisted uploaded cover/author images served across redeploys."
+    },
+    "/adminSecrets/{secretId}": {
+      "schema": { "$ref": "#/entities/AdminSecret" },
+      "description": "Admin-only integration secrets such as Telegram bot token."
+    },
+    "/poemLikes/{likeId}": {
+      "schema": { "$ref": "#/entities/PoemLike" },
+      "description": "Per-user poem like markers readable publicly for accurate counts and writable only by the authenticated owner."
+    },
+    "/poemSubmissions/{submissionId}": {
+      "schema": { "$ref": "#/entities/PoemSubmission" },
+      "description": "Reader-proposed poems waiting for or processed by admin moderation."
+    },
+    "/proseSubmissions/{submissionId}": {
+      "schema": { "$ref": "#/entities/ProseSubmission" },
+      "description": "Reader-proposed prose works waiting for or processed by admin moderation."
+    },
+    "/siteFeedback/{feedbackId}": {
+      "schema": { "$ref": "#/entities/SiteFeedback" },
+      "description": "Website feedback submitted by visitors/users with direct inline admin replies and cross-device sync."
+    },
+    "/weeklyHighlights/{highlightId}": {
+      "schema": { "$ref": "#/entities/WeeklyHighlight" },
+      "description": "Immutable weekly winning community poem and prose snapshots publicly readable and locked by week."
+    },
+    "/weeklyMusicSelections/{selectionId}": {
+      "schema": { "$ref": "#/entities/WeeklyMusicSelection" },
+      "description": "Cozy weekly SoundCloud music selections with photos and text displayed alongside Radio."
+    }
+  }
+}

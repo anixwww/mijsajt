@@ -1,0 +1,404 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Targeted Inter Variable subsets (cyrillic, cyrillic-ext for ₴, latin) */
+@font-face {
+  font-family: 'Inter Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url(@fontsource-variable/inter/files/inter-cyrillic-ext-wght-normal.woff2) format('woff2-variations');
+  unicode-range: U+0460-052F,U+1C80-1C8A,U+20B4,U+2DE0-2DFF,U+A640-A69F,U+FE2E-FE2F;
+}
+@font-face {
+  font-family: 'Inter Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url(@fontsource-variable/inter/files/inter-cyrillic-wght-normal.woff2) format('woff2-variations');
+  unicode-range: U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116;
+}
+@font-face {
+  font-family: 'Inter Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url(@fontsource-variable/inter/files/inter-latin-wght-normal.woff2) format('woff2-variations');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+@font-face {
+  font-family: 'Inter Variable';
+  font-style: italic;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url(@fontsource-variable/inter/files/inter-cyrillic-ext-wght-italic.woff2) format('woff2-variations');
+  unicode-range: U+0460-052F,U+1C80-1C8A,U+20B4,U+2DE0-2DFF,U+A640-A69F,U+FE2E-FE2F;
+}
+@font-face {
+  font-family: 'Inter Variable';
+  font-style: italic;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url(@fontsource-variable/inter/files/inter-cyrillic-wght-italic.woff2) format('woff2-variations');
+  unicode-range: U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116;
+}
+@font-face {
+  font-family: 'Inter Variable';
+  font-style: italic;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url(@fontsource-variable/inter/files/inter-latin-wght-italic.woff2) format('woff2-variations');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+
+/* Google Fonts (JetBrains Mono for tabular numbers; Inter loaded locally) */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400 500;
+  font-display: swap;
+  src: url(https://fonts.gstatic.com/s/jetbrainsmono/v24/tDbv2o-flEEny0FZhsfKu5WU4zr3E_BX0PnT8RD8yKwBNntkaToggR7BYRbKPx3cwhsk.woff2) format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400 500;
+  font-display: swap;
+  src: url(https://fonts.gstatic.com/s/jetbrainsmono/v24/tDbv2o-flEEny0FZhsfKu5WU4zr3E_BX0PnT8RD8yKwBNntkaToggR7BYRbKPxTcwhsk.woff2) format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400 500;
+  font-display: swap;
+  src: url(https://fonts.gstatic.com/s/jetbrainsmono/v24/tDbv2o-flEEny0FZhsfKu5WU4zr3E_BX0PnT8RD8yKwBNntkaToggR7BYRbKPx7cwhsk.woff2) format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400 500;
+  font-display: swap;
+  src: url(https://fonts.gstatic.com/s/jetbrainsmono/v24/tDbv2o-flEEny0FZhsfKu5WU4zr3E_BX0PnT8RD8yKwBNntkaToggR7BYRbKPxDcwg.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@theme {
+  --font-serif: "Inter Variable", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-sans: "Inter Variable", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+:root,
+html.dark {
+  color-scheme: dark;
+  --surface-canvas: #181818;
+  --surface-card: #262626;
+  --surface-elevated: #323232;
+  --surface-muted: #3D3D3D;
+  --border-subtle: #454545;
+  --text-ink: #F4F1EA;
+  --text-secondary: #D4CFC4;
+  --accent-pine: #CCCCCC;
+  --accent-pear: #E0E0E0;
+  --accent-ink: #F0F0F0;
+  --accent-gradient: linear-gradient(135deg, #424242 0%, #353535 54%, #2A2A2A 100%);
+  --accent-gradient-hover: linear-gradient(135deg, #4D4D4D 0%, #3F3F3F 54%, #323232 100%);
+  --hero-gradient: linear-gradient(155deg, #181818 0%, #222222 52%, #2A2A2A 100%);
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    width: 100%;
+    min-height: 100%;
+    margin: 0;
+  }
+
+  html {
+    font-family: var(--font-sans);
+    scroll-behavior: smooth;
+    overflow-y: scroll;
+    overflow-x: clip;
+    scrollbar-gutter: stable;
+    background-color: var(--surface-canvas);
+    color: var(--text-ink);
+    -webkit-tap-highlight-color: transparent;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1, h2, h3, .font-display {
+    font-family: var(--font-sans);
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+  }
+
+  button,
+  a {
+    touch-action: manipulation;
+  }
+
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    outline: 2px solid var(--accent-ink);
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  .btn-editorial-primary {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold tracking-[0.01em] text-white active:scale-[0.97] rounded-lg shadow-[0_6px_16px_-8px_rgba(30,58,41,0.5)] hover:shadow-[0_8px_22px_-8px_rgba(49,94,60,0.62)] dark:shadow-[0_6px_16px_-8px_rgba(0,0,0,0.65)] dark:hover:shadow-[0_8px_22px_-8px_rgba(0,0,0,0.8)] transition-all duration-150 whitespace-nowrap shrink-0 cursor-pointer disabled:opacity-55 disabled:pointer-events-none;
+    background-image: var(--accent-gradient);
+  }
+
+  .btn-editorial-primary:hover {
+    background-image: var(--accent-gradient-hover);
+  }
+
+  .btn-editorial-ink {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold tracking-[0.01em] text-white bg-[#141413] dark:bg-[#F4F1EA] dark:text-[#181818] hover:text-white dark:hover:text-white active:scale-[0.97] rounded-lg shadow-[0_6px_16px_-10px_rgba(20,20,19,0.5)] transition-all duration-150 whitespace-nowrap shrink-0 cursor-pointer disabled:opacity-55 disabled:pointer-events-none;
+  }
+
+  .btn-editorial-ink:hover {
+    background-image: var(--accent-gradient);
+  }
+
+  .bg-pear-pine-gradient {
+    background-image: var(--accent-gradient);
+  }
+
+  .bg-pear-pine-gradient:hover {
+    background-image: var(--accent-gradient-hover);
+  }
+
+  .btn-editorial-secondary {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 text-xs font-medium text-[#141413] dark:text-[#F4F1EA] bg-[#EFECE6] dark:bg-[#2C2C2C] hover:bg-[#E4E0D6] dark:hover:bg-[#363636] active:scale-[0.97] rounded-lg transition-all duration-150 whitespace-nowrap shrink-0 cursor-pointer disabled:opacity-55 disabled:pointer-events-none;
+  }
+
+  .btn-editorial-icon {
+    @apply inline-flex items-center justify-center w-10 h-10 text-[#141413] dark:text-[#F4F1EA] bg-[#EFECE6] dark:bg-[#2C2C2C] hover:bg-[#141413] dark:hover:bg-[#F4F1EA] hover:text-white dark:hover:text-[#181818] active:scale-[0.94] rounded-xl transition-all duration-150 shrink-0 cursor-pointer;
+  }
+
+  .input-editorial {
+    @apply w-full px-3.5 py-2.5 text-sm text-[#141413] dark:text-[#F4F1EA] placeholder:text-[#787872] dark:placeholder:text-[#7E7B73] bg-[#EFECE6] dark:bg-[#262626] rounded-lg focus:bg-white dark:focus:bg-[#323232] focus:outline-none transition-colors duration-150;
+  }
+}
+
+.touch-surface {
+  transition: transform 150ms cubic-bezier(0.16, 1, 0.3, 1), border-color 200ms ease, box-shadow 220ms ease;
+}
+.touch-surface:active {
+  transform: scale(0.988);
+}
+
+.touch-card {
+  touch-action: pan-y manipulation;
+  transition: transform 150ms cubic-bezier(0.16, 1, 0.3, 1), border-color 200ms ease, box-shadow 200ms ease;
+  will-change: transform;
+}
+.touch-card[data-touch-active="true"],
+.touch-card:active {
+  transform: scale(0.978);
+}
+
+.hero-pine-bg {
+  background: var(--hero-gradient);
+}
+
+.perf-card {
+  content-visibility: auto;
+  contain-intrinsic-size: 320px;
+}
+
+.prose-book-marker {
+  display: inline;
+  padding: 0.02em 0.24em 0.04em 0.2em;
+  margin: 0 -0.2em;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  border-radius: 0.34em 0.16em 0.3em 0.14em;
+  background-repeat: no-repeat;
+  background-position: 0 78%;
+  background-size: 100% 0.72em;
+  background-image: linear-gradient(
+    102deg,
+    rgba(254, 240, 138, 0.12) 0%,
+    rgba(253, 224, 71, 0.72) 3%,
+    rgba(254, 240, 138, 0.6) 52%,
+    rgba(253, 224, 71, 0.76) 96%,
+    rgba(254, 240, 138, 0.16) 100%
+  );
+  transition: background-image 180ms ease, background-size 180ms ease;
+}
+
+.group:hover .prose-book-marker {
+  background-size: 100% 0.78em;
+  background-image: linear-gradient(
+    102deg,
+    rgba(253, 224, 71, 0.22) 0%,
+    rgba(250, 204, 21, 0.78) 3%,
+    rgba(253, 224, 71, 0.72) 52%,
+    rgba(250, 204, 21, 0.82) 96%,
+    rgba(253, 224, 71, 0.25) 100%
+  );
+}
+
+html.dark .prose-book-marker {
+  background-image: linear-gradient(
+    102deg,
+    rgba(250, 204, 21, 0.06) 0%,
+    rgba(250, 204, 21, 0.3) 3%,
+    rgba(234, 179, 8, 0.22) 52%,
+    rgba(250, 204, 21, 0.32) 96%,
+    rgba(250, 204, 21, 0.08) 100%
+  );
+}
+
+html.dark .group:hover .prose-book-marker {
+  background-size: 100% 0.78em;
+  background-image: linear-gradient(
+    102deg,
+    rgba(250, 204, 21, 0.1) 0%,
+    rgba(250, 204, 21, 0.38) 3%,
+    rgba(234, 179, 8, 0.3) 52%,
+    rgba(250, 204, 21, 0.4) 96%,
+    rgba(250, 204, 21, 0.12) 100%
+  );
+}
+
+@keyframes heroPortraitFloat {
+  0%, 100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -6px, 0);
+  }
+}
+
+.hero-portrait-float {
+  animation: heroPortraitFloat 6.4s ease-in-out infinite;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .touch-card[data-touch-active="true"],
+  .touch-card:active {
+    transform: none;
+  }
+  .hero-portrait-float {
+    animation: none;
+  }
+}
+
+@keyframes soundWave1 {
+  0%, 100% { height: 25%; }
+  50% { height: 100%; }
+}
+@keyframes soundWave2 {
+  0%, 100% { height: 80%; }
+  30% { height: 30%; }
+  70% { height: 95%; }
+}
+@keyframes soundWave3 {
+  0%, 100% { height: 40%; }
+  40% { height: 90%; }
+  80% { height: 20%; }
+}
+@keyframes soundWave4 {
+  0%, 100% { height: 60%; }
+  25% { height: 100%; }
+  75% { height: 35%; }
+}
+
+.font-editorial-display {
+  font-family: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+}
+
+@keyframes vitrinePoemScroll {
+  0% {
+    transform: translate3d(0, 76px, 0);
+  }
+  100% {
+    transform: translate3d(0, -100%, 0);
+  }
+}
+
+.vitrine-poem-scroll {
+  animation: vitrinePoemScroll var(--poem-scroll-duration, 18s) linear infinite;
+  will-change: transform;
+}
+
+.group\/card:hover .vitrine-poem-scroll,
+.group\/card:focus-within .vitrine-poem-scroll {
+  animation-play-state: paused;
+}
+
+@keyframes festiveBulbTwinkle {
+  0%, 100% {
+    opacity: var(--bulb-min, 0.42);
+    transform: scale(0.92);
+  }
+  45% {
+    opacity: var(--bulb-max, 0.92);
+    transform: scale(1.06);
+  }
+  70% {
+    opacity: var(--bulb-mid, 0.64);
+    transform: scale(0.97);
+  }
+}
+
+.festive-bulb-twinkle {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: festiveBulbTwinkle var(--twinkle-dur, 4.8s) ease-in-out var(--twinkle-delay, 0s) infinite;
+}
+
+@keyframes poetryNebulaDriftA {
+  0%, 100% {
+    transform: translate3d(0%, 0%, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(2.5%, -2%, 0) scale(1.08);
+  }
+}
+
+@keyframes poetryNebulaDriftB {
+  0%, 100% {
+    transform: translate3d(0%, 0%, 0) scale(1.04);
+  }
+  50% {
+    transform: translate3d(-2%, 2.5%, 0) scale(0.96);
+  }
+}
+
+.poetry-nebula-primary {
+  animation: poetryNebulaDriftA 22s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+.poetry-nebula-secondary {
+  animation: poetryNebulaDriftB 28s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .festive-bulb-twinkle,
+  .poetry-nebula-primary,
+  .poetry-nebula-secondary {
+    animation: none;
+  }
+}
+
+

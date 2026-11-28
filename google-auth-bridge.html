@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="uk">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Вхід через Google — Андрій Даньків</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 20px;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: #faf9f5;
+        color: #141413;
+      }
+      @media (prefers-color-scheme: dark) {
+        body {
+          background: #121513;
+          color: #eceae4;
+        }
+        .card {
+          background: #161a18 !important;
+          border-color: #222a25 !important;
+        }
+        .muted {
+          color: #9a968e !important;
+        }
+        .btn {
+          background: #eceae4 !important;
+          color: #141413 !important;
+        }
+      }
+      .card {
+        width: 100%;
+        max-width: 380px;
+        padding: 24px;
+        border-radius: 16px;
+        background: #ffffff;
+        border: 1px solid #e7e3d9;
+        box-shadow: 0 18px 40px -24px rgba(0, 0, 0, 0.35);
+      }
+      h1 {
+        margin: 0 0 8px;
+        font-size: 18px;
+        font-weight: 600;
+      }
+      .muted {
+        margin: 0 0 16px;
+        font-size: 13px;
+        line-height: 1.5;
+        color: #5c5c58;
+      }
+      .btn {
+        width: 100%;
+        border: 0;
+        border-radius: 12px;
+        padding: 12px 16px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        background: #141413;
+        color: #faf9f5;
+      }
+      .btn:disabled {
+        opacity: 0.55;
+        cursor: wait;
+      }
+      .status {
+        margin-top: 12px;
+        font-size: 12px;
+        line-height: 1.45;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <h1>Вхід через Google</h1>
+      <p id="bridge-subtitle" class="muted">
+        Підключення безпечної авторизації для повернення на сайт.
+      </p>
+      <button id="bridge-signin-btn" class="btn" type="button">
+        Продовжити через Google
+      </button>
+      <p id="bridge-status" class="status muted"></p>
+    </main>
+    <script type="module" src="/src/authBridge.ts"></script>
+  </body>
+</html>

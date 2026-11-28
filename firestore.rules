@@ -1,0 +1,1200 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidCompositeId(id) {
+      return id is string && id.size() >= 3 && id.size() <= 300 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.email is string && (
+        request.auth.token.email.lower() == 'andrijdankiv5@gmail.com' ||
+        request.auth.token.email.lower() == 'andriidankiv.writer@gmail.com'
+      );
+    }
+
+    function isValidUserPrivateProfile(data, userId) {
+      return data.keys().hasAll(['uid', 'email', 'displayName', 'createdAt'])
+        && data.keys().hasOnly([
+          'uid', 'email', 'displayName', 'likedPoemIds', 'likedRadioTrackIds',
+          'donorChatText', 'totalTimeSeconds', 'lastSeenAt', 'createdAt', 'updatedAt'
+        ])
+        && data.uid is string && data.uid == userId && isValidId(data.uid)
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 254
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 80
+        && (!('likedPoemIds' in data) || (data.likedPoemIds is list && data.likedPoemIds.size() <= 500 && (data.likedPoemIds.size() == 0 || data.likedPoemIds[0] is string)))
+        && (!('likedRadioTrackIds' in data) || (data.likedRadioTrackIds is list && data.likedRadioTrackIds.size() <= 500 && (data.likedRadioTrackIds.size() == 0 || data.likedRadioTrackIds[0] is string)))
+        && (!('donorChatText' in data) || (data.donorChatText is string && data.donorChatText.size() <= 120))
+        && (!('totalTimeSeconds' in data) || (data.totalTimeSeconds is number && data.totalTimeSeconds >= 0 && data.totalTimeSeconds <= 100000000))
+        && (!('lastSeenAt' in data) || (data.lastSeenAt is string && data.lastSeenAt.size() <= 64))
+        && (!('updatedAt' in data) || data.updatedAt is timestamp)
+        && data.createdAt is timestamp;
+    }
+
+    function isValidPublicProfile(data, userId) {
+      return data.keys().hasAll(['uid', 'displayName', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly([
+          'uid', 'guestUid', 'displayName', 'photoUrl', 'likedPoemIds',
+          'likedRadioTrackIds', 'totalTimeSeconds', 'purchasesCount',
+          'donorChatText', 'lastSeenAt', 'createdAt', 'updatedAt'
+        ])
+        && data.uid is string && data.uid == userId && isValidId(data.uid)
+        && (!('guestUid' in data) || (data.guestUid is string && isValidId(data.guestUid)))
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 80
+        && (!('photoUrl' in data) || (data.photoUrl is string && data.photoUrl.size() <= 500))
+        && (!('likedPoemIds' in data) || (data.likedPoemIds is list && data.likedPoemIds.size() <= 500 && (data.likedPoemIds.size() == 0 || data.likedPoemIds[0] is string)))
+        && (!('likedRadioTrackIds' in data) || (data.likedRadioTrackIds is list && data.likedRadioTrackIds.size() <= 500 && (data.likedRadioTrackIds.size() == 0 || data.likedRadioTrackIds[0] is string)))
+        && (!('totalTimeSeconds' in data) || (data.totalTimeSeconds is number && data.totalTimeSeconds >= 0 && data.totalTimeSeconds <= 100000000))
+        && (!('purchasesCount' in data) || (data.purchasesCount is number && data.purchasesCount >= 0 && data.purchasesCount <= 10000))
+        && (!('donorChatText' in data) || (data.donorChatText is string && data.donorChatText.size() <= 80))
+        && (!('lastSeenAt' in data) || (data.lastSeenAt is string && data.lastSeenAt.size() <= 64))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidReview(data, reviewId) {
+      return data.keys().hasAll(['id', 'targetType', 'targetId', 'authorUid', 'authorName', 'rating', 'comment', 'createdAt'])
+        && data.keys().hasOnly(['id', 'targetType', 'targetId', 'authorUid', 'authorName', 'authorPhotoUrl', 'rating', 'comment', 'createdAt'])
+        && data.id is string && data.id == reviewId && isValidId(data.id)
+        && data.targetType is string && (data.targetType == 'poem' || data.targetType == 'prose' || data.targetType == 'product')
+        && data.targetId is string && isValidId(data.targetId)
+        && data.authorUid is string && isValidId(data.authorUid)
+        && data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 80
+        && (!('authorPhotoUrl' in data) || (data.authorPhotoUrl is string && data.authorPhotoUrl.size() <= 500))
+        && (data.rating == null || (data.rating is number && data.rating >= 0.1 && data.rating <= 5))
+        && data.comment is string && data.comment.size() >= 0 && data.comment.size() <= 1500
+        && (data.comment.size() > 0 || (data.rating is number && data.rating >= 0.1 && data.rating <= 5))
+        && data.createdAt is timestamp;
+    }
+
+    function isValidWorkVote(data, voteId) {
+      return data.keys().hasAll(['id', 'targetType', 'targetId', 'userId', 'rating', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'targetType', 'targetId', 'userId', 'rating', 'createdAt', 'updatedAt'])
+        && data.id is string && data.id == voteId && isValidCompositeId(data.id)
+        && data.targetType is string && (data.targetType == 'poem' || data.targetType == 'prose' || data.targetType == 'product')
+        && data.targetId is string && isValidId(data.targetId)
+        && data.userId is string && isValidId(data.userId)
+        && data.rating is number && data.rating >= 0.1 && data.rating <= 5
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidChatMessage(data, messageId) {
+      return data.keys().hasAll(['id', 'authorUid', 'authorName', 'text', 'createdAt'])
+        && data.keys().hasOnly(['id', 'authorUid', 'authorName', 'authorPhotoUrl', 'isAdmin', 'text', 'replyTo', 'createdAt'])
+        && data.id is string && data.id == messageId && isValidId(data.id)
+        && data.authorUid is string && isValidId(data.authorUid)
+        && data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 80
+        && (!('authorPhotoUrl' in data) || (data.authorPhotoUrl is string && data.authorPhotoUrl.size() <= 500))
+        && (!('isAdmin' in data) || data.isAdmin is bool)
+        && data.text is string && data.text.size() >= 1 && data.text.size() <= 600
+        && (!('replyTo' in data) || (
+          data.replyTo is map
+          && data.replyTo.keys().hasAll(['id', 'authorUid', 'authorName', 'text'])
+          && data.replyTo.keys().hasOnly(['id', 'authorUid', 'authorName', 'text'])
+          && data.replyTo.id is string && isValidId(data.replyTo.id)
+          && data.replyTo.authorUid is string && isValidId(data.replyTo.authorUid)
+          && data.replyTo.authorName is string && data.replyTo.authorName.size() >= 1 && data.replyTo.authorName.size() <= 80
+          && data.replyTo.text is string && data.replyTo.text.size() >= 1 && data.replyTo.text.size() <= 180
+        ))
+        && data.createdAt is timestamp;
+    }
+
+    function isValidDonation(data, donationId) {
+      return data.keys().hasAll(['id', 'displayName', 'amountUah', 'donatedAt', 'createdAt'])
+        && data.keys().hasOnly(['id', 'guestUid', 'displayName', 'photoUrl', 'amountUah', 'note', 'donatedAt', 'createdAt'])
+        && data.id is string && data.id == donationId && isValidId(data.id)
+        && (!('guestUid' in data) || (data.guestUid is string && isValidId(data.guestUid)))
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 80
+        && (!('photoUrl' in data) || (data.photoUrl is string && data.photoUrl.size() <= 500))
+        && data.amountUah is number && data.amountUah >= 1 && data.amountUah <= 10000000
+        && (!('note' in data) || (data.note is string && data.note.size() <= 200))
+        && data.donatedAt is string && data.donatedAt.size() >= 1 && data.donatedAt.size() <= 64
+        && data.createdAt is timestamp;
+    }
+
+    function isValidOrder(data, orderId) {
+      return data.keys().hasAll(['orderCode', 'buyerName', 'buyerEmail', 'totalUah', 'items', 'createdAt'])
+        && data.keys().hasOnly([
+          'id', 'orderCode', 'guestUid', 'buyerName', 'buyerEmail',
+          'buyerNameMasked', 'buyerEmailMasked', 'buyerEmailHash',
+          'encryptedPii', 'integrityVerified', 'piiLocked',
+          'totalUah', 'payment', 'items', 'createdAt', 'updatedAt'
+        ])
+        && (!('id' in data) || (data.id is string && data.id == orderId && isValidId(data.id)))
+        && data.orderCode is string && data.orderCode == orderId && isValidId(data.orderCode)
+        && (!('guestUid' in data) || (data.guestUid is string && isValidId(data.guestUid)))
+        && data.buyerName is string && data.buyerName.size() >= 1 && data.buyerName.size() <= 120
+        && data.buyerEmail is string && data.buyerEmail.size() >= 3 && data.buyerEmail.size() <= 254
+        && (!('buyerNameMasked' in data) || (data.buyerNameMasked is string && data.buyerNameMasked.size() <= 120))
+        && (!('buyerEmailMasked' in data) || (data.buyerEmailMasked is string && data.buyerEmailMasked.size() <= 254))
+        && (!('buyerEmailHash' in data) || (data.buyerEmailHash is string && data.buyerEmailHash.size() <= 128))
+        && (!('encryptedPii' in data) || (
+          data.encryptedPii is map
+          && data.encryptedPii.keys().hasAll(['alg', 'iv', 'tag', 'ciphertext'])
+          && data.encryptedPii.keys().hasOnly(['alg', 'iv', 'tag', 'ciphertext'])
+          && data.encryptedPii.alg is string && data.encryptedPii.alg.size() <= 32
+          && data.encryptedPii.iv is string && data.encryptedPii.iv.size() <= 128
+          && data.encryptedPii.tag is string && data.encryptedPii.tag.size() <= 128
+          && data.encryptedPii.ciphertext is string && data.encryptedPii.ciphertext.size() <= 20000
+        ))
+        && (!('integrityVerified' in data) || data.integrityVerified is bool)
+        && (!('piiLocked' in data) || data.piiLocked is bool)
+        && data.totalUah is number && data.totalUah >= 0 && data.totalUah <= 10000000
+        && (!('payment' in data) || (
+          data.payment is map
+          && data.payment.keys().hasAll(['status', 'providerLabel', 'method', 'transactionId', 'paidAt'])
+          && data.payment.keys().hasOnly([
+            'status', 'providerLabel', 'method', 'cardBrand', 'cardLast4',
+            'cardFingerprint', 'encryptionProtocol', 'receiptSignature', 'transactionId', 'paidAt'
+          ])
+          && data.payment.status is string && data.payment.status == 'paid'
+          && data.payment.providerLabel is string && data.payment.providerLabel.size() <= 120
+          && data.payment.method is string && (data.payment.method == 'card' || data.payment.method == 'apple_google_pay' || data.payment.method == 'monobank')
+          && (!('cardBrand' in data.payment) || (data.payment.cardBrand is string && data.payment.cardBrand.size() <= 40))
+          && (!('cardLast4' in data.payment) || (data.payment.cardLast4 is string && data.payment.cardLast4.size() <= 8))
+          && (!('cardFingerprint' in data.payment) || (data.payment.cardFingerprint is string && data.payment.cardFingerprint.size() <= 128))
+          && (!('encryptionProtocol' in data.payment) || (data.payment.encryptionProtocol is string && data.payment.encryptionProtocol.size() <= 120))
+          && (!('receiptSignature' in data.payment) || (data.payment.receiptSignature is string && data.payment.receiptSignature.size() <= 256))
+          && data.payment.transactionId is string && data.payment.transactionId.size() <= 128
+          && data.payment.paidAt is string && data.payment.paidAt.size() <= 64
+        ))
+        && data.items is list && data.items.size() >= 1 && data.items.size() <= 50 && data.items[0] is map
+        && data.createdAt is timestamp
+        && (!('updatedAt' in data) || data.updatedAt is timestamp);
+    }
+
+    function isValidRadioTrack(data, trackId) {
+      return data.keys().hasAll(['id', 'title', 'artist', 'soundcloudUrl', 'embedTargetUrl', 'artworkUrl', 'station', 'order', 'visibility', 'createdByUid', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'title', 'artist', 'soundcloudUrl', 'embedTargetUrl', 'artworkUrl', 'station', 'order', 'visibility', 'createdByUid', 'createdAt', 'updatedAt'])
+        && data.id is string && data.id == trackId && isValidId(data.id)
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 200
+        && data.artist is string && data.artist.size() >= 1 && data.artist.size() <= 140
+        && data.soundcloudUrl is string && data.soundcloudUrl.size() >= 10 && data.soundcloudUrl.size() <= 500 && data.soundcloudUrl.matches('^https?://.+')
+        && data.embedTargetUrl is string && data.embedTargetUrl.size() >= 10 && data.embedTargetUrl.size() <= 500 && data.embedTargetUrl.matches('^https?://.+')
+        && data.artworkUrl is string && data.artworkUrl.size() >= 0 && data.artworkUrl.size() <= 500
+        && data.station is string && (data.station == 'indie' || data.station == 'electronic')
+        && data.order is number && data.order >= 0 && data.order <= 100000
+        && data.visibility is string && data.visibility == 'authenticated'
+        && data.createdByUid is string && isValidId(data.createdByUid)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidSiteConfig(data, configId) {
+      return data.keys().hasAll([
+          'id', 'heroLeadText', 'authorAboutText', 'authorPhotoUrl', 'authorPhotos',
+          'socialLinks', 'monobankJarUrl', 'contactEmail', 'interviews',
+          'homeActionAboutTitle', 'homeActionContactTitle', 'homeActionMonobankTitle',
+          'homeActionInterviewsTitle', 'proseAuthDiscountPercent', 'storeAuthDiscountPercent',
+          'proseTags', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'heroLeadText', 'authorAboutText', 'authorPhotoUrl', 'authorPhotos',
+          'socialLinks', 'monobankJarUrl', 'monobankModalTitle', 'monobankModalSubtitle',
+          'monobankCardLabel', 'monobankModalText', 'monobankEmptyText', 'contactEmail', 'interviews',
+          'homeActionAboutTitle', 'homeActionContactTitle', 'homeActionMonobankTitle',
+          'homeActionInterviewsTitle', 'homeRepeaters', 'proseAuthDiscountPercent', 'proseTelegramDiscountPercent',
+          'telegramChannelId', 'storeAuthDiscountPercent', 'proseTags', 'updatedAt'
+        ])
+        && data.id is string && data.id == configId && isValidId(data.id)
+        && data.heroLeadText is string && data.heroLeadText.size() <= 2000
+        && data.authorAboutText is string && data.authorAboutText.size() <= 10000
+        && data.authorPhotoUrl is string && data.authorPhotoUrl.size() <= 500
+        && data.authorPhotos is list && data.authorPhotos.size() <= 20
+        && (data.authorPhotos.size() == 0 || data.authorPhotos[0] is string)
+        && data.socialLinks is list && data.socialLinks.size() <= 20
+        && (data.socialLinks.size() == 0 || data.socialLinks[0] is map)
+        && data.monobankJarUrl is string && data.monobankJarUrl.size() <= 500
+        && (!('monobankModalTitle' in data) || (data.monobankModalTitle is string && data.monobankModalTitle.size() <= 120))
+        && (!('monobankModalSubtitle' in data) || (data.monobankModalSubtitle is string && data.monobankModalSubtitle.size() <= 300))
+        && (!('monobankCardLabel' in data) || (data.monobankCardLabel is string && data.monobankCardLabel.size() <= 80))
+        && (!('monobankModalText' in data) || (data.monobankModalText is string && data.monobankModalText.size() <= 1500))
+        && (!('monobankEmptyText' in data) || (data.monobankEmptyText is string && data.monobankEmptyText.size() <= 1000))
+        && data.contactEmail is string && data.contactEmail.size() <= 254
+        && data.interviews is list && data.interviews.size() <= 50
+        && (data.interviews.size() == 0 || data.interviews[0] is map)
+        && data.homeActionAboutTitle is string && data.homeActionAboutTitle.size() <= 120
+        && data.homeActionContactTitle is string && data.homeActionContactTitle.size() <= 120
+        && data.homeActionMonobankTitle is string && data.homeActionMonobankTitle.size() <= 120
+        && data.homeActionInterviewsTitle is string && data.homeActionInterviewsTitle.size() <= 120
+        && (!('homeRepeaters' in data) || (
+          data.homeRepeaters is map
+          && data.homeRepeaters.keys().hasAll(['poemMode', 'poemLimit', 'proseMode', 'proseLimit', 'blogMode', 'blogLimit', 'storeMode', 'storeLimit'])
+          && data.homeRepeaters.keys().hasOnly(['poemMode', 'poemLimit', 'proseMode', 'proseLimit', 'blogMode', 'blogLimit', 'storeMode', 'storeLimit'])
+          && data.homeRepeaters.poemMode is string && data.homeRepeaters.poemMode.size() <= 32
+          && data.homeRepeaters.poemLimit is number && data.homeRepeaters.poemLimit >= 1 && data.homeRepeaters.poemLimit <= 12
+          && data.homeRepeaters.proseMode is string && data.homeRepeaters.proseMode.size() <= 32
+          && data.homeRepeaters.proseLimit is number && data.homeRepeaters.proseLimit >= 1 && data.homeRepeaters.proseLimit <= 12
+          && data.homeRepeaters.blogMode is string && data.homeRepeaters.blogMode.size() <= 32
+          && data.homeRepeaters.blogLimit is number && data.homeRepeaters.blogLimit >= 1 && data.homeRepeaters.blogLimit <= 12
+          && data.homeRepeaters.storeMode is string && data.homeRepeaters.storeMode.size() <= 32
+          && data.homeRepeaters.storeLimit is number && data.homeRepeaters.storeLimit >= 1 && data.homeRepeaters.storeLimit <= 12
+        ))
+        && data.proseAuthDiscountPercent is number && data.proseAuthDiscountPercent >= 0 && data.proseAuthDiscountPercent <= 90
+        && (!('proseTelegramDiscountPercent' in data) || (data.proseTelegramDiscountPercent is number && data.proseTelegramDiscountPercent >= 0 && data.proseTelegramDiscountPercent <= 90))
+        && (!('telegramChannelId' in data) || (data.telegramChannelId is string && data.telegramChannelId.size() <= 200))
+        && data.storeAuthDiscountPercent is number && data.storeAuthDiscountPercent >= 0 && data.storeAuthDiscountPercent <= 90
+        && data.proseTags is list && data.proseTags.size() <= 50
+        && (data.proseTags.size() == 0 || data.proseTags[0] is map)
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidSoundCloudTrackMap(track) {
+      return track is map
+        && track.keys().hasAll(['id', 'title', 'artist', 'soundcloudUrl', 'embedTargetUrl'])
+        && track.keys().hasOnly(['id', 'title', 'artist', 'soundcloudUrl', 'embedTargetUrl', 'artworkUrl'])
+        && track.id is string && track.id.size() >= 1 && track.id.size() <= 128
+        && track.title is string && track.title.size() >= 1 && track.title.size() <= 200
+        && track.artist is string && track.artist.size() >= 1 && track.artist.size() <= 140
+        && track.soundcloudUrl is string && track.soundcloudUrl.size() >= 10 && track.soundcloudUrl.size() <= 500
+        && track.embedTargetUrl is string && track.embedTargetUrl.size() >= 10 && track.embedTargetUrl.size() <= 500
+        && (!('artworkUrl' in track) || (track.artworkUrl is string && track.artworkUrl.size() <= 500));
+    }
+
+    function isValidPoem(data, poemId) {
+      return data.keys().hasAll(['id', 'title', 'cycle', 'year', 'excerpt', 'content', 'note', 'order', 'updatedAt'])
+        && data.keys().hasOnly([
+          'id', 'title', 'cycle', 'year', 'excerpt', 'content', 'note', 'order', 'updatedAt',
+          'fontSize', 'textAlign', 'lineSpacing', 'textColor', 'backgroundColor',
+          'imageUrl', 'imagePalette', 'soundcloudTrack', 'soundcloudTracks',
+          'isCommunity', 'authorUid', 'authorName', 'authorPhotoUrl', 'submissionId', 'workStatus'
+        ])
+        && data.id is string && data.id == poemId && isValidId(data.id)
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 200
+        && data.cycle is string && data.cycle.size() <= 160
+        && data.year is number && data.year >= 1900 && data.year <= 2200
+        && data.excerpt is string && data.excerpt.size() <= 1000
+        && data.content is string && data.content.size() <= 50000
+        && data.note is string && data.note.size() <= 1000
+        && (!('fontSize' in data) || (data.fontSize is string && data.fontSize.size() <= 10))
+        && (!('textAlign' in data) || (data.textAlign is string && data.textAlign.size() <= 10))
+        && (!('lineSpacing' in data) || (data.lineSpacing is string && data.lineSpacing.size() <= 10))
+        && (!('textColor' in data) || (data.textColor is string && data.textColor.size() <= 32))
+        && (!('backgroundColor' in data) || (data.backgroundColor is string && data.backgroundColor.size() <= 32))
+        && (!('imageUrl' in data) || (data.imageUrl is string && data.imageUrl.size() <= 1000))
+        && (!('imagePalette' in data) || (
+          data.imagePalette is map
+          && data.imagePalette.keys().hasAll(['background', 'text'])
+          && data.imagePalette.keys().hasOnly(['background', 'secondaryBackground', 'text', 'isDark'])
+          && data.imagePalette.background is string && data.imagePalette.background.size() >= 4 && data.imagePalette.background.size() <= 32
+          && data.imagePalette.text is string && data.imagePalette.text.size() >= 4 && data.imagePalette.text.size() <= 32
+          && (!('secondaryBackground' in data.imagePalette) || (data.imagePalette.secondaryBackground is string && data.imagePalette.secondaryBackground.size() >= 4 && data.imagePalette.secondaryBackground.size() <= 32))
+          && (!('isDark' in data.imagePalette) || data.imagePalette.isDark is bool)
+        ))
+        && (!('soundcloudTrack' in data) || isValidSoundCloudTrackMap(data.soundcloudTrack))
+        && (!('soundcloudTracks' in data) || (
+          data.soundcloudTracks is list
+          && data.soundcloudTracks.size() <= 10
+          && (data.soundcloudTracks.size() == 0 || isValidSoundCloudTrackMap(data.soundcloudTracks[0]))
+        ))
+        && (!('isCommunity' in data) || data.isCommunity is bool)
+        && (!('authorUid' in data) || (data.authorUid is string && isValidId(data.authorUid)))
+        && (!('authorName' in data) || (data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 80))
+        && (!('authorPhotoUrl' in data) || (data.authorPhotoUrl is string && data.authorPhotoUrl.size() <= 500))
+        && (!('submissionId' in data) || (data.submissionId is string && isValidId(data.submissionId)))
+        && (!('workStatus' in data) || (data.workStatus is string && (data.workStatus == 'completed' || data.workStatus == 'in_progress')))
+        && data.order is number && data.order >= 0 && data.order <= 100000
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidPoemSubmission(data, submissionId) {
+      return data.keys().hasAll(['id', 'authorUid', 'authorName', 'title', 'cycle', 'year', 'content', 'status', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly([
+          'id', 'authorUid', 'authorName', 'authorPhotoUrl',
+          'title', 'cycle', 'year', 'content', 'note',
+          'fontSize', 'textAlign', 'lineSpacing', 'textColor', 'backgroundColor',
+          'imageUrl', 'imagePalette', 'soundcloudTrack', 'soundcloudTracks',
+          'status', 'workStatus', 'moderationNote', 'publishedPoemId', 'createdAt', 'updatedAt'
+        ])
+        && data.id is string && data.id == submissionId && isValidId(data.id)
+        && data.authorUid is string && isValidId(data.authorUid)
+        && data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 80
+        && (!('authorPhotoUrl' in data) || (data.authorPhotoUrl is string && data.authorPhotoUrl.size() <= 500))
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 200
+        && data.cycle is string && data.cycle.size() <= 160
+        && data.year is number && data.year >= 1900 && data.year <= 2200
+        && data.content is string && data.content.size() >= 1 && data.content.size() <= 50000
+        && (!('note' in data) || (data.note is string && data.note.size() <= 1000))
+        && (!('fontSize' in data) || (data.fontSize is string && data.fontSize.size() <= 10))
+        && (!('textAlign' in data) || (data.textAlign is string && data.textAlign.size() <= 10))
+        && (!('lineSpacing' in data) || (data.lineSpacing is string && data.lineSpacing.size() <= 10))
+        && (!('textColor' in data) || (data.textColor is string && data.textColor.size() <= 32))
+        && (!('backgroundColor' in data) || (data.backgroundColor is string && data.backgroundColor.size() <= 32))
+        && (!('imageUrl' in data) || (data.imageUrl is string && data.imageUrl.size() <= 1000))
+        && (!('imagePalette' in data) || (
+          data.imagePalette is map
+          && data.imagePalette.keys().hasAll(['background', 'text'])
+          && data.imagePalette.keys().hasOnly(['background', 'secondaryBackground', 'text', 'isDark'])
+          && data.imagePalette.background is string && data.imagePalette.background.size() >= 4 && data.imagePalette.background.size() <= 32
+          && data.imagePalette.text is string && data.imagePalette.text.size() >= 4 && data.imagePalette.text.size() <= 32
+          && (!('secondaryBackground' in data.imagePalette) || (data.imagePalette.secondaryBackground is string && data.imagePalette.secondaryBackground.size() >= 4 && data.imagePalette.secondaryBackground.size() <= 32))
+          && (!('isDark' in data.imagePalette) || data.imagePalette.isDark is bool)
+        ))
+        && (!('soundcloudTrack' in data) || isValidSoundCloudTrackMap(data.soundcloudTrack))
+        && (!('soundcloudTracks' in data) || (
+          data.soundcloudTracks is list
+          && data.soundcloudTracks.size() <= 10
+          && (data.soundcloudTracks.size() == 0 || isValidSoundCloudTrackMap(data.soundcloudTracks[0]))
+        ))
+        && data.status is string && (data.status == 'pending' || data.status == 'approved' || data.status == 'rejected')
+        && (!('workStatus' in data) || (data.workStatus is string && (data.workStatus == 'completed' || data.workStatus == 'in_progress')))
+        && (!('moderationNote' in data) || (data.moderationNote is string && data.moderationNote.size() <= 1000))
+        && (!('publishedPoemId' in data) || (data.publishedPoemId is string && isValidId(data.publishedPoemId)))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidProseWork(data, proseId) {
+      return data.keys().hasAll([
+          'id', 'title', 'genre', 'pages', 'publishedAt', 'slogan', 'excerpt',
+          'content', 'chapters', 'tagIds', 'status', 'accessMode', 'requiresAuth',
+          'isPaid', 'priceUah', 'moodboardUrls', 'order', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'title', 'genre', 'pages', 'publishedAt', 'slogan', 'excerpt',
+          'content', 'chapters', 'tagIds', 'status', 'accessMode', 'requiresAuth',
+          'isPaid', 'priceUah', 'moodboardUrls', 'order', 'updatedAt',
+          'isCommunity', 'authorUid', 'authorName', 'authorPhotoUrl', 'submissionId'
+        ])
+        && data.id is string && data.id == proseId && isValidId(data.id)
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 240
+        && data.genre is string && data.genre.size() <= 120
+        && data.pages is number && data.pages >= 1 && data.pages <= 50000
+        && data.publishedAt is string && data.publishedAt.size() <= 120
+        && data.slogan is string && data.slogan.size() <= 500
+        && data.excerpt is string && data.excerpt.size() <= 2000
+        && data.content is string && data.content.size() <= 400000
+        && data.chapters is list && data.chapters.size() <= 200
+        && (data.chapters.size() == 0 || data.chapters[0] is map)
+        && data.tagIds is list && data.tagIds.size() <= 30
+        && (data.tagIds.size() == 0 || data.tagIds[0] is string)
+        && data.status is string && (data.status == 'completed' || data.status == 'in_progress')
+        && data.accessMode is string && (data.accessMode == 'public' || data.accessMode == 'authorized' || data.accessMode == 'paid')
+        && data.requiresAuth is bool
+        && data.isPaid is bool
+        && data.priceUah is number && data.priceUah >= 0 && data.priceUah <= 1000000
+        && data.moodboardUrls is list && data.moodboardUrls.size() <= 20
+        && (data.moodboardUrls.size() == 0 || data.moodboardUrls[0] is string)
+        && (!('isCommunity' in data) || data.isCommunity is bool)
+        && (!('authorUid' in data) || (data.authorUid is string && isValidId(data.authorUid)))
+        && (!('authorName' in data) || (data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 80))
+        && (!('authorPhotoUrl' in data) || (data.authorPhotoUrl is string && data.authorPhotoUrl.size() <= 500))
+        && (!('submissionId' in data) || (data.submissionId is string && isValidId(data.submissionId)))
+        && data.order is number && data.order >= 0 && data.order <= 100000
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidProseSubmission(data, submissionId) {
+      return data.keys().hasAll(['id', 'authorUid', 'authorName', 'title', 'genre', 'content', 'pages', 'status', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly([
+          'id', 'authorUid', 'authorName', 'authorPhotoUrl',
+          'title', 'genre', 'slogan', 'excerpt', 'content', 'pages', 'totalWords',
+          'moodboardUrls', 'status', 'workStatus', 'moderationNote', 'publishedProseId',
+          'createdAt', 'updatedAt'
+        ])
+        && data.id is string && data.id == submissionId && isValidId(data.id)
+        && data.authorUid is string && isValidId(data.authorUid)
+        && data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 80
+        && (!('authorPhotoUrl' in data) || (data.authorPhotoUrl is string && data.authorPhotoUrl.size() <= 500))
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 240
+        && data.genre is string && data.genre.size() <= 120
+        && (!('slogan' in data) || (data.slogan is string && data.slogan.size() <= 500))
+        && (!('excerpt' in data) || (data.excerpt is string && data.excerpt.size() <= 2000))
+        && data.content is string && data.content.size() >= 1 && data.content.size() <= 250000
+        && data.pages is number && data.pages >= 1 && data.pages <= 50000
+        && (!('totalWords' in data) || (data.totalWords is number && data.totalWords >= 0 && data.totalWords <= 500000))
+        && (!('moodboardUrls' in data) || (
+          data.moodboardUrls is list
+          && data.moodboardUrls.size() <= 8
+          && (data.moodboardUrls.size() == 0 || data.moodboardUrls[0] is string)
+        ))
+        && data.status is string && (data.status == 'pending' || data.status == 'approved' || data.status == 'rejected')
+        && (!('workStatus' in data) || (data.workStatus is string && (data.workStatus == 'completed' || data.workStatus == 'in_progress')))
+        && (!('moderationNote' in data) || (data.moderationNote is string && data.moderationNote.size() <= 1000))
+        && (!('publishedProseId' in data) || (data.publishedProseId is string && isValidId(data.publishedProseId)))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidProsePrivate(data, proseId) {
+      return data.keys().hasAll(['id', 'accessMode', 'content', 'chapters', 'pdfStorageKey', 'pdfFileName', 'pdfFileSize', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'accessMode', 'content', 'chapters', 'pdfStorageKey', 'pdfFileName', 'pdfFileSize', 'updatedAt'])
+        && data.id is string && data.id == proseId && isValidId(data.id)
+        && data.accessMode is string && (data.accessMode == 'authorized' || data.accessMode == 'paid')
+        && data.content is string && data.content.size() <= 400000
+        && data.chapters is list && data.chapters.size() <= 200
+        && (data.chapters.size() == 0 || data.chapters[0] is map)
+        && data.pdfStorageKey is string && data.pdfStorageKey.size() <= 250
+        && data.pdfFileName is string && data.pdfFileName.size() <= 250
+        && data.pdfFileSize is number && data.pdfFileSize >= 0 && data.pdfFileSize <= 200000000
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidBlogPost(data, postId) {
+      return data.keys().hasAll(['id', 'title', 'category', 'publishedAt', 'readingMinutes', 'coverImage', 'excerpt', 'content', 'order', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'title', 'category', 'publishedAt', 'readingMinutes', 'coverImage', 'excerpt', 'content', 'order', 'updatedAt'])
+        && data.id is string && data.id == postId && isValidId(data.id)
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 240
+        && data.category is string && data.category.size() <= 120
+        && data.publishedAt is string && data.publishedAt.size() <= 120
+        && data.readingMinutes is number && data.readingMinutes >= 1 && data.readingMinutes <= 500
+        && data.coverImage is string && data.coverImage.size() <= 1000
+        && data.excerpt is string && data.excerpt.size() <= 2000
+        && data.content is string && data.content.size() <= 200000
+        && data.order is number && data.order >= 0 && data.order <= 100000
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidStoreProduct(data, productId) {
+      return data.keys().hasAll([
+          'id', 'type', 'title', 'subtitle', 'priceUah', 'discountPercent', 'promoActive',
+          'promoLabel', 'coverImage', 'description', 'sampleExcerpt', 'formats', 'pages',
+          'year', 'binding', 'dimensions', 'material', 'progressLabel', 'wordCount',
+          'lastUpdated', 'order', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'type', 'title', 'subtitle', 'priceUah', 'discountPercent', 'promoActive',
+          'promoLabel', 'coverImage', 'description', 'sampleExcerpt', 'formats', 'pages',
+          'year', 'binding', 'dimensions', 'material', 'progressLabel', 'wordCount',
+          'lastUpdated', 'order', 'updatedAt'
+        ])
+        && data.id is string && data.id == productId && isValidId(data.id)
+        && data.type is string && (data.type == 'paper_book' || data.type == 'ebook' || data.type == 'wip_gdoc' || data.type == 'poem_frame' || data.type == 'painting')
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 240
+        && data.subtitle is string && data.subtitle.size() <= 300
+        && data.priceUah is number && data.priceUah >= 0 && data.priceUah <= 1000000
+        && data.discountPercent is number && data.discountPercent >= 0 && data.discountPercent <= 90
+        && data.promoActive is bool
+        && data.promoLabel is string && data.promoLabel.size() <= 120
+        && data.coverImage is string && data.coverImage.size() <= 1000
+        && data.description is string && data.description.size() <= 10000
+        && data.sampleExcerpt is string && data.sampleExcerpt.size() <= 10000
+        && data.formats is string && data.formats.size() <= 200
+        && data.pages is number && data.pages >= 0 && data.pages <= 50000
+        && data.year is number && data.year >= 0 && data.year <= 2200
+        && data.binding is string && data.binding.size() <= 200
+        && data.dimensions is string && data.dimensions.size() <= 200
+        && data.material is string && data.material.size() <= 200
+        && data.progressLabel is string && data.progressLabel.size() <= 200
+        && data.wordCount is number && data.wordCount >= 0 && data.wordCount <= 5000000
+        && data.lastUpdated is string && data.lastUpdated.size() <= 120
+        && data.order is number && data.order >= 0 && data.order <= 100000
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidProductSecret(data, productId) {
+      return data.keys().hasAll(['id', 'gdocGuestUrl', 'ebookFullText', 'ebookFileName', 'ebookMimeType', 'ebookFileSize', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'gdocGuestUrl', 'ebookFullText', 'ebookFileName', 'ebookMimeType', 'ebookFileSize', 'updatedAt'])
+        && data.id is string && data.id == productId && isValidId(data.id)
+        && data.gdocGuestUrl is string && data.gdocGuestUrl.size() <= 1000
+        && data.ebookFullText is string && data.ebookFullText.size() <= 400000
+        && data.ebookFileName is string && data.ebookFileName.size() <= 250
+        && data.ebookMimeType is string && data.ebookMimeType.size() <= 150
+        && data.ebookFileSize is number && data.ebookFileSize >= 0 && data.ebookFileSize <= 200000000
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidMediaAsset(data, assetId) {
+      return data.keys().hasAll(['id', 'filename', 'mimeType', 'dataBase64', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'filename', 'mimeType', 'dataBase64', 'updatedAt'])
+        && data.id is string && data.id == assetId && isValidId(data.id)
+        && data.filename is string && data.filename.size() >= 1 && data.filename.size() <= 128
+        && data.mimeType is string && data.mimeType.size() >= 3 && data.mimeType.size() <= 80
+        && data.dataBase64 is string && data.dataBase64.size() >= 1 && data.dataBase64.size() <= 920000
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidAdminSecret(data, secretId) {
+      return data.keys().hasAll(['id', 'telegramBotToken', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'telegramBotToken', 'updatedAt'])
+        && data.id is string && data.id == secretId && isValidId(data.id)
+        && data.telegramBotToken is string && data.telegramBotToken.size() <= 200
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidMonthlySelection(data, selectionId) {
+      return data.keys().hasAll(['id', 'monthKey', 'title', 'tracks', 'order', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'monthKey', 'title', 'description', 'tracks', 'order', 'createdAt', 'updatedAt'])
+        && data.id is string && data.id == selectionId && isValidId(data.id)
+        && data.monthKey is string && data.monthKey.size() == 7 && data.monthKey.matches('^[0-9]{4}-(0[1-9]|1[0-2])$')
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 160
+        && (!('description' in data) || (data.description is string && data.description.size() <= 1000))
+        && data.tracks is list && data.tracks.size() <= 100
+        && (data.tracks.size() == 0 || data.tracks[0] is map)
+        && data.order is number && data.order >= 0 && data.order <= 100000
+        && data.createdAt is string && data.createdAt.size() >= 10 && data.createdAt.size() <= 64
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidPoemLike(data, likeId) {
+      return data.keys().hasAll(['id', 'poemId', 'userId', 'createdAt'])
+        && data.keys().hasOnly(['id', 'poemId', 'userId', 'createdAt'])
+        && data.id is string && data.id == likeId && isValidCompositeId(data.id)
+        && data.poemId is string && isValidId(data.poemId)
+        && data.userId is string && isValidId(data.userId)
+        && data.createdAt is timestamp;
+    }
+
+    function isValidRadioLike(data, likeId) {
+      return data.keys().hasAll(['id', 'trackId', 'userId', 'createdAt'])
+        && data.keys().hasOnly(['id', 'trackId', 'userId', 'createdAt'])
+        && data.id is string && data.id == likeId && isValidCompositeId(data.id)
+        && data.trackId is string && isValidId(data.trackId)
+        && data.userId is string && isValidId(data.userId)
+        && data.createdAt is timestamp;
+    }
+
+    function isValidSiteFeedback(data, feedbackId) {
+      return data.keys().hasAll(['id', 'displayName', 'message', 'readByAdmin', 'readByUser', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly([
+          'id', 'authorUid', 'guestUid', 'displayName', 'authorPhotoUrl',
+          'contact', 'message', 'readByAdmin', 'readByUser',
+          'adminReply', 'adminReplyAt', 'adminReplyAuthorName',
+          'createdAt', 'updatedAt'
+        ])
+        && data.id is string && data.id == feedbackId && isValidId(data.id)
+        && (!('authorUid' in data) || (data.authorUid is string && isValidId(data.authorUid)))
+        && (!('guestUid' in data) || (data.guestUid is string && isValidId(data.guestUid)))
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 80
+        && (!('authorPhotoUrl' in data) || (data.authorPhotoUrl is string && data.authorPhotoUrl.size() <= 500))
+        && (!('contact' in data) || (data.contact is string && data.contact.size() <= 100))
+        && data.message is string && data.message.size() >= 1 && data.message.size() <= 2000
+        && data.readByAdmin is bool
+        && data.readByUser is bool
+        && (!('adminReply' in data) || (data.adminReply is string && data.adminReply.size() <= 2000))
+        && (!('adminReplyAt' in data) || (data.adminReplyAt is string && data.adminReplyAt.size() <= 64))
+        && (!('adminReplyAuthorName' in data) || (data.adminReplyAuthorName is string && data.adminReplyAuthorName.size() <= 80))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidWeeklyHighlight(data, highlightId) {
+      return data.keys().hasAll([
+          'id', 'targetType', 'weekKey', 'periodStart', 'periodEnd', 'periodLabel',
+          'selectedAt', 'authorName', 'title', 'content', 'ratingAverage', 'ratingCount', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'targetType', 'weekKey', 'periodStart', 'periodEnd', 'periodLabel', 'selectedAt',
+          'sourcePoemId', 'sourceProseId', 'sourceSubmissionId',
+          'authorUid', 'authorName', 'authorPhotoUrl',
+          'title', 'content',
+          'cycle', 'year', 'note', 'fontSize', 'textAlign', 'lineSpacing', 'textColor', 'backgroundColor',
+          'imageUrl', 'imagePalette', 'soundcloudTrack', 'soundcloudTracks',
+          'genre', 'pages', 'totalWords', 'slogan', 'chapters', 'moodboardUrls', 'publishedAt',
+          'ratingAverage', 'ratingCount', 'updatedAt'
+        ])
+        && data.id is string && data.id == highlightId && isValidId(data.id)
+        && data.targetType is string && (data.targetType == 'poem' || data.targetType == 'prose')
+        && data.weekKey is string && data.weekKey.size() >= 7 && data.weekKey.size() <= 10 && data.weekKey.matches('^[0-9]{4}-W[0-9]{2}$')
+        && data.periodStart is string && data.periodStart.size() == 10 && data.periodStart.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && data.periodEnd is string && data.periodEnd.size() == 10 && data.periodEnd.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && data.periodLabel is string && data.periodLabel.size() >= 1 && data.periodLabel.size() <= 120
+        && data.selectedAt is string && data.selectedAt.size() >= 10 && data.selectedAt.size() <= 64
+        && (!('sourcePoemId' in data) || (data.sourcePoemId is string && isValidId(data.sourcePoemId)))
+        && (!('sourceProseId' in data) || (data.sourceProseId is string && isValidId(data.sourceProseId)))
+        && (!('sourceSubmissionId' in data) || (data.sourceSubmissionId is string && isValidId(data.sourceSubmissionId)))
+        && (!('authorUid' in data) || (data.authorUid is string && isValidId(data.authorUid)))
+        && data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 80
+        && (!('authorPhotoUrl' in data) || (data.authorPhotoUrl is string && data.authorPhotoUrl.size() <= 500))
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 240
+        && data.content is string && data.content.size() <= 400000
+        && (!('cycle' in data) || (data.cycle is string && data.cycle.size() <= 160))
+        && (!('year' in data) || (data.year is number && data.year >= 1900 && data.year <= 2200))
+        && (!('note' in data) || (data.note is string && data.note.size() <= 1000))
+        && (!('fontSize' in data) || (data.fontSize is string && data.fontSize.size() <= 10))
+        && (!('textAlign' in data) || (data.textAlign is string && data.textAlign.size() <= 10))
+        && (!('lineSpacing' in data) || (data.lineSpacing is string && data.lineSpacing.size() <= 10))
+        && (!('textColor' in data) || (data.textColor is string && data.textColor.size() <= 32))
+        && (!('backgroundColor' in data) || (data.backgroundColor is string && data.backgroundColor.size() <= 32))
+        && (!('imageUrl' in data) || (data.imageUrl is string && data.imageUrl.size() <= 1000))
+        && (!('imagePalette' in data) || (
+          data.imagePalette is map
+          && data.imagePalette.keys().hasAll(['background', 'text'])
+          && data.imagePalette.keys().hasOnly(['background', 'secondaryBackground', 'text', 'isDark'])
+          && data.imagePalette.background is string && data.imagePalette.background.size() >= 4 && data.imagePalette.background.size() <= 32
+          && data.imagePalette.text is string && data.imagePalette.text.size() >= 4 && data.imagePalette.text.size() <= 32
+          && (!('secondaryBackground' in data.imagePalette) || (data.imagePalette.secondaryBackground is string && data.imagePalette.secondaryBackground.size() >= 4 && data.imagePalette.secondaryBackground.size() <= 32))
+          && (!('isDark' in data.imagePalette) || data.imagePalette.isDark is bool)
+        ))
+        && (!('soundcloudTrack' in data) || isValidSoundCloudTrackMap(data.soundcloudTrack))
+        && (!('soundcloudTracks' in data) || (
+          data.soundcloudTracks is list
+          && data.soundcloudTracks.size() <= 10
+          && (data.soundcloudTracks.size() == 0 || isValidSoundCloudTrackMap(data.soundcloudTracks[0]))
+        ))
+        && (!('genre' in data) || (data.genre is string && data.genre.size() <= 120))
+        && (!('pages' in data) || (data.pages is number && data.pages >= 1 && data.pages <= 50000))
+        && (!('totalWords' in data) || (data.totalWords is number && data.totalWords >= 0 && data.totalWords <= 500000))
+        && (!('slogan' in data) || (data.slogan is string && data.slogan.size() <= 500))
+        && (!('chapters' in data) || (
+          data.chapters is list
+          && data.chapters.size() <= 200
+          && (data.chapters.size() == 0 || data.chapters[0] is map)
+        ))
+        && (!('moodboardUrls' in data) || (
+          data.moodboardUrls is list
+          && data.moodboardUrls.size() <= 20
+          && (data.moodboardUrls.size() == 0 || data.moodboardUrls[0] is string)
+        ))
+        && (!('publishedAt' in data) || (data.publishedAt is string && data.publishedAt.size() <= 120))
+        && data.ratingAverage is number && data.ratingAverage >= 0 && data.ratingAverage <= 5
+        && data.ratingCount is number && data.ratingCount >= 0 && data.ratingCount <= 10000000
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidWeeklyMusicSelection(data, selectionId) {
+      return data.keys().hasAll([
+          'id', 'weekKey', 'periodStart', 'periodEnd', 'periodLabel',
+          'photos', 'tracks', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id', 'weekKey', 'periodStart', 'periodEnd', 'periodLabel',
+          'text', 'photos', 'tracks', 'createdAt', 'updatedAt'
+        ])
+        && data.id is string && data.id == selectionId && isValidId(data.id)
+        && data.weekKey is string && data.weekKey.size() >= 7 && data.weekKey.size() <= 10 && data.weekKey.matches('^[0-9]{4}-W[0-9]{2}$')
+        && data.periodStart is string && data.periodStart.size() == 10 && data.periodStart.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && data.periodEnd is string && data.periodEnd.size() == 10 && data.periodEnd.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && data.periodLabel is string && data.periodLabel.size() >= 1 && data.periodLabel.size() <= 120
+        && (!('text' in data) || (data.text is string && data.text.size() <= 5000))
+        && data.photos is list && data.photos.size() <= 12
+        && (data.photos.size() == 0 || (data.photos[0] is string && data.photos[0].size() <= 1000))
+        && data.tracks is list && data.tracks.size() <= 50
+        && (data.tracks.size() == 0 || isValidSoundCloudTrackMap(data.tracks[0]))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    match /test/connection {
+      allow get: if true;
+    }
+
+    match /admins/{adminId} {
+      allow get: if isOwner(adminId) || isAdmin();
+      allow list, write: if false;
+    }
+
+    match /users/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isValidId(userId)
+        && isOwner(userId)
+        && isValidUserPrivateProfile(incoming(), userId)
+        && incoming().createdAt == request.time
+        && (!('updatedAt' in incoming()) || incoming().updatedAt == request.time);
+      allow update: if isValidId(userId)
+        && (isOwner(userId) || isAdmin())
+        && isValidUserPrivateProfile(incoming(), userId)
+        && (!('uid' in existing()) || incoming().uid == existing().uid)
+        && (!('createdAt' in existing()) || incoming().createdAt == existing().createdAt)
+        && (!('updatedAt' in incoming()) || incoming().updatedAt == request.time)
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'uid', 'displayName', 'email', 'likedPoemIds', 'likedRadioTrackIds',
+          'donorChatText', 'totalTimeSeconds', 'lastSeenAt', 'createdAt', 'updatedAt'
+        ]);
+      allow delete: if isValidId(userId) && isAdmin();
+    }
+
+    match /publicProfiles/{userId} {
+      allow get: if isValidId(userId);
+      allow list: if true;
+      allow create: if isValidId(userId)
+        && (isOwner(userId) || isAdmin())
+        && isValidPublicProfile(incoming(), userId)
+        && (!('purchasesCount' in incoming()) || isAdmin() || incoming().purchasesCount <= 25)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(userId)
+        && (isOwner(userId) || isAdmin())
+        && isValidPublicProfile(incoming(), userId)
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (!('purchasesCount' in incoming()) || isAdmin() || !('purchasesCount' in existing()) || (incoming().purchasesCount >= existing().purchasesCount && incoming().purchasesCount <= existing().purchasesCount + 25))
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'guestUid', 'displayName', 'photoUrl', 'likedPoemIds',
+          'likedRadioTrackIds', 'totalTimeSeconds', 'purchasesCount',
+          'donorChatText', 'lastSeenAt', 'updatedAt'
+        ]);
+      allow delete: if isValidId(userId) && isAdmin();
+    }
+
+    match /poemLikes/{likeId} {
+      allow get: if isValidCompositeId(likeId);
+      allow list: if true;
+      allow create: if isValidCompositeId(likeId)
+        && isSignedIn()
+        && isValidPoemLike(incoming(), likeId)
+        && incoming().userId == request.auth.uid
+        && likeId == (incoming().poemId + '__' + request.auth.uid)
+        && incoming().createdAt == request.time;
+      allow update: if false;
+      allow delete: if isValidCompositeId(likeId) && (isOwner(existing().userId) || isAdmin());
+    }
+
+    match /radioLikes/{likeId} {
+      allow get: if isValidCompositeId(likeId);
+      allow list: if true;
+      allow create: if isValidCompositeId(likeId)
+        && isSignedIn()
+        && isValidRadioLike(incoming(), likeId)
+        && incoming().userId == request.auth.uid
+        && likeId == (incoming().trackId + '__' + request.auth.uid)
+        && incoming().createdAt == request.time;
+      allow update: if false;
+      allow delete: if isValidCompositeId(likeId) && (isOwner(existing().userId) || isAdmin());
+    }
+
+    match /reviews/{reviewId} {
+      allow get: if isValidId(reviewId);
+      allow list: if true;
+      allow create: if isValidId(reviewId)
+        && isSignedIn()
+        && isValidReview(incoming(), reviewId)
+        && incoming().authorUid == request.auth.uid
+        && incoming().createdAt == request.time;
+      allow update: if isValidId(reviewId)
+        && (isOwner(existing().authorUid) || isAdmin())
+        && isValidReview(incoming(), reviewId)
+        && incoming().id == existing().id
+        && incoming().targetType == existing().targetType
+        && incoming().targetId == existing().targetId
+        && incoming().authorUid == existing().authorUid
+        && incoming().createdAt == existing().createdAt
+        && incoming().diff(existing()).affectedKeys().hasOnly(['rating', 'comment', 'authorName', 'authorPhotoUrl']);
+      allow delete: if isValidId(reviewId) && (isOwner(existing().authorUid) || isAdmin());
+    }
+
+    match /workVotes/{voteId} {
+      allow get: if isValidCompositeId(voteId);
+      allow list: if true;
+      allow create: if isValidCompositeId(voteId)
+        && isSignedIn()
+        && isValidWorkVote(incoming(), voteId)
+        && incoming().userId == request.auth.uid
+        && voteId == (incoming().targetType + '__' + incoming().targetId + '__' + request.auth.uid)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if false;
+      allow delete: if isValidCompositeId(voteId) && isAdmin();
+    }
+
+    match /chatMessages/{messageId} {
+      allow get: if isValidId(messageId);
+      allow list: if true;
+      allow create: if isValidId(messageId)
+        && isSignedIn()
+        && isValidChatMessage(incoming(), messageId)
+        && incoming().authorUid == request.auth.uid
+        && (!('isAdmin' in incoming()) || incoming().isAdmin == false || isAdmin())
+        && incoming().createdAt == request.time;
+      allow update: if false;
+      allow delete: if isValidId(messageId) && (isOwner(existing().authorUid) || isAdmin());
+    }
+
+    match /donations/{donationId} {
+      allow get: if isValidId(donationId);
+      allow list: if true;
+      allow create: if isValidId(donationId)
+        && isAdmin()
+        && isValidDonation(incoming(), donationId)
+        && incoming().createdAt == request.time;
+      allow update: if isValidId(donationId)
+        && isAdmin()
+        && isValidDonation(incoming(), donationId)
+        && incoming().id == existing().id
+        && incoming().createdAt == existing().createdAt
+        && incoming().diff(existing()).affectedKeys().hasOnly(['guestUid', 'displayName', 'photoUrl', 'amountUah', 'note', 'donatedAt']);
+      allow delete: if isValidId(donationId) && isAdmin();
+    }
+
+    match /orders/{orderId} {
+      allow get: if isValidId(orderId) && (
+        isAdmin() ||
+        (isSignedIn() && 'guestUid' in existing() && existing().guestUid == request.auth.uid)
+      );
+      allow list: if isAdmin() || (isSignedIn() && resource.data.guestUid == request.auth.uid);
+      allow create: if isValidId(orderId)
+        && isSignedIn()
+        && isValidOrder(incoming(), orderId)
+        && (isAdmin() || ('guestUid' in incoming() && incoming().guestUid == request.auth.uid))
+        && incoming().createdAt == request.time
+        && (!('updatedAt' in incoming()) || incoming().updatedAt == request.time);
+      allow update: if isValidId(orderId)
+        && isAdmin()
+        && isValidOrder(incoming(), orderId)
+        && incoming().orderCode == existing().orderCode
+        && incoming().createdAt == existing().createdAt
+        && (!('updatedAt' in incoming()) || incoming().updatedAt == request.time)
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'buyerName', 'buyerEmail', 'buyerNameMasked', 'buyerEmailMasked',
+          'buyerEmailHash', 'encryptedPii', 'integrityVerified', 'piiLocked',
+          'totalUah', 'payment', 'items', 'updatedAt'
+        ]);
+      allow delete: if isValidId(orderId) && isAdmin();
+    }
+
+    match /radioTracks/{trackId} {
+      allow get: if isValidId(trackId) && ((isSignedIn() && existing().visibility == 'authenticated') || isAdmin());
+      allow list: if isAdmin() || (isSignedIn() && resource.data.visibility == 'authenticated');
+      allow create: if isValidId(trackId)
+        && isAdmin()
+        && isValidRadioTrack(incoming(), trackId)
+        && incoming().createdByUid == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(trackId)
+        && isAdmin()
+        && isValidRadioTrack(incoming(), trackId)
+        && incoming().id == existing().id
+        && incoming().createdByUid == existing().createdByUid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'title',
+          'artist',
+          'soundcloudUrl',
+          'embedTargetUrl',
+          'artworkUrl',
+          'station',
+          'order',
+          'visibility',
+          'updatedAt'
+        ]);
+      allow delete: if isValidId(trackId) && isAdmin();
+    }
+
+    match /siteConfig/{configId} {
+      allow get: if configId == 'main';
+      allow list: if false;
+      allow create: if configId == 'main'
+        && isAdmin()
+        && isValidSiteConfig(incoming(), configId)
+        && incoming().updatedAt == request.time;
+      allow update: if configId == 'main'
+        && isAdmin()
+        && isValidSiteConfig(incoming(), configId)
+        && incoming().id == existing().id
+        && incoming().updatedAt == request.time;
+      allow delete: if false;
+    }
+
+    match /poems/{poemId} {
+      allow get: if isValidId(poemId);
+      allow list: if true;
+      allow create: if isValidId(poemId)
+        && isAdmin()
+        && isValidPoem(incoming(), poemId)
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(poemId)
+        && isAdmin()
+        && isValidPoem(incoming(), poemId)
+        && incoming().id == existing().id
+        && incoming().updatedAt == request.time;
+      allow delete: if isValidId(poemId) && isAdmin();
+    }
+
+    match /prose/{proseId} {
+      allow get: if isValidId(proseId);
+      allow list: if true;
+      allow create: if isValidId(proseId)
+        && isAdmin()
+        && isValidProseWork(incoming(), proseId)
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(proseId)
+        && isAdmin()
+        && isValidProseWork(incoming(), proseId)
+        && incoming().id == existing().id
+        && incoming().updatedAt == request.time;
+      allow delete: if isValidId(proseId) && isAdmin();
+    }
+
+    match /prosePrivate/{proseId} {
+      allow get: if isValidId(proseId) && (isAdmin() || (isSignedIn() && existing().accessMode == 'authorized'));
+      allow list: if isAdmin() || (isSignedIn() && resource.data.accessMode == 'authorized');
+      allow create: if isValidId(proseId)
+        && isAdmin()
+        && isValidProsePrivate(incoming(), proseId)
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(proseId)
+        && isAdmin()
+        && isValidProsePrivate(incoming(), proseId)
+        && incoming().id == existing().id
+        && incoming().updatedAt == request.time;
+      allow delete: if isValidId(proseId) && isAdmin();
+    }
+
+    match /blogPosts/{postId} {
+      allow get: if isValidId(postId);
+      allow list: if true;
+      allow create: if isValidId(postId)
+        && isAdmin()
+        && isValidBlogPost(incoming(), postId)
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(postId)
+        && isAdmin()
+        && isValidBlogPost(incoming(), postId)
+        && incoming().id == existing().id
+        && incoming().updatedAt == request.time;
+      allow delete: if isValidId(postId) && isAdmin();
+    }
+
+    match /products/{productId} {
+      allow get: if isValidId(productId);
+      allow list: if true;
+      allow create: if isValidId(productId)
+        && isAdmin()
+        && isValidStoreProduct(incoming(), productId)
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(productId)
+        && isAdmin()
+        && isValidStoreProduct(incoming(), productId)
+        && incoming().id == existing().id
+        && incoming().updatedAt == request.time;
+      allow delete: if isValidId(productId) && isAdmin();
+    }
+
+    match /productSecrets/{productId} {
+      allow get: if isValidId(productId) && isAdmin();
+      allow list: if isAdmin();
+      allow create: if isValidId(productId)
+        && isAdmin()
+        && isValidProductSecret(incoming(), productId)
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(productId)
+        && isAdmin()
+        && isValidProductSecret(incoming(), productId)
+        && incoming().id == existing().id
+        && incoming().updatedAt == request.time;
+      allow delete: if isValidId(productId) && isAdmin();
+    }
+
+    match /mediaAssets/{assetId} {
+      allow get: if isValidId(assetId);
+      allow list: if false;
+      allow create: if isValidId(assetId)
+        && isSignedIn()
+        && isValidMediaAsset(incoming(), assetId)
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(assetId)
+        && isAdmin()
+        && isValidMediaAsset(incoming(), assetId)
+        && incoming().id == existing().id
+        && incoming().updatedAt == request.time;
+      allow delete: if isValidId(assetId) && isAdmin();
+    }
+
+    match /poemSubmissions/{submissionId} {
+      allow get: if isValidId(submissionId)
+        && (isAdmin() || (isSignedIn() && existing().authorUid == request.auth.uid));
+      allow list: if isAdmin()
+        || (isSignedIn() && resource.data.authorUid == request.auth.uid);
+      allow create: if isValidId(submissionId)
+        && isSignedIn()
+        && incoming().authorUid == request.auth.uid
+        && incoming().status == 'pending'
+        && !('moderationNote' in incoming())
+        && !('publishedPoemId' in incoming())
+        && isValidPoemSubmission(incoming(), submissionId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(submissionId)
+        && isValidPoemSubmission(incoming(), submissionId)
+        && incoming().id == existing().id
+        && incoming().authorUid == existing().authorUid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin()
+          || (
+            isOwner(existing().authorUid)
+            && incoming().status == 'pending'
+            && !('moderationNote' in incoming())
+            && (
+              (!('publishedPoemId' in existing()) && !('publishedPoemId' in incoming()))
+              || ('publishedPoemId' in existing() && 'publishedPoemId' in incoming() && incoming().publishedPoemId == existing().publishedPoemId)
+            )
+          )
+        );
+      allow delete: if isValidId(submissionId) && isAdmin();
+    }
+
+    match /proseSubmissions/{submissionId} {
+      allow get: if isValidId(submissionId)
+        && (isAdmin() || (isSignedIn() && existing().authorUid == request.auth.uid));
+      allow list: if isAdmin()
+        || (isSignedIn() && resource.data.authorUid == request.auth.uid);
+      allow create: if isValidId(submissionId)
+        && isSignedIn()
+        && incoming().authorUid == request.auth.uid
+        && incoming().status == 'pending'
+        && !('moderationNote' in incoming())
+        && !('publishedProseId' in incoming())
+        && isValidProseSubmission(incoming(), submissionId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(submissionId)
+        && isValidProseSubmission(incoming(), submissionId)
+        && incoming().id == existing().id
+        && incoming().authorUid == existing().authorUid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin()
+          || (
+            isOwner(existing().authorUid)
+            && incoming().status == 'pending'
+            && !('moderationNote' in incoming())
+            && (
+              (!('publishedProseId' in existing()) && !('publishedProseId' in incoming()))
+              || ('publishedProseId' in existing() && 'publishedProseId' in incoming() && incoming().publishedProseId == existing().publishedProseId)
+            )
+          )
+        );
+      allow delete: if isValidId(submissionId) && isAdmin();
+    }
+
+    match /adminSecrets/{secretId} {
+      allow get: if isValidId(secretId) && isAdmin();
+      allow list: if isAdmin();
+      allow create: if isValidId(secretId)
+        && isAdmin()
+        && isValidAdminSecret(incoming(), secretId)
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(secretId)
+        && isAdmin()
+        && isValidAdminSecret(incoming(), secretId)
+        && incoming().id == existing().id
+        && incoming().updatedAt == request.time;
+      allow delete: if isValidId(secretId) && isAdmin();
+    }
+
+    match /monthlySelections/{selectionId} {
+      allow get: if isValidId(selectionId);
+      allow list: if true;
+      allow create: if isValidId(selectionId)
+        && isAdmin()
+        && isValidMonthlySelection(incoming(), selectionId)
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(selectionId)
+        && isAdmin()
+        && isValidMonthlySelection(incoming(), selectionId)
+        && incoming().id == existing().id
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time;
+      allow delete: if isValidId(selectionId) && isAdmin();
+    }
+
+    match /siteFeedback/{feedbackId} {
+      allow get: if isValidId(feedbackId)
+        && (isAdmin() || (isSignedIn() && 'authorUid' in existing() && existing().authorUid == request.auth.uid));
+      allow list: if isAdmin()
+        || (isSignedIn() && 'authorUid' in resource.data && resource.data.authorUid == request.auth.uid);
+      allow create: if isValidId(feedbackId)
+        && isSignedIn()
+        && isValidSiteFeedback(incoming(), feedbackId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin()
+          || (
+            'authorUid' in incoming()
+            && incoming().authorUid == request.auth.uid
+            && incoming().readByAdmin == false
+            && incoming().readByUser == true
+            && !('adminReply' in incoming())
+            && !('adminReplyAt' in incoming())
+            && !('adminReplyAuthorName' in incoming())
+          )
+        );
+      allow update: if isValidId(feedbackId)
+        && isSignedIn()
+        && isValidSiteFeedback(incoming(), feedbackId)
+        && incoming().id == existing().id
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          (!('authorUid' in existing()) && !('authorUid' in incoming()))
+          || ('authorUid' in existing() && 'authorUid' in incoming() && incoming().authorUid == existing().authorUid)
+        )
+        && (
+          (
+            isAdmin()
+            && incoming().diff(existing()).affectedKeys().hasOnly([
+              'readByAdmin', 'readByUser', 'adminReply', 'adminReplyAt', 'adminReplyAuthorName', 'updatedAt'
+            ])
+          )
+          || (
+            'authorUid' in existing()
+            && isOwner(existing().authorUid)
+            && incoming().diff(existing()).affectedKeys().hasOnly(['readByUser', 'updatedAt'])
+            && incoming().readByUser == true
+          )
+        );
+      allow delete: if isValidId(feedbackId) && isAdmin();
+    }
+
+    match /weeklyHighlights/{highlightId} {
+      allow get: if isValidId(highlightId);
+      allow list: if true;
+      allow create: if isValidId(highlightId)
+        && isAdmin()
+        && isValidWeeklyHighlight(incoming(), highlightId)
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(highlightId)
+        && isAdmin()
+        && isValidWeeklyHighlight(incoming(), highlightId)
+        && incoming().id == existing().id
+        && incoming().targetType == existing().targetType
+        && incoming().weekKey == existing().weekKey
+        && incoming().updatedAt == request.time;
+      allow delete: if isValidId(highlightId) && isAdmin();
+    }
+
+    match /weeklyMusicSelections/{selectionId} {
+      allow get: if isValidId(selectionId);
+      allow list: if true;
+      allow create: if isValidId(selectionId)
+        && isAdmin()
+        && isValidWeeklyMusicSelection(incoming(), selectionId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(selectionId)
+        && isAdmin()
+        && isValidWeeklyMusicSelection(incoming(), selectionId)
+        && incoming().id == existing().id
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'weekKey', 'periodStart', 'periodEnd', 'periodLabel', 'text', 'photos', 'tracks', 'updatedAt'
+        ]);
+      allow delete: if isValidId(selectionId) && isAdmin();
+    }
+  }
+}
