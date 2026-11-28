@@ -32,10 +32,139 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isSignedIn() && request.auth.token.email is string && (
-        request.auth.token.email.lower() == 'andrijdankiv5@gmail.com' ||
-        request.auth.token.email.lower() == 'andriidankiv.writer@gmail.com'
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        (request.auth.token.email is string && (
+          request.auth.token.email.lower() == 'andrijdankiv5@gmail.com' ||
+          request.auth.token.email.lower() == 'andriidankiv.writer@gmail.com'
+        ))
       );
+    }
+
+    function isSafeHttpUrl(val, maxLen) {
+      return val is string && val.size() >= 10 && val.size() <= maxLen && val.matches('^https?://.+');
+    }
+
+    function isSafeHttpUrlOrEmpty(val, maxLen) {
+      return val is string && val.size() <= maxLen && (val.size() == 0 || val.matches('^https?://.+'));
+    }
+
+    function isSafeMediaUrlOrEmpty(val, maxLen) {
+      return val is string && val.size() <= maxLen && (
+        val.size() == 0 ||
+        val.matches('^https?://.+') ||
+        val.matches('^/(uploads|src/assets)/.+') ||
+        val.matches('^data:image/(png|jpeg|jpg|webp|gif|avif);base64,.+')
+      );
+    }
+
+    function isValidImagePalette(palette) {
+      return palette is map
+        && palette.keys().hasAll(['background', 'text'])
+        && palette.keys().hasOnly(['background', 'secondaryBackground', 'text', 'isDark'])
+        && palette.background is string && palette.background.size() >= 4 && palette.background.size() <= 32
+        && palette.text is string && palette.text.size() >= 4 && palette.text.size() <= 32
+        && (!('secondaryBackground' in palette) || (palette.secondaryBackground is string && palette.secondaryBackground.size() >= 4 && palette.secondaryBackground.size() <= 32))
+        && (!('isDark' in palette) || palette.isDark is bool);
+    }
+
+    function isValidSoundCloudTrackMap(track) {
+      return track is map
+        && track.keys().hasAll(['id', 'title', 'artist', 'soundcloudUrl', 'embedTargetUrl'])
+        && track.keys().hasOnly(['id', 'title', 'artist', 'soundcloudUrl', 'embedTargetUrl', 'artworkUrl'])
+        && track.id is string && track.id.size() >= 1 && track.id.size() <= 128
+        && track.title is string && track.title.size() >= 1 && track.title.size() <= 200
+        && track.artist is string && track.artist.size() >= 1 && track.artist.size() <= 140
+        && isSafeHttpUrl(track.soundcloudUrl, 500)
+        && isSafeHttpUrl(track.embedTargetUrl, 500)
+        && (!('artworkUrl' in track) || isSafeMediaUrlOrEmpty(track.artworkUrl, 500));
+    }
+
+    function isValidMonthlySelectionTrackMap(track) {
+      return track is map
+        && track.keys().hasAll(['id', 'title', 'artist', 'soundcloudUrl', 'embedTargetUrl', 'addedAt'])
+        && track.keys().hasOnly(['id', 'title', 'artist', 'soundcloudUrl', 'embedTargetUrl', 'artworkUrl', 'note', 'addedAt'])
+        && track.id is string && track.id.size() >= 1 && track.id.size() <= 128
+        && track.title is string && track.title.size() >= 1 && track.title.size() <= 200
+        && track.artist is string && track.artist.size() >= 1 && track.artist.size() <= 140
+        && isSafeHttpUrl(track.soundcloudUrl, 500)
+        && isSafeHttpUrl(track.embedTargetUrl, 500)
+        && (!('artworkUrl' in track) || isSafeMediaUrlOrEmpty(track.artworkUrl, 500))
+        && (!('note' in track) || (track.note is string && track.note.size() <= 500))
+        && track.addedAt is string && track.addedAt.size() >= 10 && track.addedAt.size() <= 64;
+    }
+
+    function isValidProseChapterMap(ch) {
+      return ch is map
+        && ch.keys().hasAll(['id', 'title', 'content', 'publishedAt'])
+        && ch.keys().hasOnly(['id', 'title', 'content', 'publishedAt'])
+        && ch.id is string && ch.id.size() >= 1 && ch.id.size() <= 128
+        && ch.title is string && ch.title.size() <= 240
+        && ch.content is string && ch.content.size() <= 400000
+        && ch.publishedAt is string && ch.publishedAt.size() <= 120;
+    }
+
+    function isValidSocialLinkMap(item) {
+      return item is map
+        && item.keys().hasAll(['platform', 'label', 'url', 'enabled'])
+        && item.keys().hasOnly(['platform', 'label', 'url', 'enabled'])
+        && item.platform is string
+        && (item.platform == 'telegram' || item.platform == 'instagram' || item.platform == 'facebook' || item.platform == 'youtube' || item.platform == 'threads' || item.platform == 'x' || item.platform == 'tiktok')
+        && item.label is string && item.label.size() <= 80
+        && isSafeHttpUrlOrEmpty(item.url, 500)
+        && item.enabled is bool;
+    }
+
+    function isValidInterviewMap(item) {
+      return item is map
+        && item.keys().hasAll(['id', 'title', 'outlet', 'dateLabel'])
+        && item.keys().hasOnly(['id', 'title', 'outlet', 'dateLabel', 'content', 'url'])
+        && item.id is string && item.id.size() >= 1 && item.id.size() <= 128
+        && item.title is string && item.title.size() >= 1 && item.title.size() <= 240
+        && item.outlet is string && item.outlet.size() <= 160
+        && item.dateLabel is string && item.dateLabel.size() <= 80
+        && (!('content' in item) || (item.content is string && item.content.size() <= 50000))
+        && (!('url' in item) || isSafeHttpUrlOrEmpty(item.url, 1000));
+    }
+
+    function isValidProseTagMap(item) {
+      return item is map
+        && item.keys().hasAll(['id', 'label', 'color'])
+        && item.keys().hasOnly(['id', 'label', 'color'])
+        && item.id is string && item.id.size() >= 1 && item.id.size() <= 128
+        && item.label is string && item.label.size() >= 1 && item.label.size() <= 80
+        && item.color is string && item.color.size() >= 1 && item.color.size() <= 32;
+    }
+
+    function isValidOrderItemMap(item) {
+      return item is map
+        && item.keys().hasAll(['productId', 'orderCode', 'title', 'type', 'purchasedAt'])
+        && item.keys().hasOnly([
+          'productId', 'orderCode', 'title', 'type', 'proseId', 'purchasedAt',
+          'gdocGuestUrl', 'downloadUrl', 'ebookFileName', 'ebookFileSize',
+          'pdfFileName', 'pdfFileSize', 'hasPdf', 'formats', 'progressLabel',
+          'shippingSummary', 'paymentTransactionId'
+        ])
+        && item.productId is string && isValidId(item.productId)
+        && item.orderCode is string && isValidId(item.orderCode)
+        && item.title is string && item.title.size() >= 1 && item.title.size() <= 240
+        && item.type is string && (
+          item.type == 'paper_book' || item.type == 'ebook' || item.type == 'wip_gdoc' ||
+          item.type == 'poem_frame' || item.type == 'painting' || item.type == 'prose_access'
+        )
+        && (!('proseId' in item) || (item.proseId is string && isValidId(item.proseId)))
+        && item.purchasedAt is string && item.purchasedAt.size() >= 1 && item.purchasedAt.size() <= 64
+        && (!('gdocGuestUrl' in item) || isSafeHttpUrlOrEmpty(item.gdocGuestUrl, 1000))
+        && (!('downloadUrl' in item) || (item.downloadUrl is string && item.downloadUrl.size() <= 500))
+        && (!('ebookFileName' in item) || (item.ebookFileName is string && item.ebookFileName.size() <= 250))
+        && (!('ebookFileSize' in item) || (item.ebookFileSize is number && item.ebookFileSize >= 0 && item.ebookFileSize <= 200000000))
+        && (!('pdfFileName' in item) || (item.pdfFileName is string && item.pdfFileName.size() <= 250))
+        && (!('pdfFileSize' in item) || (item.pdfFileSize is number && item.pdfFileSize >= 0 && item.pdfFileSize <= 200000000))
+        && (!('hasPdf' in item) || item.hasPdf is bool)
+        && (!('formats' in item) || (item.formats is string && item.formats.size() <= 200))
+        && (!('progressLabel' in item) || (item.progressLabel is string && item.progressLabel.size() <= 200))
+        && (!('shippingSummary' in item) || (item.shippingSummary is string && item.shippingSummary.size() <= 300))
+        && (!('paymentTransactionId' in item) || (item.paymentTransactionId is string && item.paymentTransactionId.size() <= 128));
     }
 
     function isValidUserPrivateProfile(data, userId) {
@@ -45,10 +174,10 @@ service cloud.firestore {
           'donorChatText', 'totalTimeSeconds', 'lastSeenAt', 'createdAt', 'updatedAt'
         ])
         && data.uid is string && data.uid == userId && isValidId(data.uid)
-        && data.email is string && data.email.size() >= 3 && data.email.size() <= 254
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 254 && data.email.matches('^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$')
         && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 80
-        && (!('likedPoemIds' in data) || (data.likedPoemIds is list && data.likedPoemIds.size() <= 500 && (data.likedPoemIds.size() == 0 || data.likedPoemIds[0] is string)))
-        && (!('likedRadioTrackIds' in data) || (data.likedRadioTrackIds is list && data.likedRadioTrackIds.size() <= 500 && (data.likedRadioTrackIds.size() == 0 || data.likedRadioTrackIds[0] is string)))
+        && (!('likedPoemIds' in data) || (data.likedPoemIds is list && data.likedPoemIds.size() <= 500 && (data.likedPoemIds.size() == 0 || isValidId(data.likedPoemIds[0]))))
+        && (!('likedRadioTrackIds' in data) || (data.likedRadioTrackIds is list && data.likedRadioTrackIds.size() <= 500 && (data.likedRadioTrackIds.size() == 0 || isValidId(data.likedRadioTrackIds[0]))))
         && (!('donorChatText' in data) || (data.donorChatText is string && data.donorChatText.size() <= 120))
         && (!('totalTimeSeconds' in data) || (data.totalTimeSeconds is number && data.totalTimeSeconds >= 0 && data.totalTimeSeconds <= 100000000))
         && (!('lastSeenAt' in data) || (data.lastSeenAt is string && data.lastSeenAt.size() <= 64))
@@ -66,9 +195,9 @@ service cloud.firestore {
         && data.uid is string && data.uid == userId && isValidId(data.uid)
         && (!('guestUid' in data) || (data.guestUid is string && isValidId(data.guestUid)))
         && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 80
-        && (!('photoUrl' in data) || (data.photoUrl is string && data.photoUrl.size() <= 500))
-        && (!('likedPoemIds' in data) || (data.likedPoemIds is list && data.likedPoemIds.size() <= 500 && (data.likedPoemIds.size() == 0 || data.likedPoemIds[0] is string)))
-        && (!('likedRadioTrackIds' in data) || (data.likedRadioTrackIds is list && data.likedRadioTrackIds.size() <= 500 && (data.likedRadioTrackIds.size() == 0 || data.likedRadioTrackIds[0] is string)))
+        && (!('photoUrl' in data) || isSafeMediaUrlOrEmpty(data.photoUrl, 500))
+        && (!('likedPoemIds' in data) || (data.likedPoemIds is list && data.likedPoemIds.size() <= 500 && (data.likedPoemIds.size() == 0 || isValidId(data.likedPoemIds[0]))))
+        && (!('likedRadioTrackIds' in data) || (data.likedRadioTrackIds is list && data.likedRadioTrackIds.size() <= 500 && (data.likedRadioTrackIds.size() == 0 || isValidId(data.likedRadioTrackIds[0]))))
         && (!('totalTimeSeconds' in data) || (data.totalTimeSeconds is number && data.totalTimeSeconds >= 0 && data.totalTimeSeconds <= 100000000))
         && (!('purchasesCount' in data) || (data.purchasesCount is number && data.purchasesCount >= 0 && data.purchasesCount <= 10000))
         && (!('donorChatText' in data) || (data.donorChatText is string && data.donorChatText.size() <= 80))
@@ -85,7 +214,7 @@ service cloud.firestore {
         && data.targetId is string && isValidId(data.targetId)
         && data.authorUid is string && isValidId(data.authorUid)
         && data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 80
-        && (!('authorPhotoUrl' in data) || (data.authorPhotoUrl is string && data.authorPhotoUrl.size() <= 500))
+        && (!('authorPhotoUrl' in data) || isSafeMediaUrlOrEmpty(data.authorPhotoUrl, 500))
         && (data.rating == null || (data.rating is number && data.rating >= 0.1 && data.rating <= 5))
         && data.comment is string && data.comment.size() >= 0 && data.comment.size() <= 1500
         && (data.comment.size() > 0 || (data.rating is number && data.rating >= 0.1 && data.rating <= 5))
@@ -110,7 +239,7 @@ service cloud.firestore {
         && data.id is string && data.id == messageId && isValidId(data.id)
         && data.authorUid is string && isValidId(data.authorUid)
         && data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 80
-        && (!('authorPhotoUrl' in data) || (data.authorPhotoUrl is string && data.authorPhotoUrl.size() <= 500))
+        && (!('authorPhotoUrl' in data) || isSafeMediaUrlOrEmpty(data.authorPhotoUrl, 500))
         && (!('isAdmin' in data) || data.isAdmin is bool)
         && data.text is string && data.text.size() >= 1 && data.text.size() <= 600
         && (!('replyTo' in data) || (
@@ -131,7 +260,7 @@ service cloud.firestore {
         && data.id is string && data.id == donationId && isValidId(data.id)
         && (!('guestUid' in data) || (data.guestUid is string && isValidId(data.guestUid)))
         && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 80
-        && (!('photoUrl' in data) || (data.photoUrl is string && data.photoUrl.size() <= 500))
+        && (!('photoUrl' in data) || isSafeMediaUrlOrEmpty(data.photoUrl, 500))
         && data.amountUah is number && data.amountUah >= 1 && data.amountUah <= 10000000
         && (!('note' in data) || (data.note is string && data.note.size() <= 200))
         && data.donatedAt is string && data.donatedAt.size() >= 1 && data.donatedAt.size() <= 64
@@ -184,7 +313,7 @@ service cloud.firestore {
           && data.payment.transactionId is string && data.payment.transactionId.size() <= 128
           && data.payment.paidAt is string && data.payment.paidAt.size() <= 64
         ))
-        && data.items is list && data.items.size() >= 1 && data.items.size() <= 50 && data.items[0] is map
+        && data.items is list && data.items.size() >= 1 && data.items.size() <= 50 && isValidOrderItemMap(data.items[0])
         && data.createdAt is timestamp
         && (!('updatedAt' in data) || data.updatedAt is timestamp);
     }
@@ -195,9 +324,9 @@ service cloud.firestore {
         && data.id is string && data.id == trackId && isValidId(data.id)
         && data.title is string && data.title.size() >= 1 && data.title.size() <= 200
         && data.artist is string && data.artist.size() >= 1 && data.artist.size() <= 140
-        && data.soundcloudUrl is string && data.soundcloudUrl.size() >= 10 && data.soundcloudUrl.size() <= 500 && data.soundcloudUrl.matches('^https?://.+')
-        && data.embedTargetUrl is string && data.embedTargetUrl.size() >= 10 && data.embedTargetUrl.size() <= 500 && data.embedTargetUrl.matches('^https?://.+')
-        && data.artworkUrl is string && data.artworkUrl.size() >= 0 && data.artworkUrl.size() <= 500
+        && isSafeHttpUrl(data.soundcloudUrl, 500)
+        && isSafeHttpUrl(data.embedTargetUrl, 500)
+        && isSafeMediaUrlOrEmpty(data.artworkUrl, 500)
         && data.station is string && (data.station == 'indie' || data.station == 'electronic')
         && data.order is number && data.order >= 0 && data.order <= 100000
         && data.visibility is string && data.visibility == 'authenticated'
@@ -225,12 +354,12 @@ service cloud.firestore {
         && data.id is string && data.id == configId && isValidId(data.id)
         && data.heroLeadText is string && data.heroLeadText.size() <= 2000
         && data.authorAboutText is string && data.authorAboutText.size() <= 10000
-        && data.authorPhotoUrl is string && data.authorPhotoUrl.size() <= 500
+        && isSafeMediaUrlOrEmpty(data.authorPhotoUrl, 500)
         && data.authorPhotos is list && data.authorPhotos.size() <= 20
-        && (data.authorPhotos.size() == 0 || data.authorPhotos[0] is string)
+        && (data.authorPhotos.size() == 0 || isSafeMediaUrlOrEmpty(data.authorPhotos[0], 500))
         && data.socialLinks is list && data.socialLinks.size() <= 20
-        && (data.socialLinks.size() == 0 || data.socialLinks[0] is map)
-        && data.monobankJarUrl is string && data.monobankJarUrl.size() <= 500
+        && (data.socialLinks.size() == 0 || isValidSocialLinkMap(data.socialLinks[0]))
+        && isSafeHttpUrlOrEmpty(data.monobankJarUrl, 500)
         && (!('monobankModalTitle' in data) || (data.monobankModalTitle is string && data.monobankModalTitle.size() <= 120))
         && (!('monobankModalSubtitle' in data) || (data.monobankModalSubtitle is string && data.monobankModalSubtitle.size() <= 300))
         && (!('monobankCardLabel' in data) || (data.monobankCardLabel is string && data.monobankCardLabel.size() <= 80))
@@ -238,7 +367,7 @@ service cloud.firestore {
         && (!('monobankEmptyText' in data) || (data.monobankEmptyText is string && data.monobankEmptyText.size() <= 1000))
         && data.contactEmail is string && data.contactEmail.size() <= 254
         && data.interviews is list && data.interviews.size() <= 50
-        && (data.interviews.size() == 0 || data.interviews[0] is map)
+        && (data.interviews.size() == 0 || isValidInterviewMap(data.interviews[0]))
         && data.homeActionAboutTitle is string && data.homeActionAboutTitle.size() <= 120
         && data.homeActionContactTitle is string && data.homeActionContactTitle.size() <= 120
         && data.homeActionMonobankTitle is string && data.homeActionMonobankTitle.size() <= 120
@@ -247,13 +376,13 @@ service cloud.firestore {
           data.homeRepeaters is map
           && data.homeRepeaters.keys().hasAll(['poemMode', 'poemLimit', 'proseMode', 'proseLimit', 'blogMode', 'blogLimit', 'storeMode', 'storeLimit'])
           && data.homeRepeaters.keys().hasOnly(['poemMode', 'poemLimit', 'proseMode', 'proseLimit', 'blogMode', 'blogLimit', 'storeMode', 'storeLimit'])
-          && data.homeRepeaters.poemMode is string && data.homeRepeaters.poemMode.size() <= 32
+          && data.homeRepeaters.poemMode is string && (data.homeRepeaters.poemMode == 'latest' || data.homeRepeaters.poemMode == 'top_rated' || data.homeRepeaters.poemMode == 'most_liked' || data.homeRepeaters.poemMode == 'most_viewed')
           && data.homeRepeaters.poemLimit is number && data.homeRepeaters.poemLimit >= 1 && data.homeRepeaters.poemLimit <= 12
-          && data.homeRepeaters.proseMode is string && data.homeRepeaters.proseMode.size() <= 32
+          && data.homeRepeaters.proseMode is string && (data.homeRepeaters.proseMode == 'latest' || data.homeRepeaters.proseMode == 'top_rated' || data.homeRepeaters.proseMode == 'free_only' || data.homeRepeaters.proseMode == 'paid_only')
           && data.homeRepeaters.proseLimit is number && data.homeRepeaters.proseLimit >= 1 && data.homeRepeaters.proseLimit <= 12
-          && data.homeRepeaters.blogMode is string && data.homeRepeaters.blogMode.size() <= 32
+          && data.homeRepeaters.blogMode is string && (data.homeRepeaters.blogMode == 'latest' || data.homeRepeaters.blogMode == 'most_viewed' || data.homeRepeaters.blogMode == 'quick_read')
           && data.homeRepeaters.blogLimit is number && data.homeRepeaters.blogLimit >= 1 && data.homeRepeaters.blogLimit <= 12
-          && data.homeRepeaters.storeMode is string && data.homeRepeaters.storeMode.size() <= 32
+          && data.homeRepeaters.storeMode is string && (data.homeRepeaters.storeMode == 'smart_highlights' || data.homeRepeaters.storeMode == 'discounted' || data.homeRepeaters.storeMode == 'promo_active' || data.homeRepeaters.storeMode == 'bestsellers' || data.homeRepeaters.storeMode == 'top_rated' || data.homeRepeaters.storeMode == 'latest')
           && data.homeRepeaters.storeLimit is number && data.homeRepeaters.storeLimit >= 1 && data.homeRepeaters.storeLimit <= 12
         ))
         && data.proseAuthDiscountPercent is number && data.proseAuthDiscountPercent >= 0 && data.proseAuthDiscountPercent <= 90
@@ -261,20 +390,8 @@ service cloud.firestore {
         && (!('telegramChannelId' in data) || (data.telegramChannelId is string && data.telegramChannelId.size() <= 200))
         && data.storeAuthDiscountPercent is number && data.storeAuthDiscountPercent >= 0 && data.storeAuthDiscountPercent <= 90
         && data.proseTags is list && data.proseTags.size() <= 50
-        && (data.proseTags.size() == 0 || data.proseTags[0] is map)
+        && (data.proseTags.size() == 0 || isValidProseTagMap(data.proseTags[0]))
         && data.updatedAt is timestamp;
-    }
-
-    function isValidSoundCloudTrackMap(track) {
-      return track is map
-        && track.keys().hasAll(['id', 'title', 'artist', 'soundcloudUrl', 'embedTargetUrl'])
-        && track.keys().hasOnly(['id', 'title', 'artist', 'soundcloudUrl', 'embedTargetUrl', 'artworkUrl'])
-        && track.id is string && track.id.size() >= 1 && track.id.size() <= 128
-        && track.title is string && track.title.size() >= 1 && track.title.size() <= 200
-        && track.artist is string && track.artist.size() >= 1 && track.artist.size() <= 140
-        && track.soundcloudUrl is string && track.soundcloudUrl.size() >= 10 && track.soundcloudUrl.size() <= 500
-        && track.embedTargetUrl is string && track.embedTargetUrl.size() >= 10 && track.embedTargetUrl.size() <= 500
-        && (!('artworkUrl' in track) || (track.artworkUrl is string && track.artworkUrl.size() <= 500));
     }
 
     function isValidPoem(data, poemId) {
@@ -297,16 +414,8 @@ service cloud.firestore {
         && (!('lineSpacing' in data) || (data.lineSpacing is string && data.lineSpacing.size() <= 10))
         && (!('textColor' in data) || (data.textColor is string && data.textColor.size() <= 32))
         && (!('backgroundColor' in data) || (data.backgroundColor is string && data.backgroundColor.size() <= 32))
-        && (!('imageUrl' in data) || (data.imageUrl is string && data.imageUrl.size() <= 1000))
-        && (!('imagePalette' in data) || (
-          data.imagePalette is map
-          && data.imagePalette.keys().hasAll(['background', 'text'])
-          && data.imagePalette.keys().hasOnly(['background', 'secondaryBackground', 'text', 'isDark'])
-          && data.imagePalette.background is string && data.imagePalette.background.size() >= 4 && data.imagePalette.background.size() <= 32
-          && data.imagePalette.text is string && data.imagePalette.text.size() >= 4 && data.imagePalette.text.size() <= 32
-          && (!('secondaryBackground' in data.imagePalette) || (data.imagePalette.secondaryBackground is string && data.imagePalette.secondaryBackground.size() >= 4 && data.imagePalette.secondaryBackground.size() <= 32))
-          && (!('isDark' in data.imagePalette) || data.imagePalette.isDark is bool)
-        ))
+        && (!('imageUrl' in data) || isSafeMediaUrlOrEmpty(data.imageUrl, 1000))
+        && (!('imagePalette' in data) || isValidImagePalette(data.imagePalette))
         && (!('soundcloudTrack' in data) || isValidSoundCloudTrackMap(data.soundcloudTrack))
         && (!('soundcloudTracks' in data) || (
           data.soundcloudTracks is list
@@ -316,7 +425,7 @@ service cloud.firestore {
         && (!('isCommunity' in data) || data.isCommunity is bool)
         && (!('authorUid' in data) || (data.authorUid is string && isValidId(data.authorUid)))
         && (!('authorName' in data) || (data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 80))
-        && (!('authorPhotoUrl' in data) || (data.authorPhotoUrl is string && data.authorPhotoUrl.size() <= 500))
+        && (!('authorPhotoUrl' in data) || isSafeMediaUrlOrEmpty(data.authorPhotoUrl, 500))
         && (!('submissionId' in data) || (data.submissionId is string && isValidId(data.submissionId)))
         && (!('workStatus' in data) || (data.workStatus is string && (data.workStatus == 'completed' || data.workStatus == 'in_progress')))
         && data.order is number && data.order >= 0 && data.order <= 100000
@@ -335,7 +444,7 @@ service cloud.firestore {
         && data.id is string && data.id == submissionId && isValidId(data.id)
         && data.authorUid is string && isValidId(data.authorUid)
         && data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 80
-        && (!('authorPhotoUrl' in data) || (data.authorPhotoUrl is string && data.authorPhotoUrl.size() <= 500))
+        && (!('authorPhotoUrl' in data) || isSafeMediaUrlOrEmpty(data.authorPhotoUrl, 500))
         && data.title is string && data.title.size() >= 1 && data.title.size() <= 200
         && data.cycle is string && data.cycle.size() <= 160
         && data.year is number && data.year >= 1900 && data.year <= 2200
@@ -346,16 +455,8 @@ service cloud.firestore {
         && (!('lineSpacing' in data) || (data.lineSpacing is string && data.lineSpacing.size() <= 10))
         && (!('textColor' in data) || (data.textColor is string && data.textColor.size() <= 32))
         && (!('backgroundColor' in data) || (data.backgroundColor is string && data.backgroundColor.size() <= 32))
-        && (!('imageUrl' in data) || (data.imageUrl is string && data.imageUrl.size() <= 1000))
-        && (!('imagePalette' in data) || (
-          data.imagePalette is map
-          && data.imagePalette.keys().hasAll(['background', 'text'])
-          && data.imagePalette.keys().hasOnly(['background', 'secondaryBackground', 'text', 'isDark'])
-          && data.imagePalette.background is string && data.imagePalette.background.size() >= 4 && data.imagePalette.background.size() <= 32
-          && data.imagePalette.text is string && data.imagePalette.text.size() >= 4 && data.imagePalette.text.size() <= 32
-          && (!('secondaryBackground' in data.imagePalette) || (data.imagePalette.secondaryBackground is string && data.imagePalette.secondaryBackground.size() >= 4 && data.imagePalette.secondaryBackground.size() <= 32))
-          && (!('isDark' in data.imagePalette) || data.imagePalette.isDark is bool)
-        ))
+        && (!('imageUrl' in data) || isSafeMediaUrlOrEmpty(data.imageUrl, 1000))
+        && (!('imagePalette' in data) || isValidImagePalette(data.imagePalette))
         && (!('soundcloudTrack' in data) || isValidSoundCloudTrackMap(data.soundcloudTrack))
         && (!('soundcloudTracks' in data) || (
           data.soundcloudTracks is list
@@ -391,20 +492,24 @@ service cloud.firestore {
         && data.excerpt is string && data.excerpt.size() <= 2000
         && data.content is string && data.content.size() <= 400000
         && data.chapters is list && data.chapters.size() <= 200
-        && (data.chapters.size() == 0 || data.chapters[0] is map)
+        && (data.chapters.size() == 0 || isValidProseChapterMap(data.chapters[0]))
         && data.tagIds is list && data.tagIds.size() <= 30
-        && (data.tagIds.size() == 0 || data.tagIds[0] is string)
+        && (data.tagIds.size() == 0 || (data.tagIds[0] is string && data.tagIds[0].size() >= 1 && data.tagIds[0].size() <= 128))
         && data.status is string && (data.status == 'completed' || data.status == 'in_progress')
-        && data.accessMode is string && (data.accessMode == 'public' || data.accessMode == 'authorized' || data.accessMode == 'paid')
+        && data.accessMode is string && (
+          (data.accessMode == 'public' && data.isPaid == false && data.requiresAuth == false) ||
+          (data.accessMode == 'authorized' && data.isPaid == false && data.requiresAuth == true && data.content.size() == 0 && data.chapters.size() == 0) ||
+          (data.accessMode == 'paid' && data.isPaid == true && data.requiresAuth == false && data.content.size() == 0 && data.chapters.size() == 0)
+        )
         && data.requiresAuth is bool
         && data.isPaid is bool
         && data.priceUah is number && data.priceUah >= 0 && data.priceUah <= 1000000
         && data.moodboardUrls is list && data.moodboardUrls.size() <= 20
-        && (data.moodboardUrls.size() == 0 || data.moodboardUrls[0] is string)
+        && (data.moodboardUrls.size() == 0 || isSafeMediaUrlOrEmpty(data.moodboardUrls[0], 1000))
         && (!('isCommunity' in data) || data.isCommunity is bool)
         && (!('authorUid' in data) || (data.authorUid is string && isValidId(data.authorUid)))
         && (!('authorName' in data) || (data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 80))
-        && (!('authorPhotoUrl' in data) || (data.authorPhotoUrl is string && data.authorPhotoUrl.size() <= 500))
+        && (!('authorPhotoUrl' in data) || isSafeMediaUrlOrEmpty(data.authorPhotoUrl, 500))
         && (!('submissionId' in data) || (data.submissionId is string && isValidId(data.submissionId)))
         && data.order is number && data.order >= 0 && data.order <= 100000
         && data.updatedAt is timestamp;
@@ -421,7 +526,7 @@ service cloud.firestore {
         && data.id is string && data.id == submissionId && isValidId(data.id)
         && data.authorUid is string && isValidId(data.authorUid)
         && data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 80
-        && (!('authorPhotoUrl' in data) || (data.authorPhotoUrl is string && data.authorPhotoUrl.size() <= 500))
+        && (!('authorPhotoUrl' in data) || isSafeMediaUrlOrEmpty(data.authorPhotoUrl, 500))
         && data.title is string && data.title.size() >= 1 && data.title.size() <= 240
         && data.genre is string && data.genre.size() <= 120
         && (!('slogan' in data) || (data.slogan is string && data.slogan.size() <= 500))
@@ -432,7 +537,7 @@ service cloud.firestore {
         && (!('moodboardUrls' in data) || (
           data.moodboardUrls is list
           && data.moodboardUrls.size() <= 8
-          && (data.moodboardUrls.size() == 0 || data.moodboardUrls[0] is string)
+          && (data.moodboardUrls.size() == 0 || isSafeMediaUrlOrEmpty(data.moodboardUrls[0], 1000))
         ))
         && data.status is string && (data.status == 'pending' || data.status == 'approved' || data.status == 'rejected')
         && (!('workStatus' in data) || (data.workStatus is string && (data.workStatus == 'completed' || data.workStatus == 'in_progress')))
@@ -449,7 +554,7 @@ service cloud.firestore {
         && data.accessMode is string && (data.accessMode == 'authorized' || data.accessMode == 'paid')
         && data.content is string && data.content.size() <= 400000
         && data.chapters is list && data.chapters.size() <= 200
-        && (data.chapters.size() == 0 || data.chapters[0] is map)
+        && (data.chapters.size() == 0 || isValidProseChapterMap(data.chapters[0]))
         && data.pdfStorageKey is string && data.pdfStorageKey.size() <= 250
         && data.pdfFileName is string && data.pdfFileName.size() <= 250
         && data.pdfFileSize is number && data.pdfFileSize >= 0 && data.pdfFileSize <= 200000000
@@ -464,7 +569,7 @@ service cloud.firestore {
         && data.category is string && data.category.size() <= 120
         && data.publishedAt is string && data.publishedAt.size() <= 120
         && data.readingMinutes is number && data.readingMinutes >= 1 && data.readingMinutes <= 500
-        && data.coverImage is string && data.coverImage.size() <= 1000
+        && isSafeMediaUrlOrEmpty(data.coverImage, 1000)
         && data.excerpt is string && data.excerpt.size() <= 2000
         && data.content is string && data.content.size() <= 200000
         && data.order is number && data.order >= 0 && data.order <= 100000
@@ -492,7 +597,7 @@ service cloud.firestore {
         && data.discountPercent is number && data.discountPercent >= 0 && data.discountPercent <= 90
         && data.promoActive is bool
         && data.promoLabel is string && data.promoLabel.size() <= 120
-        && data.coverImage is string && data.coverImage.size() <= 1000
+        && isSafeMediaUrlOrEmpty(data.coverImage, 1000)
         && data.description is string && data.description.size() <= 10000
         && data.sampleExcerpt is string && data.sampleExcerpt.size() <= 10000
         && data.formats is string && data.formats.size() <= 200
@@ -512,7 +617,7 @@ service cloud.firestore {
       return data.keys().hasAll(['id', 'gdocGuestUrl', 'ebookFullText', 'ebookFileName', 'ebookMimeType', 'ebookFileSize', 'updatedAt'])
         && data.keys().hasOnly(['id', 'gdocGuestUrl', 'ebookFullText', 'ebookFileName', 'ebookMimeType', 'ebookFileSize', 'updatedAt'])
         && data.id is string && data.id == productId && isValidId(data.id)
-        && data.gdocGuestUrl is string && data.gdocGuestUrl.size() <= 1000
+        && isSafeHttpUrlOrEmpty(data.gdocGuestUrl, 1000)
         && data.ebookFullText is string && data.ebookFullText.size() <= 400000
         && data.ebookFileName is string && data.ebookFileName.size() <= 250
         && data.ebookMimeType is string && data.ebookMimeType.size() <= 150
@@ -525,7 +630,8 @@ service cloud.firestore {
         && data.keys().hasOnly(['id', 'filename', 'mimeType', 'dataBase64', 'updatedAt'])
         && data.id is string && data.id == assetId && isValidId(data.id)
         && data.filename is string && data.filename.size() >= 1 && data.filename.size() <= 128
-        && data.mimeType is string && data.mimeType.size() >= 3 && data.mimeType.size() <= 80
+        && data.mimeType is string && data.mimeType.size() >= 9 && data.mimeType.size() <= 32
+        && data.mimeType.matches('^image/(png|jpeg|webp|gif|avif)$')
         && data.dataBase64 is string && data.dataBase64.size() >= 1 && data.dataBase64.size() <= 920000
         && data.updatedAt is timestamp;
     }
@@ -546,7 +652,7 @@ service cloud.firestore {
         && data.title is string && data.title.size() >= 1 && data.title.size() <= 160
         && (!('description' in data) || (data.description is string && data.description.size() <= 1000))
         && data.tracks is list && data.tracks.size() <= 100
-        && (data.tracks.size() == 0 || data.tracks[0] is map)
+        && (data.tracks.size() == 0 || isValidMonthlySelectionTrackMap(data.tracks[0]))
         && data.order is number && data.order >= 0 && data.order <= 100000
         && data.createdAt is string && data.createdAt.size() >= 10 && data.createdAt.size() <= 64
         && data.updatedAt is timestamp;
@@ -582,7 +688,7 @@ service cloud.firestore {
         && (!('authorUid' in data) || (data.authorUid is string && isValidId(data.authorUid)))
         && (!('guestUid' in data) || (data.guestUid is string && isValidId(data.guestUid)))
         && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 80
-        && (!('authorPhotoUrl' in data) || (data.authorPhotoUrl is string && data.authorPhotoUrl.size() <= 500))
+        && (!('authorPhotoUrl' in data) || isSafeMediaUrlOrEmpty(data.authorPhotoUrl, 500))
         && (!('contact' in data) || (data.contact is string && data.contact.size() <= 100))
         && data.message is string && data.message.size() >= 1 && data.message.size() <= 2000
         && data.readByAdmin is bool
@@ -621,7 +727,7 @@ service cloud.firestore {
         && (!('sourceSubmissionId' in data) || (data.sourceSubmissionId is string && isValidId(data.sourceSubmissionId)))
         && (!('authorUid' in data) || (data.authorUid is string && isValidId(data.authorUid)))
         && data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 80
-        && (!('authorPhotoUrl' in data) || (data.authorPhotoUrl is string && data.authorPhotoUrl.size() <= 500))
+        && (!('authorPhotoUrl' in data) || isSafeMediaUrlOrEmpty(data.authorPhotoUrl, 500))
         && data.title is string && data.title.size() >= 1 && data.title.size() <= 240
         && data.content is string && data.content.size() <= 400000
         && (!('cycle' in data) || (data.cycle is string && data.cycle.size() <= 160))
@@ -632,16 +738,8 @@ service cloud.firestore {
         && (!('lineSpacing' in data) || (data.lineSpacing is string && data.lineSpacing.size() <= 10))
         && (!('textColor' in data) || (data.textColor is string && data.textColor.size() <= 32))
         && (!('backgroundColor' in data) || (data.backgroundColor is string && data.backgroundColor.size() <= 32))
-        && (!('imageUrl' in data) || (data.imageUrl is string && data.imageUrl.size() <= 1000))
-        && (!('imagePalette' in data) || (
-          data.imagePalette is map
-          && data.imagePalette.keys().hasAll(['background', 'text'])
-          && data.imagePalette.keys().hasOnly(['background', 'secondaryBackground', 'text', 'isDark'])
-          && data.imagePalette.background is string && data.imagePalette.background.size() >= 4 && data.imagePalette.background.size() <= 32
-          && data.imagePalette.text is string && data.imagePalette.text.size() >= 4 && data.imagePalette.text.size() <= 32
-          && (!('secondaryBackground' in data.imagePalette) || (data.imagePalette.secondaryBackground is string && data.imagePalette.secondaryBackground.size() >= 4 && data.imagePalette.secondaryBackground.size() <= 32))
-          && (!('isDark' in data.imagePalette) || data.imagePalette.isDark is bool)
-        ))
+        && (!('imageUrl' in data) || isSafeMediaUrlOrEmpty(data.imageUrl, 1000))
+        && (!('imagePalette' in data) || isValidImagePalette(data.imagePalette))
         && (!('soundcloudTrack' in data) || isValidSoundCloudTrackMap(data.soundcloudTrack))
         && (!('soundcloudTracks' in data) || (
           data.soundcloudTracks is list
@@ -655,12 +753,12 @@ service cloud.firestore {
         && (!('chapters' in data) || (
           data.chapters is list
           && data.chapters.size() <= 200
-          && (data.chapters.size() == 0 || data.chapters[0] is map)
+          && (data.chapters.size() == 0 || isValidProseChapterMap(data.chapters[0]))
         ))
         && (!('moodboardUrls' in data) || (
           data.moodboardUrls is list
           && data.moodboardUrls.size() <= 20
-          && (data.moodboardUrls.size() == 0 || data.moodboardUrls[0] is string)
+          && (data.moodboardUrls.size() == 0 || isSafeMediaUrlOrEmpty(data.moodboardUrls[0], 1000))
         ))
         && (!('publishedAt' in data) || (data.publishedAt is string && data.publishedAt.size() <= 120))
         && data.ratingAverage is number && data.ratingAverage >= 0 && data.ratingAverage <= 5
@@ -684,7 +782,7 @@ service cloud.firestore {
         && data.periodLabel is string && data.periodLabel.size() >= 1 && data.periodLabel.size() <= 120
         && (!('text' in data) || (data.text is string && data.text.size() <= 5000))
         && data.photos is list && data.photos.size() <= 12
-        && (data.photos.size() == 0 || (data.photos[0] is string && data.photos[0].size() <= 1000))
+        && (data.photos.size() == 0 || isSafeMediaUrlOrEmpty(data.photos[0], 1000))
         && data.tracks is list && data.tracks.size() <= 50
         && (data.tracks.size() == 0 || isValidSoundCloudTrackMap(data.tracks[0]))
         && data.createdAt is timestamp
@@ -696,182 +794,262 @@ service cloud.firestore {
     }
 
     match /admins/{adminId} {
-      allow get: if isOwner(adminId) || isAdmin();
+      allow get: if isValidId(adminId) && (isOwner(adminId) || isAdmin());
       allow list, write: if false;
     }
 
     match /users/{userId} {
-      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
-      allow list: if isAdmin();
-      allow create: if isValidId(userId)
+      allow get: if isSignedIn() && isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isSignedIn() && isAdmin();
+      allow create: if isSignedIn()
+        && isValidId(userId)
         && isOwner(userId)
         && isValidUserPrivateProfile(incoming(), userId)
         && incoming().createdAt == request.time
-        && (!('updatedAt' in incoming()) || incoming().updatedAt == request.time);
-      allow update: if isValidId(userId)
-        && (isOwner(userId) || isAdmin())
-        && isValidUserPrivateProfile(incoming(), userId)
-        && (!('uid' in existing()) || incoming().uid == existing().uid)
-        && (!('createdAt' in existing()) || incoming().createdAt == existing().createdAt)
         && (!('updatedAt' in incoming()) || incoming().updatedAt == request.time)
-        && incoming().diff(existing()).affectedKeys().hasOnly([
-          'uid', 'displayName', 'email', 'likedPoemIds', 'likedRadioTrackIds',
-          'donorChatText', 'totalTimeSeconds', 'lastSeenAt', 'createdAt', 'updatedAt'
-        ]);
-      allow delete: if isValidId(userId) && isAdmin();
+        && (
+          isAdmin()
+          || (
+            !('donorChatText' in incoming())
+            && (!('totalTimeSeconds' in incoming()) || incoming().totalTimeSeconds == 0)
+            && (!(request.auth.token.email is string) || incoming().email.lower() == request.auth.token.email.lower())
+          )
+        );
+      allow update: if isSignedIn()
+        && isValidId(userId)
+        && isValidUserPrivateProfile(incoming(), userId)
+        && 'uid' in existing() && incoming().uid == existing().uid
+        && 'createdAt' in existing() && incoming().createdAt == existing().createdAt
+        && 'updatedAt' in incoming() && incoming().updatedAt == request.time
+        && (
+          (
+            isAdmin()
+            && incoming().diff(existing()).affectedKeys().hasOnly([
+              'displayName', 'email', 'likedPoemIds', 'likedRadioTrackIds',
+              'donorChatText', 'totalTimeSeconds', 'lastSeenAt', 'updatedAt'
+            ])
+          )
+          || (
+            isOwner(userId)
+            && incoming().diff(existing()).affectedKeys().hasOnly([
+              'displayName', 'email', 'likedPoemIds', 'likedRadioTrackIds',
+              'lastSeenAt', 'updatedAt'
+            ])
+            && (
+              incoming().email == existing().email
+              || (request.auth.token.email is string && incoming().email.lower() == request.auth.token.email.lower())
+            )
+          )
+        );
+      allow delete: if isSignedIn() && isValidId(userId) && isAdmin();
     }
 
     match /publicProfiles/{userId} {
       allow get: if isValidId(userId);
       allow list: if true;
-      allow create: if isValidId(userId)
+      allow create: if isSignedIn()
+        && isValidId(userId)
         && (isOwner(userId) || isAdmin())
         && isValidPublicProfile(incoming(), userId)
-        && (!('purchasesCount' in incoming()) || isAdmin() || incoming().purchasesCount <= 25)
         && incoming().createdAt == request.time
-        && incoming().updatedAt == request.time;
-      allow update: if isValidId(userId)
-        && (isOwner(userId) || isAdmin())
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin()
+          || (
+            (!('purchasesCount' in incoming()) || incoming().purchasesCount == 0)
+            && (!('totalTimeSeconds' in incoming()) || incoming().totalTimeSeconds == 0)
+            && !('donorChatText' in incoming())
+            && !('guestUid' in incoming())
+          )
+        );
+      allow update: if isSignedIn()
+        && isValidId(userId)
         && isValidPublicProfile(incoming(), userId)
         && incoming().uid == existing().uid
         && incoming().createdAt == existing().createdAt
         && incoming().updatedAt == request.time
-        && (!('purchasesCount' in incoming()) || isAdmin() || !('purchasesCount' in existing()) || (incoming().purchasesCount >= existing().purchasesCount && incoming().purchasesCount <= existing().purchasesCount + 25))
-        && incoming().diff(existing()).affectedKeys().hasOnly([
-          'guestUid', 'displayName', 'photoUrl', 'likedPoemIds',
-          'likedRadioTrackIds', 'totalTimeSeconds', 'purchasesCount',
-          'donorChatText', 'lastSeenAt', 'updatedAt'
-        ]);
-      allow delete: if isValidId(userId) && isAdmin();
+        && (
+          (
+            isAdmin()
+            && incoming().diff(existing()).affectedKeys().hasOnly([
+              'guestUid', 'displayName', 'photoUrl', 'likedPoemIds',
+              'likedRadioTrackIds', 'totalTimeSeconds', 'purchasesCount',
+              'donorChatText', 'lastSeenAt', 'updatedAt'
+            ])
+          )
+          || (
+            isOwner(userId)
+            && incoming().diff(existing()).affectedKeys().hasOnly([
+              'displayName', 'photoUrl', 'likedPoemIds',
+              'likedRadioTrackIds', 'lastSeenAt', 'updatedAt'
+            ])
+          )
+        );
+      allow delete: if isSignedIn() && isValidId(userId) && isAdmin();
     }
 
     match /poemLikes/{likeId} {
       allow get: if isValidCompositeId(likeId);
       allow list: if true;
-      allow create: if isValidCompositeId(likeId)
-        && isSignedIn()
+      allow create: if isSignedIn()
+        && isValidCompositeId(likeId)
         && isValidPoemLike(incoming(), likeId)
         && incoming().userId == request.auth.uid
         && likeId == (incoming().poemId + '__' + request.auth.uid)
-        && incoming().createdAt == request.time;
+        && incoming().createdAt == request.time
+        && exists(/databases/$(database)/documents/poems/$(incoming().poemId));
       allow update: if false;
-      allow delete: if isValidCompositeId(likeId) && (isOwner(existing().userId) || isAdmin());
+      allow delete: if isSignedIn() && isValidCompositeId(likeId) && (isOwner(existing().userId) || isAdmin());
     }
 
     match /radioLikes/{likeId} {
       allow get: if isValidCompositeId(likeId);
       allow list: if true;
-      allow create: if isValidCompositeId(likeId)
-        && isSignedIn()
+      allow create: if isSignedIn()
+        && isValidCompositeId(likeId)
         && isValidRadioLike(incoming(), likeId)
         && incoming().userId == request.auth.uid
         && likeId == (incoming().trackId + '__' + request.auth.uid)
-        && incoming().createdAt == request.time;
+        && incoming().createdAt == request.time
+        && exists(/databases/$(database)/documents/radioTracks/$(incoming().trackId));
       allow update: if false;
-      allow delete: if isValidCompositeId(likeId) && (isOwner(existing().userId) || isAdmin());
+      allow delete: if isSignedIn() && isValidCompositeId(likeId) && (isOwner(existing().userId) || isAdmin());
     }
 
     match /reviews/{reviewId} {
       allow get: if isValidId(reviewId);
       allow list: if true;
-      allow create: if isValidId(reviewId)
-        && isSignedIn()
+      allow create: if isSignedIn()
+        && isValidId(reviewId)
         && isValidReview(incoming(), reviewId)
         && incoming().authorUid == request.auth.uid
-        && incoming().createdAt == request.time;
-      allow update: if isValidId(reviewId)
-        && (isOwner(existing().authorUid) || isAdmin())
+        && incoming().createdAt == request.time
+        && (
+          (incoming().targetType == 'poem' && exists(/databases/$(database)/documents/poems/$(incoming().targetId)))
+          || (incoming().targetType == 'prose' && exists(/databases/$(database)/documents/prose/$(incoming().targetId)))
+          || (incoming().targetType == 'product' && exists(/databases/$(database)/documents/products/$(incoming().targetId)))
+        );
+      allow update: if isSignedIn()
+        && isValidId(reviewId)
         && isValidReview(incoming(), reviewId)
         && incoming().id == existing().id
         && incoming().targetType == existing().targetType
         && incoming().targetId == existing().targetId
         && incoming().authorUid == existing().authorUid
+        && incoming().rating == existing().rating
         && incoming().createdAt == existing().createdAt
-        && incoming().diff(existing()).affectedKeys().hasOnly(['rating', 'comment', 'authorName', 'authorPhotoUrl']);
-      allow delete: if isValidId(reviewId) && (isOwner(existing().authorUid) || isAdmin());
+        && (
+          (
+            isAdmin()
+            && incoming().diff(existing()).affectedKeys().hasOnly(['comment', 'authorName', 'authorPhotoUrl'])
+          )
+          || (
+            isOwner(existing().authorUid)
+            && incoming().diff(existing()).affectedKeys().hasOnly(['comment'])
+          )
+        );
+      allow delete: if isSignedIn() && isValidId(reviewId) && (isOwner(existing().authorUid) || isAdmin());
     }
 
     match /workVotes/{voteId} {
       allow get: if isValidCompositeId(voteId);
       allow list: if true;
-      allow create: if isValidCompositeId(voteId)
-        && isSignedIn()
+      allow create: if isSignedIn()
+        && isValidCompositeId(voteId)
         && isValidWorkVote(incoming(), voteId)
         && incoming().userId == request.auth.uid
         && voteId == (incoming().targetType + '__' + incoming().targetId + '__' + request.auth.uid)
         && incoming().createdAt == request.time
-        && incoming().updatedAt == request.time;
+        && incoming().updatedAt == request.time
+        && (
+          (incoming().targetType == 'poem' && exists(/databases/$(database)/documents/poems/$(incoming().targetId)))
+          || (incoming().targetType == 'prose' && exists(/databases/$(database)/documents/prose/$(incoming().targetId)))
+          || (incoming().targetType == 'product' && exists(/databases/$(database)/documents/products/$(incoming().targetId)))
+        );
       allow update: if false;
-      allow delete: if isValidCompositeId(voteId) && isAdmin();
+      allow delete: if isSignedIn() && isValidCompositeId(voteId) && isAdmin();
     }
 
     match /chatMessages/{messageId} {
       allow get: if isValidId(messageId);
       allow list: if true;
-      allow create: if isValidId(messageId)
-        && isSignedIn()
+      allow create: if isSignedIn()
+        && isValidId(messageId)
         && isValidChatMessage(incoming(), messageId)
         && incoming().authorUid == request.auth.uid
         && (!('isAdmin' in incoming()) || incoming().isAdmin == false || isAdmin())
         && incoming().createdAt == request.time;
       allow update: if false;
-      allow delete: if isValidId(messageId) && (isOwner(existing().authorUid) || isAdmin());
+      allow delete: if isSignedIn() && isValidId(messageId) && (('authorUid' in existing() && isOwner(existing().authorUid)) || isAdmin());
     }
 
     match /donations/{donationId} {
       allow get: if isValidId(donationId);
       allow list: if true;
-      allow create: if isValidId(donationId)
-        && isAdmin()
+      allow create: if isSignedIn()
+        && isValidId(donationId)
         && isValidDonation(incoming(), donationId)
+        && isAdmin()
         && incoming().createdAt == request.time;
-      allow update: if isValidId(donationId)
-        && isAdmin()
+      allow update: if isSignedIn()
+        && isValidId(donationId)
         && isValidDonation(incoming(), donationId)
+        && isAdmin()
         && incoming().id == existing().id
         && incoming().createdAt == existing().createdAt
         && incoming().diff(existing()).affectedKeys().hasOnly(['guestUid', 'displayName', 'photoUrl', 'amountUah', 'note', 'donatedAt']);
-      allow delete: if isValidId(donationId) && isAdmin();
+      allow delete: if isSignedIn() && isValidId(donationId) && isAdmin();
     }
 
     match /orders/{orderId} {
-      allow get: if isValidId(orderId) && (
-        isAdmin() ||
-        (isSignedIn() && 'guestUid' in existing() && existing().guestUid == request.auth.uid)
-      );
-      allow list: if isAdmin() || (isSignedIn() && resource.data.guestUid == request.auth.uid);
-      allow create: if isValidId(orderId)
-        && isSignedIn()
+      allow get: if isSignedIn()
+        && isValidId(orderId)
+        && (
+          isAdmin()
+          || ('guestUid' in existing() && existing().guestUid == request.auth.uid)
+        );
+      allow list: if isSignedIn()
+        && (
+          isAdmin()
+          || ('guestUid' in resource.data && resource.data.guestUid == request.auth.uid)
+        );
+      allow create: if isSignedIn()
+        && isValidId(orderId)
         && isValidOrder(incoming(), orderId)
-        && (isAdmin() || ('guestUid' in incoming() && incoming().guestUid == request.auth.uid))
+        && isAdmin()
         && incoming().createdAt == request.time
         && (!('updatedAt' in incoming()) || incoming().updatedAt == request.time);
-      allow update: if isValidId(orderId)
-        && isAdmin()
+      allow update: if isSignedIn()
+        && isValidId(orderId)
         && isValidOrder(incoming(), orderId)
+        && isAdmin()
         && incoming().orderCode == existing().orderCode
+        && (!('id' in existing()) || ('id' in incoming() && incoming().id == existing().id))
+        && (!('guestUid' in existing()) || ('guestUid' in incoming() && incoming().guestUid == existing().guestUid))
         && incoming().createdAt == existing().createdAt
-        && (!('updatedAt' in incoming()) || incoming().updatedAt == request.time)
+        && 'updatedAt' in incoming() && incoming().updatedAt == request.time
         && incoming().diff(existing()).affectedKeys().hasOnly([
           'buyerName', 'buyerEmail', 'buyerNameMasked', 'buyerEmailMasked',
           'buyerEmailHash', 'encryptedPii', 'integrityVerified', 'piiLocked',
           'totalUah', 'payment', 'items', 'updatedAt'
         ]);
-      allow delete: if isValidId(orderId) && isAdmin();
+      allow delete: if isSignedIn() && isValidId(orderId) && isAdmin();
     }
 
     match /radioTracks/{trackId} {
-      allow get: if isValidId(trackId) && ((isSignedIn() && existing().visibility == 'authenticated') || isAdmin());
-      allow list: if isAdmin() || (isSignedIn() && resource.data.visibility == 'authenticated');
-      allow create: if isValidId(trackId)
-        && isAdmin()
+      allow get: if isSignedIn() && isValidId(trackId) && (isAdmin() || existing().visibility == 'authenticated');
+      allow list: if isSignedIn() && (isAdmin() || resource.data.visibility == 'authenticated');
+      allow create: if isSignedIn()
+        && isValidId(trackId)
         && isValidRadioTrack(incoming(), trackId)
+        && isAdmin()
         && incoming().createdByUid == request.auth.uid
         && incoming().createdAt == request.time
         && incoming().updatedAt == request.time;
-      allow update: if isValidId(trackId)
-        && isAdmin()
+      allow update: if isSignedIn()
+        && isValidId(trackId)
         && isValidRadioTrack(incoming(), trackId)
+        && isAdmin()
         && incoming().id == existing().id
         && incoming().createdByUid == existing().createdByUid
         && incoming().createdAt == existing().createdAt
@@ -887,237 +1065,326 @@ service cloud.firestore {
           'visibility',
           'updatedAt'
         ]);
-      allow delete: if isValidId(trackId) && isAdmin();
+      allow delete: if isSignedIn() && isValidId(trackId) && isAdmin();
     }
 
     match /siteConfig/{configId} {
       allow get: if configId == 'main';
       allow list: if false;
-      allow create: if configId == 'main'
-        && isAdmin()
+      allow create: if isSignedIn()
+        && configId == 'main'
         && isValidSiteConfig(incoming(), configId)
+        && isAdmin()
         && incoming().updatedAt == request.time;
-      allow update: if configId == 'main'
-        && isAdmin()
+      allow update: if isSignedIn()
+        && configId == 'main'
         && isValidSiteConfig(incoming(), configId)
+        && isAdmin()
         && incoming().id == existing().id
-        && incoming().updatedAt == request.time;
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'heroLeadText', 'authorAboutText', 'authorPhotoUrl', 'authorPhotos',
+          'socialLinks', 'monobankJarUrl', 'monobankModalTitle', 'monobankModalSubtitle',
+          'monobankCardLabel', 'monobankModalText', 'monobankEmptyText', 'contactEmail', 'interviews',
+          'homeActionAboutTitle', 'homeActionContactTitle', 'homeActionMonobankTitle',
+          'homeActionInterviewsTitle', 'homeRepeaters', 'proseAuthDiscountPercent', 'proseTelegramDiscountPercent',
+          'telegramChannelId', 'storeAuthDiscountPercent', 'proseTags', 'updatedAt'
+        ]);
       allow delete: if false;
     }
 
     match /poems/{poemId} {
       allow get: if isValidId(poemId);
       allow list: if true;
-      allow create: if isValidId(poemId)
-        && isAdmin()
+      allow create: if isSignedIn()
+        && isValidId(poemId)
         && isValidPoem(incoming(), poemId)
+        && isAdmin()
         && incoming().updatedAt == request.time;
-      allow update: if isValidId(poemId)
-        && isAdmin()
+      allow update: if isSignedIn()
+        && isValidId(poemId)
         && isValidPoem(incoming(), poemId)
+        && isAdmin()
         && incoming().id == existing().id
-        && incoming().updatedAt == request.time;
-      allow delete: if isValidId(poemId) && isAdmin();
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'title', 'cycle', 'year', 'excerpt', 'content', 'note', 'order', 'updatedAt',
+          'fontSize', 'textAlign', 'lineSpacing', 'textColor', 'backgroundColor',
+          'imageUrl', 'imagePalette', 'soundcloudTrack', 'soundcloudTracks',
+          'isCommunity', 'authorUid', 'authorName', 'authorPhotoUrl', 'submissionId', 'workStatus'
+        ]);
+      allow delete: if isSignedIn() && isValidId(poemId) && isAdmin();
     }
 
     match /prose/{proseId} {
       allow get: if isValidId(proseId);
       allow list: if true;
-      allow create: if isValidId(proseId)
-        && isAdmin()
+      allow create: if isSignedIn()
+        && isValidId(proseId)
         && isValidProseWork(incoming(), proseId)
+        && isAdmin()
         && incoming().updatedAt == request.time;
-      allow update: if isValidId(proseId)
-        && isAdmin()
+      allow update: if isSignedIn()
+        && isValidId(proseId)
         && isValidProseWork(incoming(), proseId)
+        && isAdmin()
         && incoming().id == existing().id
-        && incoming().updatedAt == request.time;
-      allow delete: if isValidId(proseId) && isAdmin();
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'title', 'genre', 'pages', 'publishedAt', 'slogan', 'excerpt',
+          'content', 'chapters', 'tagIds', 'status', 'accessMode', 'requiresAuth',
+          'isPaid', 'priceUah', 'moodboardUrls', 'order', 'updatedAt',
+          'isCommunity', 'authorUid', 'authorName', 'authorPhotoUrl', 'submissionId'
+        ]);
+      allow delete: if isSignedIn() && isValidId(proseId) && isAdmin();
     }
 
     match /prosePrivate/{proseId} {
-      allow get: if isValidId(proseId) && (isAdmin() || (isSignedIn() && existing().accessMode == 'authorized'));
-      allow list: if isAdmin() || (isSignedIn() && resource.data.accessMode == 'authorized');
-      allow create: if isValidId(proseId)
-        && isAdmin()
+      allow get: if isSignedIn() && isValidId(proseId) && (isAdmin() || existing().accessMode == 'authorized');
+      allow list: if isSignedIn() && (isAdmin() || resource.data.accessMode == 'authorized');
+      allow create: if isSignedIn()
+        && isValidId(proseId)
         && isValidProsePrivate(incoming(), proseId)
+        && isAdmin()
         && incoming().updatedAt == request.time;
-      allow update: if isValidId(proseId)
-        && isAdmin()
+      allow update: if isSignedIn()
+        && isValidId(proseId)
         && isValidProsePrivate(incoming(), proseId)
+        && isAdmin()
         && incoming().id == existing().id
-        && incoming().updatedAt == request.time;
-      allow delete: if isValidId(proseId) && isAdmin();
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'accessMode', 'content', 'chapters', 'pdfStorageKey', 'pdfFileName', 'pdfFileSize', 'updatedAt'
+        ]);
+      allow delete: if isSignedIn() && isValidId(proseId) && isAdmin();
     }
 
     match /blogPosts/{postId} {
       allow get: if isValidId(postId);
       allow list: if true;
-      allow create: if isValidId(postId)
-        && isAdmin()
+      allow create: if isSignedIn()
+        && isValidId(postId)
         && isValidBlogPost(incoming(), postId)
+        && isAdmin()
         && incoming().updatedAt == request.time;
-      allow update: if isValidId(postId)
-        && isAdmin()
+      allow update: if isSignedIn()
+        && isValidId(postId)
         && isValidBlogPost(incoming(), postId)
+        && isAdmin()
         && incoming().id == existing().id
-        && incoming().updatedAt == request.time;
-      allow delete: if isValidId(postId) && isAdmin();
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'title', 'category', 'publishedAt', 'readingMinutes', 'coverImage',
+          'excerpt', 'content', 'order', 'updatedAt'
+        ]);
+      allow delete: if isSignedIn() && isValidId(postId) && isAdmin();
     }
 
     match /products/{productId} {
       allow get: if isValidId(productId);
       allow list: if true;
-      allow create: if isValidId(productId)
-        && isAdmin()
+      allow create: if isSignedIn()
+        && isValidId(productId)
         && isValidStoreProduct(incoming(), productId)
+        && isAdmin()
         && incoming().updatedAt == request.time;
-      allow update: if isValidId(productId)
-        && isAdmin()
+      allow update: if isSignedIn()
+        && isValidId(productId)
         && isValidStoreProduct(incoming(), productId)
+        && isAdmin()
         && incoming().id == existing().id
-        && incoming().updatedAt == request.time;
-      allow delete: if isValidId(productId) && isAdmin();
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'type', 'title', 'subtitle', 'priceUah', 'discountPercent', 'promoActive',
+          'promoLabel', 'coverImage', 'description', 'sampleExcerpt', 'formats', 'pages',
+          'year', 'binding', 'dimensions', 'material', 'progressLabel', 'wordCount',
+          'lastUpdated', 'order', 'updatedAt'
+        ]);
+      allow delete: if isSignedIn() && isValidId(productId) && isAdmin();
     }
 
     match /productSecrets/{productId} {
-      allow get: if isValidId(productId) && isAdmin();
-      allow list: if isAdmin();
-      allow create: if isValidId(productId)
-        && isAdmin()
+      allow get: if isSignedIn() && isValidId(productId) && isAdmin();
+      allow list: if isSignedIn() && isAdmin();
+      allow create: if isSignedIn()
+        && isValidId(productId)
         && isValidProductSecret(incoming(), productId)
+        && isAdmin()
         && incoming().updatedAt == request.time;
-      allow update: if isValidId(productId)
-        && isAdmin()
+      allow update: if isSignedIn()
+        && isValidId(productId)
         && isValidProductSecret(incoming(), productId)
+        && isAdmin()
         && incoming().id == existing().id
-        && incoming().updatedAt == request.time;
-      allow delete: if isValidId(productId) && isAdmin();
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'gdocGuestUrl', 'ebookFullText', 'ebookFileName', 'ebookMimeType', 'ebookFileSize', 'updatedAt'
+        ]);
+      allow delete: if isSignedIn() && isValidId(productId) && isAdmin();
     }
 
     match /mediaAssets/{assetId} {
       allow get: if isValidId(assetId);
       allow list: if false;
-      allow create: if isValidId(assetId)
-        && isSignedIn()
+      allow create: if isSignedIn()
+        && isValidId(assetId)
         && isValidMediaAsset(incoming(), assetId)
-        && incoming().updatedAt == request.time;
-      allow update: if isValidId(assetId)
         && isAdmin()
-        && isValidMediaAsset(incoming(), assetId)
-        && incoming().id == existing().id
         && incoming().updatedAt == request.time;
-      allow delete: if isValidId(assetId) && isAdmin();
+      allow update: if isSignedIn()
+        && isValidId(assetId)
+        && isValidMediaAsset(incoming(), assetId)
+        && isAdmin()
+        && incoming().id == existing().id
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'filename', 'mimeType', 'dataBase64', 'updatedAt'
+        ]);
+      allow delete: if isSignedIn() && isValidId(assetId) && isAdmin();
     }
 
     match /poemSubmissions/{submissionId} {
-      allow get: if isValidId(submissionId)
-        && (isAdmin() || (isSignedIn() && existing().authorUid == request.auth.uid));
-      allow list: if isAdmin()
-        || (isSignedIn() && resource.data.authorUid == request.auth.uid);
-      allow create: if isValidId(submissionId)
-        && isSignedIn()
+      allow get: if isSignedIn()
+        && isValidId(submissionId)
+        && (isAdmin() || existing().authorUid == request.auth.uid);
+      allow list: if isSignedIn()
+        && (isAdmin() || resource.data.authorUid == request.auth.uid);
+      allow create: if isSignedIn()
+        && isValidId(submissionId)
+        && isValidPoemSubmission(incoming(), submissionId)
         && incoming().authorUid == request.auth.uid
         && incoming().status == 'pending'
         && !('moderationNote' in incoming())
         && !('publishedPoemId' in incoming())
-        && isValidPoemSubmission(incoming(), submissionId)
         && incoming().createdAt == request.time
         && incoming().updatedAt == request.time;
-      allow update: if isValidId(submissionId)
+      allow update: if isSignedIn()
+        && isValidId(submissionId)
         && isValidPoemSubmission(incoming(), submissionId)
         && incoming().id == existing().id
         && incoming().authorUid == existing().authorUid
         && incoming().createdAt == existing().createdAt
         && incoming().updatedAt == request.time
         && (
-          isAdmin()
+          (
+            isAdmin()
+            && incoming().diff(existing()).affectedKeys().hasOnly([
+              'authorName', 'authorPhotoUrl', 'title', 'cycle', 'year', 'content', 'note',
+              'fontSize', 'textAlign', 'lineSpacing', 'textColor', 'backgroundColor',
+              'imageUrl', 'imagePalette', 'soundcloudTrack', 'soundcloudTracks',
+              'status', 'workStatus', 'moderationNote', 'publishedPoemId', 'updatedAt'
+            ])
+          )
           || (
             isOwner(existing().authorUid)
+            && existing().status == 'pending'
             && incoming().status == 'pending'
             && !('moderationNote' in incoming())
-            && (
-              (!('publishedPoemId' in existing()) && !('publishedPoemId' in incoming()))
-              || ('publishedPoemId' in existing() && 'publishedPoemId' in incoming() && incoming().publishedPoemId == existing().publishedPoemId)
-            )
+            && !('publishedPoemId' in incoming())
+            && incoming().diff(existing()).affectedKeys().hasOnly([
+              'authorName', 'authorPhotoUrl', 'title', 'cycle', 'year', 'content', 'note',
+              'fontSize', 'textAlign', 'lineSpacing', 'textColor', 'backgroundColor',
+              'imageUrl', 'imagePalette', 'soundcloudTrack', 'soundcloudTracks',
+              'workStatus', 'updatedAt'
+            ])
           )
         );
-      allow delete: if isValidId(submissionId) && isAdmin();
+      allow delete: if isSignedIn() && isValidId(submissionId) && isAdmin();
     }
 
     match /proseSubmissions/{submissionId} {
-      allow get: if isValidId(submissionId)
-        && (isAdmin() || (isSignedIn() && existing().authorUid == request.auth.uid));
-      allow list: if isAdmin()
-        || (isSignedIn() && resource.data.authorUid == request.auth.uid);
-      allow create: if isValidId(submissionId)
-        && isSignedIn()
+      allow get: if isSignedIn()
+        && isValidId(submissionId)
+        && (isAdmin() || existing().authorUid == request.auth.uid);
+      allow list: if isSignedIn()
+        && (isAdmin() || resource.data.authorUid == request.auth.uid);
+      allow create: if isSignedIn()
+        && isValidId(submissionId)
+        && isValidProseSubmission(incoming(), submissionId)
         && incoming().authorUid == request.auth.uid
         && incoming().status == 'pending'
         && !('moderationNote' in incoming())
         && !('publishedProseId' in incoming())
-        && isValidProseSubmission(incoming(), submissionId)
         && incoming().createdAt == request.time
         && incoming().updatedAt == request.time;
-      allow update: if isValidId(submissionId)
+      allow update: if isSignedIn()
+        && isValidId(submissionId)
         && isValidProseSubmission(incoming(), submissionId)
         && incoming().id == existing().id
         && incoming().authorUid == existing().authorUid
         && incoming().createdAt == existing().createdAt
         && incoming().updatedAt == request.time
         && (
-          isAdmin()
+          (
+            isAdmin()
+            && incoming().diff(existing()).affectedKeys().hasOnly([
+              'authorName', 'authorPhotoUrl', 'title', 'genre', 'slogan', 'excerpt',
+              'content', 'pages', 'totalWords', 'moodboardUrls', 'status', 'workStatus',
+              'moderationNote', 'publishedProseId', 'updatedAt'
+            ])
+          )
           || (
             isOwner(existing().authorUid)
+            && existing().status == 'pending'
             && incoming().status == 'pending'
             && !('moderationNote' in incoming())
-            && (
-              (!('publishedProseId' in existing()) && !('publishedProseId' in incoming()))
-              || ('publishedProseId' in existing() && 'publishedProseId' in incoming() && incoming().publishedProseId == existing().publishedProseId)
-            )
+            && !('publishedProseId' in incoming())
+            && incoming().diff(existing()).affectedKeys().hasOnly([
+              'authorName', 'authorPhotoUrl', 'title', 'genre', 'slogan', 'excerpt',
+              'content', 'pages', 'totalWords', 'moodboardUrls', 'workStatus', 'updatedAt'
+            ])
           )
         );
-      allow delete: if isValidId(submissionId) && isAdmin();
+      allow delete: if isSignedIn() && isValidId(submissionId) && isAdmin();
     }
 
     match /adminSecrets/{secretId} {
-      allow get: if isValidId(secretId) && isAdmin();
-      allow list: if isAdmin();
-      allow create: if isValidId(secretId)
-        && isAdmin()
+      allow get: if isSignedIn() && isValidId(secretId) && isAdmin();
+      allow list: if isSignedIn() && isAdmin();
+      allow create: if isSignedIn()
+        && isValidId(secretId)
         && isValidAdminSecret(incoming(), secretId)
+        && isAdmin()
         && incoming().updatedAt == request.time;
-      allow update: if isValidId(secretId)
-        && isAdmin()
+      allow update: if isSignedIn()
+        && isValidId(secretId)
         && isValidAdminSecret(incoming(), secretId)
+        && isAdmin()
         && incoming().id == existing().id
-        && incoming().updatedAt == request.time;
-      allow delete: if isValidId(secretId) && isAdmin();
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['telegramBotToken', 'updatedAt']);
+      allow delete: if isSignedIn() && isValidId(secretId) && isAdmin();
     }
 
     match /monthlySelections/{selectionId} {
       allow get: if isValidId(selectionId);
       allow list: if true;
-      allow create: if isValidId(selectionId)
-        && isAdmin()
+      allow create: if isSignedIn()
+        && isValidId(selectionId)
         && isValidMonthlySelection(incoming(), selectionId)
+        && isAdmin()
         && incoming().updatedAt == request.time;
-      allow update: if isValidId(selectionId)
-        && isAdmin()
+      allow update: if isSignedIn()
+        && isValidId(selectionId)
         && isValidMonthlySelection(incoming(), selectionId)
+        && isAdmin()
         && incoming().id == existing().id
         && incoming().createdAt == existing().createdAt
-        && incoming().updatedAt == request.time;
-      allow delete: if isValidId(selectionId) && isAdmin();
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'monthKey', 'title', 'description', 'tracks', 'order', 'updatedAt'
+        ]);
+      allow delete: if isSignedIn() && isValidId(selectionId) && isAdmin();
     }
 
     match /siteFeedback/{feedbackId} {
-      allow get: if isValidId(feedbackId)
-        && (isAdmin() || (isSignedIn() && 'authorUid' in existing() && existing().authorUid == request.auth.uid));
-      allow list: if isAdmin()
-        || (isSignedIn() && 'authorUid' in resource.data && resource.data.authorUid == request.auth.uid);
-      allow create: if isValidId(feedbackId)
-        && isSignedIn()
+      allow get: if isSignedIn()
+        && isValidId(feedbackId)
+        && (isAdmin() || ('authorUid' in existing() && existing().authorUid == request.auth.uid));
+      allow list: if isSignedIn()
+        && (isAdmin() || ('authorUid' in resource.data && resource.data.authorUid == request.auth.uid));
+      allow create: if isSignedIn()
+        && isValidId(feedbackId)
         && isValidSiteFeedback(incoming(), feedbackId)
         && incoming().createdAt == request.time
         && incoming().updatedAt == request.time
@@ -1133,8 +1400,8 @@ service cloud.firestore {
             && !('adminReplyAuthorName' in incoming())
           )
         );
-      allow update: if isValidId(feedbackId)
-        && isSignedIn()
+      allow update: if isSignedIn()
+        && isValidId(feedbackId)
         && isValidSiteFeedback(incoming(), feedbackId)
         && incoming().id == existing().id
         && incoming().createdAt == existing().createdAt
@@ -1157,44 +1424,60 @@ service cloud.firestore {
             && incoming().readByUser == true
           )
         );
-      allow delete: if isValidId(feedbackId) && isAdmin();
+      allow delete: if isSignedIn() && isValidId(feedbackId) && isAdmin();
     }
 
     match /weeklyHighlights/{highlightId} {
       allow get: if isValidId(highlightId);
       allow list: if true;
-      allow create: if isValidId(highlightId)
-        && isAdmin()
+      allow create: if isSignedIn()
+        && isValidId(highlightId)
         && isValidWeeklyHighlight(incoming(), highlightId)
+        && isAdmin()
         && incoming().updatedAt == request.time;
-      allow update: if isValidId(highlightId)
-        && isAdmin()
+      allow update: if isSignedIn()
+        && isValidId(highlightId)
         && isValidWeeklyHighlight(incoming(), highlightId)
+        && isAdmin()
         && incoming().id == existing().id
         && incoming().targetType == existing().targetType
         && incoming().weekKey == existing().weekKey
-        && incoming().updatedAt == request.time;
-      allow delete: if isValidId(highlightId) && isAdmin();
+        && incoming().periodStart == existing().periodStart
+        && incoming().periodEnd == existing().periodEnd
+        && incoming().selectedAt == existing().selectedAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'periodLabel', 'sourcePoemId', 'sourceProseId', 'sourceSubmissionId',
+          'authorUid', 'authorName', 'authorPhotoUrl', 'title', 'content',
+          'cycle', 'year', 'note', 'fontSize', 'textAlign', 'lineSpacing',
+          'textColor', 'backgroundColor', 'imageUrl', 'imagePalette',
+          'soundcloudTrack', 'soundcloudTracks', 'genre', 'pages', 'totalWords',
+          'slogan', 'chapters', 'moodboardUrls', 'publishedAt',
+          'ratingAverage', 'ratingCount', 'updatedAt'
+        ]);
+      allow delete: if isSignedIn() && isValidId(highlightId) && isAdmin();
     }
 
     match /weeklyMusicSelections/{selectionId} {
       allow get: if isValidId(selectionId);
       allow list: if true;
-      allow create: if isValidId(selectionId)
-        && isAdmin()
+      allow create: if isSignedIn()
+        && isValidId(selectionId)
         && isValidWeeklyMusicSelection(incoming(), selectionId)
+        && isAdmin()
         && incoming().createdAt == request.time
         && incoming().updatedAt == request.time;
-      allow update: if isValidId(selectionId)
-        && isAdmin()
+      allow update: if isSignedIn()
+        && isValidId(selectionId)
         && isValidWeeklyMusicSelection(incoming(), selectionId)
+        && isAdmin()
         && incoming().id == existing().id
         && incoming().createdAt == existing().createdAt
         && incoming().updatedAt == request.time
         && incoming().diff(existing()).affectedKeys().hasOnly([
           'weekKey', 'periodStart', 'periodEnd', 'periodLabel', 'text', 'photos', 'tracks', 'updatedAt'
         ]);
-      allow delete: if isValidId(selectionId) && isAdmin();
+      allow delete: if isSignedIn() && isValidId(selectionId) && isAdmin();
     }
   }
 }

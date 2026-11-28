@@ -6,6 +6,7 @@ import fs from 'fs';
 import http from 'http';
 import https from 'https';
 import net from 'net';
+import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import type { SiteDatabase, RawProseWork } from './seedData.ts';
@@ -25,7 +26,12 @@ import { loadMediaAssetFromFirestore } from './firestoreStubs.ts';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 export const ROOT_DIR = path.resolve(__dirname, '..');
-export const DATA_DIR = path.join(ROOT_DIR, 'data');
+const DEFAULT_DATA_DIR = process.env.NODE_TEST_CONTEXT
+  ? path.join(os.tmpdir(), `dankiv-test-data-${process.pid}`)
+  : path.join(ROOT_DIR, 'data');
+export const DATA_DIR = process.env.SITE_DATA_DIR
+  ? path.resolve(process.env.SITE_DATA_DIR)
+  : DEFAULT_DATA_DIR;
 export const UPLOADS_DIR = path.join(DATA_DIR, 'uploads');
 export const EBOOKS_DIR = path.join(DATA_DIR, 'ebooks');
 export const PROSE_PDF_DIR = path.join(DATA_DIR, 'prose-pdfs');

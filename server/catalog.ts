@@ -101,6 +101,7 @@ import {
   ensureAllPublicStateHydrated,
   extractBearerToken,
   hydratedGuestLikesUids,
+  isAdminEmailAddress,
   recordCloudPoemLikeState,
   recordCloudRadioLikeState,
   tryAuthenticateOptionalGuest,
@@ -179,8 +180,16 @@ export function computeLeaderboardRankings(db: SiteDatabase) {
   const accountByUid = new Map(db.guestAccounts.map((acc) => [acc.uid, acc]));
   const existingPoemIds = new Set(db.poems.map((p) => p.id));
 
+  const adminUids = new Set<string>();
+  for (const acc of db.guestAccounts) {
+    if (isAdminEmailAddress(acc.email)) {
+      if (acc.uid) adminUids.add(acc.uid);
+      if (acc.googleUid) adminUids.add(acc.googleUid);
+    }
+  }
+
   const activityRanked = [...db.guestAccounts]
-    .filter((acc) => Boolean(acc.displayName))
+    .filter((acc) => Boolean(acc.displayName) && !isAdminEmailAddress(acc.email))
     .map((acc) => {
       const commentsCount = db.reviews.reduce((sum, rev) => {
         if (!rev.comment || !rev.comment.trim()) return sum;
@@ -348,7 +357,8 @@ export function computeLeaderboardRankings(db: SiteDatabase) {
     get: (uid?: string | null, displayName?: string | null): UserTopBadges | undefined => {
       const cleanUid = typeof uid === 'string' ? uid.trim() : '';
       const cleanName = typeof displayName === 'string' ? displayName.trim().toLowerCase() : '';
-      const activityRank = cleanUid ? activityByUid.get(cleanUid) : undefined;
+      const isAdminUid = Boolean(cleanUid && adminUids.has(cleanUid));
+      const activityRank = cleanUid && !isAdminUid ? activityByUid.get(cleanUid) : undefined;
       let donorRank = cleanUid ? donorByUid.get(cleanUid) : undefined;
       if (!donorRank && cleanName) {
         donorRank = donorByName.get(cleanName);
@@ -2581,7 +2591,7 @@ export function registerCatalogRoutes(app: express.Express): void {
     }
 
     const seniority: LeaderboardSeniorityEntry[] = [...db.guestAccounts]
-      .filter((acc) => typeof acc.createdAt === 'string' && acc.displayName)
+      .filter((acc) => typeof acc.createdAt === 'string' && acc.displayName && !isAdminEmailAddress(acc.email))
       .sort((a, b) => (Date.parse(a.createdAt) || 0) - (Date.parse(b.createdAt) || 0))
       .slice(0, 10)
       .map((acc, idx) => ({
@@ -2593,7 +2603,7 @@ export function registerCatalogRoutes(app: express.Express): void {
       }));
 
     const time: LeaderboardTimeEntry[] = [...db.guestAccounts]
-      .filter((acc) => Math.round(Number(acc.totalTimeSeconds) || 0) > 0)
+      .filter((acc) => Math.round(Number(acc.totalTimeSeconds) || 0) > 0 && !isAdminEmailAddress(acc.email))
       .sort((a, b) => {
         const diff = Math.round(Number(b.totalTimeSeconds) || 0) - Math.round(Number(a.totalTimeSeconds) || 0);
         if (diff !== 0) return diff;
@@ -2640,7 +2650,7 @@ export function registerCatalogRoutes(app: express.Express): void {
       time,
       activity,
       donors,
-      totalRegisteredUsers: db.guestAccounts.length,
+      totalRegisteredUsers: db.guestAccounts.filter((acc) => !isAdminEmailAddress(acc.email)).length,
       currentUserUid: optionalAuth?.account.uid ?? null,
       ...(currentUserBadges ? { currentUserBadges } : {}),
       generatedAt: new Date().toISOString(),

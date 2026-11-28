@@ -5,13 +5,14 @@ import express from 'express';
 import { ensureDatabase } from './db.ts';
 import {
   CATALOG_TEXT_MAX_CHARS,
+  computeLeaderboardRankings,
   enrichProseForPublic,
   registerCatalogRoutes,
   truncateBlogForCatalog,
   truncatePoemForCatalog,
 } from './catalog.ts';
 import type { BlogPost, Poem } from '../src/types.ts';
-import type { RawProseWork } from './seedData.ts';
+import { INITIAL_DATABASE, type RawProseWork } from './seedData.ts';
 
 function createBasePoem(content: string): Poem {
   return {
@@ -208,5 +209,59 @@ test('Public catalog, read endpoints, and cache headers work end-to-end', async 
     db.poems = originalPoems;
     db.blog = originalBlog;
     await new Promise<void>((resolve) => server.close(() => resolve()));
+  }
+});
+
+test('Admin accounts are excluded from activity leaderboard and never receive activityRank badges', () => {
+  const prevAdminEmails = process.env.ADMIN_EMAILS;
+  process.env.ADMIN_EMAILS = 'admin-leader@example.com';
+
+  try {
+    const db = structuredClone(INITIAL_DATABASE);
+    db.poems = [
+      {
+        id: 'poem-lb-1',
+        title: 'Тест',
+        cycle: 'Цикл',
+        year: 2026,
+        excerpt: '...',
+        content: 'Текст',
+      },
+    ];
+    db.guestAccounts = [
+      {
+        uid: 'guest_admin_1',
+        googleUid: 'fb_admin_1',
+        displayName: 'Адмін',
+        email: 'admin-leader@example.com',
+        likedPoemIds: ['poem-lb-1'],
+        purchasesCount: 10,
+        createdAt: '2026-01-01T00:00:00.000Z',
+      },
+      {
+        uid: 'guest_reader_1',
+        googleUid: 'fb_reader_1',
+        displayName: 'Читачка',
+        email: 'reader@example.com',
+        likedPoemIds: ['poem-lb-1'],
+        purchasesCount: 0,
+        createdAt: '2026-01-02T00:00:00.000Z',
+      },
+    ];
+
+    const { activityRanked, lookup } = computeLeaderboardRankings(db);
+    assert.strictEqual(activityRanked.some((e) => e.uid === 'guest_admin_1'), false);
+    assert.strictEqual(activityRanked.length, 1);
+    assert.strictEqual(activityRanked[0].uid, 'guest_reader_1');
+    assert.strictEqual(activityRanked[0].rank, 1);
+    assert.strictEqual(lookup.get('guest_admin_1', 'Адмін')?.activityRank, undefined);
+    assert.strictEqual(lookup.get('fb_admin_1', 'Адмін')?.activityRank, undefined);
+    assert.strictEqual(lookup.get('guest_reader_1', 'Читачка')?.activityRank, 1);
+  } finally {
+    if (prevAdminEmails === undefined) {
+      delete process.env.ADMIN_EMAILS;
+    } else {
+      process.env.ADMIN_EMAILS = prevAdminEmails;
+    }
   }
 });

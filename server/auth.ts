@@ -33,12 +33,17 @@ import {
 import { applyCloudTelegramBotToken } from '../src/api/telegramBot.ts';
 import { ensureWeeklyWinnersUpToDate } from './weeklyHighlights.ts';
 
+const DEFAULT_ADMIN_EMAILS = [
+  'andrijdankiv5@gmail.com',
+  'andriidankiv.writer@gmail.com',
+];
+
 export function getAdminEmails(): Set<string> {
   const envEmails = process.env.ADMIN_EMAILS || process.env.ADMIN_EMAIL || '';
   if (envEmails.trim()) {
     return new Set(envEmails.split(',').map((e) => e.trim().toLowerCase()).filter(Boolean));
   }
-  return new Set<string>(['admin@example.com']);
+  return new Set<string>(DEFAULT_ADMIN_EMAILS);
 }
 
 export function isAdminEmailAddress(email?: string | null): boolean {
@@ -452,7 +457,13 @@ export function sanitizeGuestUser(
     typeof account.donorChatText === 'string' && account.donorChatText.trim()
       ? account.donorChatText.trim().slice(0, 80)
       : undefined;
-  const badges = badgeLookup?.get(account.uid, account.displayName);
+  const rawBadges = badgeLookup?.get(account.uid, account.displayName);
+  const badges =
+    rawBadges && isAdminEmailAddress(account.email)
+      ? rawBadges.donorRank
+        ? { donorRank: rawBadges.donorRank }
+        : undefined
+      : rawBadges;
   return {
     uid: account.uid,
     ...(account.googleUid ? { firebaseUid: account.googleUid } : {}),

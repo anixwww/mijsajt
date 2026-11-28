@@ -79,7 +79,12 @@ function loadCacheFromStorage(): PersistedChatCache {
       ? parsed.messages
           .filter(
             (m): m is GlobalChatMessage =>
-              Boolean(m && typeof m.id === 'string' && typeof m.text === 'string')
+              Boolean(
+                m &&
+                  typeof m.id === 'string' &&
+                  !/^chat_hist_\d+$/.test(m.id) &&
+                  typeof m.text === 'string'
+              )
           )
           .slice(-CHAT_CACHE_LIMIT)
       : [];
@@ -145,6 +150,25 @@ export function saveCachedGlobalChatState(
     window.localStorage.setItem(CHAT_CACHE_STORAGE_KEY, JSON.stringify(payload));
   } catch {
     // Ignore storage quota errors
+  }
+}
+
+export function clearCachedGlobalChatState(nextChatMeta?: ChatMetaState): void {
+  memoryMessagesCache = [];
+  if (nextChatMeta !== undefined) {
+    memoryChatMetaCache = nextChatMeta;
+  }
+  if (typeof window === 'undefined') return;
+  try {
+    const payload: PersistedChatCache = {
+      messages: [],
+      authorMetaByUid: memoryAuthorMetaCache || {},
+      ...(memoryChatMetaCache ? { chatMeta: memoryChatMetaCache } : {}),
+      updatedAt: Date.now(),
+    };
+    window.localStorage.setItem(CHAT_CACHE_STORAGE_KEY, JSON.stringify(payload));
+  } catch {
+    // Ignore storage errors
   }
 }
 
@@ -439,5 +463,55 @@ export async function deleteChatMessageDirectInFirestore(messageId: string): Pro
       }
     }
     return false;
+  }
+}
+
+export async function clearAllChatMessagesInFirestore(): Promise<{
+  ok: boolean;
+  deletedCount: number;
+  permissionDenied?: boolean;
+}> {
+  let currentUser = getCachedAuthUser();
+  if (!currentUser) {
+    const auth = await getFirebaseAuth().catch(() => null);
+    if (auth) {
+      await auth.authStateReady().catch(() => {});
+      currentUser = auth.currentUser;
+    }
+  }
+  if (!currentUser || !currentUser.emailVerified) {
+    return { ok: false, deletedCount: 0 };
+  }
+
+  let deletedCount = 0;
+  try {
+    const [db, { collection, getDocs, limit, query, writeBatch }] = await Promise.all([
+      getFirebaseDb(),
+      import('firebase/firestore'),
+    ]);
+
+    for (let round = 0; round < 25; round += 1) {
+      const snapshot = await getDocs(query(collection(db, CHAT_COLLECTION), limit(400)));
+      if (snapshot.empty) break;
+      const batch = writeBatch(db);
+      snapshot.forEach((docSnap) => {
+        batch.delete(docSnap.ref);
+      });
+      await batch.commit();
+      deletedCount += snapshot.size;
+      if (snapshot.size < 400) break;
+    }
+
+    return { ok: true, deletedCount };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.toLowerCase().includes('permission')) {
+      try {
+        handleFirestoreError(err, OperationType.DELETE, CHAT_COLLECTION, currentUser);
+      } catch {
+        return { ok: false, deletedCount, permissionDenied: true };
+      }
+    }
+    return { ok: false, deletedCount };
   }
 }

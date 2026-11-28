@@ -1,5 +1,23 @@
 {
   "entities": {
+    "AdminRole": {
+      "title": "AdminRole",
+      "description": "Server-provisioned admin role markers readable by self or existing admins and strictly immutable from client SDKs.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "role": {
+          "type": "string",
+          "enum": ["admin"]
+        }
+      },
+      "required": ["uid", "role"]
+    },
     "UserPrivateProfile": {
       "title": "UserPrivateProfile",
       "description": "Private user account metadata containing PII such as email.",
@@ -53,7 +71,7 @@
     },
     "PublicUserProfile": {
       "title": "PublicUserProfile",
-      "description": "Public non-PII user profile used for leaderboards, badges, likes, and chat display.",
+      "description": "Public non-PII user profile used for leaderboards, badges, likes, and chat display. System fields (purchasesCount, totalTimeSeconds, donorChatText, guestUid) are admin/server-only.",
       "type": "object",
       "properties": {
         "uid": {
@@ -112,7 +130,7 @@
     },
     "Review": {
       "title": "Review",
-      "description": "Public reader comment and optional rating (0.1-5.0) on a poem, prose work, or store book.",
+      "description": "Public reader comment and optional rating (0.1-5.0) on a poem, prose work, or store book. Rating is immutable after creation; owner may only update comment.",
       "type": "object",
       "properties": {
         "id": {
@@ -497,7 +515,7 @@
     },
     "ProseWork": {
       "title": "ProseWork",
-      "description": "Public metadata and public text for prose works.",
+      "description": "Public metadata and public text for prose works. When accessMode is authorized or paid, content and chapters must remain empty here.",
       "type": "object",
       "properties": {
         "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
@@ -649,12 +667,12 @@
     },
     "MediaAsset": {
       "title": "MediaAsset",
-      "description": "Persisted uploaded image asset served under /uploads/ across deployments.",
+      "description": "Persisted uploaded image asset served under /uploads/ across deployments. Writes restricted to admin.",
       "type": "object",
       "properties": {
         "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
         "filename": { "type": "string", "minLength": 1, "maxLength": 128 },
-        "mimeType": { "type": "string", "minLength": 3, "maxLength": 80 },
+        "mimeType": { "type": "string", "minLength": 9, "maxLength": 32, "pattern": "^image/(png|jpeg|webp|gif|avif)$" },
         "dataBase64": { "type": "string", "minLength": 1, "maxLength": 920000 },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
@@ -685,7 +703,7 @@
     },
     "PoemSubmission": {
       "title": "PoemSubmission",
-      "description": "User-submitted poem pending admin review/editing before publishing to community poems.",
+      "description": "User-submitted poem pending admin review/editing before publishing to community poems. Owner edits locked after status leaves pending.",
       "type": "object",
       "properties": {
         "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
@@ -752,7 +770,7 @@
     },
     "ProseSubmission": {
       "title": "ProseSubmission",
-      "description": "User-submitted prose work pending admin review/editing before publishing to community prose.",
+      "description": "User-submitted prose work pending admin review/editing before publishing to community prose. Owner edits locked after status leaves pending.",
       "type": "object",
       "properties": {
         "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
@@ -806,7 +824,7 @@
     },
     "Order": {
       "title": "Order",
-      "description": "Persisted store or paid prose order with masked display metadata, encrypted PII envelope, and unlocked items.",
+      "description": "Persisted store or paid prose order with masked display metadata, encrypted PII envelope, and unlocked items. Writes are strictly server/admin-only.",
       "type": "object",
       "properties": {
         "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
@@ -915,6 +933,10 @@
     }
   },
   "firestore": {
+    "/admins/{adminId}": {
+      "schema": { "$ref": "#/entities/AdminRole" },
+      "description": "Server-managed admin RBAC documents readable by owner or admin and non-writable by clients."
+    },
     "/users/{userId}": {
       "schema": { "$ref": "#/entities/UserPrivateProfile" },
       "description": "Private user PII profiles restricted to owner or admin."
@@ -941,7 +963,7 @@
     },
     "/orders/{orderId}": {
       "schema": { "$ref": "#/entities/Order" },
-      "description": "Persisted orders with encrypted buyer PII, accessible strictly to the order owner or admin."
+      "description": "Persisted orders with encrypted buyer PII; reads restricted to owner/admin, writes strictly admin-only."
     },
     "/radioTracks/{trackId}": {
       "schema": { "$ref": "#/entities/RadioTrack" },

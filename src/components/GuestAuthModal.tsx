@@ -1466,7 +1466,16 @@ export const GuestAuthModal = memo(function GuestAuthModal({
                       >
                         <Pencil className="w-3.5 h-3.5" strokeWidth={1.85} />
                       </button>
-                      <UserRankBadges badges={liveBadges} size="xs" />
+                      <UserRankBadges
+                        badges={
+                          (isAdmin || requiresGoogleForAdmin) && liveBadges
+                            ? liveBadges.donorRank
+                              ? { donorRank: liveBadges.donorRank }
+                              : undefined
+                            : liveBadges
+                        }
+                        size="xs"
+                      />
                     </div>
                   )}
 
@@ -1490,12 +1499,21 @@ export const GuestAuthModal = memo(function GuestAuthModal({
               </div>
             </div>
 
-            {(liveBadges?.activityRank || liveBadges?.donorRank) && (
+            {((!(isAdmin || requiresGoogleForAdmin) && liveBadges?.activityRank) || liveBadges?.donorRank) && (
               <div className="px-3.5 py-2.5 bg-white/80 dark:bg-night-card rounded-xl space-y-2">
                 <p className="text-[11px] text-ink-muted dark:text-parchment">
                   Відзнаки рейтингу:
                 </p>
-                <UserRankBadges badges={liveBadges} size="md" />
+                <UserRankBadges
+                  badges={
+                    (isAdmin || requiresGoogleForAdmin) && liveBadges
+                      ? liveBadges.donorRank
+                        ? { donorRank: liveBadges.donorRank }
+                        : undefined
+                      : liveBadges
+                  }
+                  size="md"
+                />
               </div>
             )}
 

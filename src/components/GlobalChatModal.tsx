@@ -43,6 +43,8 @@ import { useAllRadioTracks } from '../utils/radioSelectors.ts';
 import { triggerHapticFeedback, triggerLikeHapticFeedback } from '../utils/haptics.ts';
 import { UserRankBadges } from './UserRankBadges.tsx';
 import {
+  clearAllChatMessagesInFirestore,
+  clearCachedGlobalChatState,
   deleteChatMessageDirectInFirestore,
   fetchOlderGlobalChatMessagesFromFirestore,
   generateChatMessageId,
@@ -940,6 +942,8 @@ export const GlobalChatModal = memo(function GlobalChatModal({
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
 
   const [moderationPanelOpen, setModerationPanelOpen] = useState(false);
+  const [confirmClearChat, setConfirmClearChat] = useState(false);
+  const [clearingChat, setClearingChat] = useState(false);
   const [pinnedExpanded, setPinnedExpanded] = useState(false);
 
   const [typingUsers, setTypingUsers] = useState<Record<string, { displayName: string; expiresAt: number }>>({});
@@ -966,6 +970,8 @@ export const GlobalChatModal = memo(function GlobalChatModal({
   const pendingIdsRef = useRef<Set<string>>(new Set());
   const deletedIdsRef = useRef<Set<string>>(new Set());
   const firestoreKnownIdsRef = useRef<Set<string>>(new Set());
+  const serverHasMoreRef = useRef(false);
+  const firestoreHasMoreRef = useRef(false);
   const pendingHistoryAnchorIdRef = useRef<string | null>(null);
   const chatMetaRef = useRef<ChatMetaState>(chatMeta);
   chatMetaRef.current = chatMeta;
@@ -1047,7 +1053,7 @@ export const GlobalChatModal = memo(function GlobalChatModal({
   const mergeIncomingMessages = useCallback(
     (
       incomingList: GlobalChatMessage[],
-      mode: 'merge' | 'authoritative' | 'firestore' = 'merge'
+      mode: 'merge' | 'authoritative' | 'firestore' | 'server-full' = 'merge'
     ) => {
       const metaMap = authorMetaByUidRef.current;
       for (const msg of incomingList) {
@@ -1091,6 +1097,18 @@ export const GlobalChatModal = memo(function GlobalChatModal({
         if (mode === 'merge') {
           for (const existing of prev) {
             if (!deletedIdsRef.current.has(existing.id)) {
+              byId.set(existing.id, enrichWithMeta(existing));
+            }
+          }
+        } else if (mode === 'server-full') {
+          const incomingIds = new Set(incomingList.map((m) => m.id));
+          for (const existing of prev) {
+            if (deletedIdsRef.current.has(existing.id)) continue;
+            if (
+              pendingIdsRef.current.has(existing.id) ||
+              firestoreKnownIdsRef.current.has(existing.id) ||
+              incomingIds.has(existing.id)
+            ) {
               byId.set(existing.id, enrichWithMeta(existing));
             }
           }
@@ -1238,6 +1256,7 @@ export const GlobalChatModal = memo(function GlobalChatModal({
       setSearchOpen(false);
       setSearchQuery('');
       setModerationPanelOpen(false);
+      setConfirmClearChat(false);
       setTypingUsers({});
       setFirestoreConnected(false);
       for (const timer of pendingSendTimersRef.current.values()) {
@@ -1272,9 +1291,8 @@ export const GlobalChatModal = memo(function GlobalChatModal({
       onMessages: (fsMessages) => {
         if (unmounted) return;
         setLoadingInitial(false);
-        if (fsMessages.length >= 100) {
-          setHasMoreHistory(true);
-        }
+        firestoreHasMoreRef.current = fsMessages.length >= 100;
+        setHasMoreHistory(serverHasMoreRef.current || firestoreHasMoreRef.current);
         mergeIncomingMessagesRef.current(fsMessages, 'firestore');
         if (shouldAutoScrollRef.current) {
           window.requestAnimationFrame(() => scrollToBottomRef.current(false));
@@ -1312,11 +1330,10 @@ export const GlobalChatModal = memo(function GlobalChatModal({
           unresolvedReportsCount?: number;
         };
         if (unmounted) return;
+        serverHasMoreRef.current = Boolean(json.hasMore);
+        setHasMoreHistory(serverHasMoreRef.current || firestoreHasMoreRef.current);
         if (Array.isArray(json.messages)) {
-          mergeIncomingMessagesRef.current(json.messages, 'merge');
-        }
-        if (json.hasMore) {
-          setHasMoreHistory(true);
+          mergeIncomingMessagesRef.current(json.messages, json.hasMore ? 'merge' : 'server-full');
         }
         if (json.chatMeta) {
           setChatMeta(json.chatMeta);
@@ -1410,13 +1427,15 @@ export const GlobalChatModal = memo(function GlobalChatModal({
           };
 
           if (payload.type === 'chat:init') {
+            serverHasMoreRef.current = Boolean(payload.hasMore);
+            setHasMoreHistory(serverHasMoreRef.current || firestoreHasMoreRef.current);
             if (Array.isArray(payload.messages)) {
-              mergeIncomingMessagesRef.current(payload.messages, 'merge');
+              mergeIncomingMessagesRef.current(
+                payload.messages,
+                payload.hasMore ? 'merge' : 'server-full'
+              );
               setLoadingInitial(false);
               window.requestAnimationFrame(() => scrollToBottomRef.current(false));
-            }
-            if (payload.hasMore) {
-              setHasMoreHistory(true);
             }
             if (payload.chatMeta) {
               setChatMeta(payload.chatMeta);
@@ -1429,12 +1448,45 @@ export const GlobalChatModal = memo(function GlobalChatModal({
           }
 
           if (payload.type === 'chat:refresh' && Array.isArray(payload.messages)) {
-            mergeIncomingMessagesRef.current(payload.messages, 'merge');
-            if (payload.hasMore) setHasMoreHistory(true);
+            serverHasMoreRef.current = Boolean(payload.hasMore);
+            setHasMoreHistory(serverHasMoreRef.current || firestoreHasMoreRef.current);
+            mergeIncomingMessagesRef.current(
+              payload.messages,
+              payload.hasMore ? 'merge' : 'server-full'
+            );
             if (payload.chatMeta) {
               setChatMeta(payload.chatMeta);
               saveCachedGlobalChatState(messagesRefSnapshot.current, authorMetaByUidRef.current, payload.chatMeta);
             }
+            return;
+          }
+
+          if (payload.type === 'chat:cleared') {
+            deletedIdsRef.current.clear();
+            firestoreKnownIdsRef.current.clear();
+            pendingIdsRef.current.clear();
+            for (const timer of pendingSendTimersRef.current.values()) {
+              window.clearTimeout(timer);
+            }
+            pendingSendTimersRef.current.clear();
+            serverHasMoreRef.current = false;
+            firestoreHasMoreRef.current = false;
+            setHasMoreHistory(false);
+            setMessages([]);
+            setIsScrolledUp(false);
+            setIsNearTop(false);
+            setUnreadWhileScrolled(0);
+            setReplyingTo(null);
+            setEditingMessageId(null);
+            setConfirmDeleteId(null);
+            setReports([]);
+            setUnresolvedReportsCount(0);
+            const nextMeta: ChatMetaState = payload.chatMeta || {
+              pinnedMessage: null,
+              slowModeSeconds: chatMetaRef.current.slowModeSeconds || 0,
+            };
+            setChatMeta(nextMeta);
+            clearCachedGlobalChatState(nextMeta);
             return;
           }
 
@@ -1794,7 +1846,9 @@ export const GlobalChatModal = memo(function GlobalChatModal({
         pendingHistoryAnchorIdRef.current = null;
       }
 
-      setHasMoreHistory(Boolean(serverRes?.hasMore || fsResult?.hasMore));
+      serverHasMoreRef.current = Boolean(serverRes?.hasMore);
+      firestoreHasMoreRef.current = Boolean(fsResult?.hasMore);
+      setHasMoreHistory(serverHasMoreRef.current || firestoreHasMoreRef.current);
     } catch {
       pendingHistoryAnchorIdRef.current = null;
     } finally {
@@ -2306,6 +2360,77 @@ export const GlobalChatModal = memo(function GlobalChatModal({
     [isAdmin, resolveToken]
   );
 
+  const handleClearAllChat = useCallback(async () => {
+    if (!isAdmin || clearingChat) return;
+    setClearingChat(true);
+    setError(null);
+    try {
+      const [fsResult, token] = await Promise.all([
+        clearAllChatMessagesInFirestore().catch(() => ({ ok: false, deletedCount: 0 })),
+        resolveToken(true),
+      ]);
+
+      if (!token) {
+        setError('Потрібна авторизація адміністратора для очищення чату.');
+        return;
+      }
+
+      const res = await fetch('/api/chat/messages', {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        chatMeta?: ChatMetaState;
+        error?: string;
+      };
+      if (!res.ok) {
+        setError(data.error || 'Не вдалося очистити чат.');
+        return;
+      }
+
+      const nextMeta: ChatMetaState = data.chatMeta || {
+        pinnedMessage: null,
+        slowModeSeconds: chatMetaRef.current.slowModeSeconds || 0,
+      };
+      deletedIdsRef.current.clear();
+      firestoreKnownIdsRef.current.clear();
+      pendingIdsRef.current.clear();
+      for (const timer of pendingSendTimersRef.current.values()) {
+        window.clearTimeout(timer);
+      }
+      pendingSendTimersRef.current.clear();
+
+      serverHasMoreRef.current = false;
+      firestoreHasMoreRef.current = false;
+      setHasMoreHistory(false);
+      setMessages([]);
+      setIsScrolledUp(false);
+      setIsNearTop(false);
+      setUnreadWhileScrolled(0);
+      setReplyingTo(null);
+      setEditingMessageId(null);
+      setConfirmDeleteId(null);
+      setReports([]);
+      setUnresolvedReportsCount(0);
+      setChatMeta(nextMeta);
+      clearCachedGlobalChatState(nextMeta);
+      setConfirmClearChat(false);
+      setInfoNotice(
+        fsResult.ok
+          ? 'Чат повністю очищено.'
+          : 'Серверну історію чату очищено.'
+      );
+      window.setTimeout(() => setInfoNotice(null), 2400);
+    } catch {
+      setError('Помилка мережі при очищенні чату.');
+    } finally {
+      setClearingChat(false);
+    }
+  }, [clearingChat, isAdmin, resolveToken]);
+
   const handleDelete = useCallback(
     async (id: string) => {
       if (confirmDeleteId !== id) {
@@ -2814,24 +2939,40 @@ export const GlobalChatModal = memo(function GlobalChatModal({
               <Search className="w-4 h-4" />
             </button>
             {isAdmin && (
-              <button
-                type="button"
-                onClick={() => setModerationPanelOpen((prev) => !prev)}
-                aria-label="Модерація чату"
-                title="Модерація чату"
-                className={`relative w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center transition-colors cursor-pointer ${
-                  moderationPanelOpen
-                    ? 'bg-white/15 text-paper'
-                    : 'text-paper/70 hover:bg-white/10'
-                }`}
-              >
-                <Shield className="w-4 h-4" />
-                {unresolvedReportsCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-amber-400 text-night text-[9px] font-bold flex items-center justify-center">
-                    {unresolvedReportsCount}
-                  </span>
-                )}
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={() => setConfirmClearChat((prev) => !prev)}
+                  disabled={clearingChat}
+                  aria-label="Очистити чат"
+                  title="Очистити чат"
+                  className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center transition-colors cursor-pointer disabled:opacity-50 ${
+                    confirmClearChat
+                      ? 'bg-rose-500/20 text-rose-300'
+                      : 'text-paper/70 hover:text-rose-300 hover:bg-rose-500/10'
+                  }`}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setModerationPanelOpen((prev) => !prev)}
+                  aria-label="Модерація чату"
+                  title="Модерація чату"
+                  className={`relative w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center transition-colors cursor-pointer ${
+                    moderationPanelOpen
+                      ? 'bg-white/15 text-paper'
+                      : 'text-paper/70 hover:bg-white/10'
+                  }`}
+                >
+                  <Shield className="w-4 h-4" />
+                  {unresolvedReportsCount > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-amber-400 text-night text-[9px] font-bold flex items-center justify-center">
+                      {unresolvedReportsCount}
+                    </span>
+                  )}
+                </button>
+              </>
             )}
             <button
               type="button"
@@ -2843,6 +2984,34 @@ export const GlobalChatModal = memo(function GlobalChatModal({
             </button>
           </div>
         </div>
+
+        {/* Admin Clear Chat Confirmation */}
+        {isAdmin && confirmClearChat && (
+          <div className="px-4 py-2.5 bg-rose-950/50 border-b border-rose-500/25 flex items-center justify-between gap-2 flex-wrap shrink-0">
+            <p className="text-xs text-rose-100 font-medium">
+              Очистити всі повідомлення в чаті для всіх читачів?
+            </p>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => setConfirmClearChat(false)}
+                disabled={clearingChat}
+                className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/15 text-[11px] font-medium text-paper transition-colors cursor-pointer disabled:opacity-50"
+              >
+                Скасувати
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleClearAllChat()}
+                disabled={clearingChat}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-500 hover:bg-rose-400 text-[11px] font-semibold text-white transition-colors cursor-pointer disabled:opacity-50"
+              >
+                <Trash2 className="w-3 h-3" />
+                <span>{clearingChat ? 'Очищення...' : 'Очистити чат'}</span>
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Search Bar */}
         {searchOpen && (
@@ -2938,6 +3107,15 @@ export const GlobalChatModal = memo(function GlobalChatModal({
                   </button>
                 ))}
               </div>
+              <button
+                type="button"
+                onClick={() => setConfirmClearChat(true)}
+                disabled={clearingChat}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 border border-rose-400/25 text-[11px] font-semibold text-rose-200 transition-colors cursor-pointer disabled:opacity-50"
+              >
+                <Trash2 className="w-3 h-3" />
+                <span>Очистити чат</span>
+              </button>
             </div>
 
             {activeMutedList.length > 0 && (

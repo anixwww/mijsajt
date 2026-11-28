@@ -857,6 +857,25 @@ function removeChatMessage(
   return { ok: true, deletedId: id };
 }
 
+export function clearAllChatMessages(db: SiteDatabase): {
+  ok: true;
+  deletedCount: number;
+  chatMeta: ReturnType<typeof getPublicChatMeta>;
+} {
+  const deletedCount = Array.isArray(db.chatMessages) ? db.chatMessages.length : 0;
+  db.chatMessages = [];
+  const meta = ensureChatMeta(db);
+  meta.pinnedMessage = null;
+  db.chatReports = [];
+  lastChatSentAtByUid.clear();
+
+  saveDatabase(db, { bumpCatalogRevision: false, flushDelayMs: 0, slices: ['community'] });
+  const publicMeta = getPublicChatMeta(db);
+  broadcastChatEvent({ type: 'chat:cleared', chatMeta: publicMeta });
+  broadcastToAdmins({ type: 'chat:reports-updated', unresolvedCount: 0 });
+  return { ok: true, deletedCount, chatMeta: publicMeta };
+}
+
 export function registerChatRoutes(app: express.Express): void {
   app.get('/api/chat/messages', async (req: Request, res: Response) => {
     const db = ensureDatabase();
@@ -1289,6 +1308,29 @@ export function registerChatRoutes(app: express.Express): void {
       return;
     }
     res.json({ deletedId: result.deletedId });
+  });
+
+  app.delete('/api/chat/messages', async (req: Request, res: Response) => {
+    res.setHeader('Cache-Control', 'private, no-store, no-cache, must-revalidate');
+    if (!verifySameOrigin(req)) {
+      res.status(403).json({ error: 'Запит із стороннього джерела заблоковано.' });
+      return;
+    }
+    const db = ensureDatabase();
+    const adminAuth = await authenticateAdminRequest(req);
+    if (!adminAuth.ok) {
+      res.status(adminAuth.status).json({ error: adminAuth.error });
+      return;
+    }
+    const ipHash = getClientIpHash(req);
+    const rate = checkRateLimit(`chat-clear:${adminAuth.claims.uid}:${ipHash}`, 10, 60 * 1000);
+    if (!rate.allowed) {
+      res.setHeader('Retry-After', String(rate.retryAfterSec));
+      res.status(429).json({ error: 'Забагато запитів на очищення чату. Зачекайте хвилинку.' });
+      return;
+    }
+    const result = clearAllChatMessages(db);
+    res.json(result);
   });
 }
 

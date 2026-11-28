@@ -4,6 +4,7 @@ import { INITIAL_DATABASE, type GuestAccountRecord, type SiteDatabase } from './
 import {
   appendChatMessage,
   CHAT_EDIT_WINDOW_MS,
+  clearAllChatMessages,
   createChatReport,
   editChatMessage,
   getChatMessagesPage,
@@ -282,4 +283,27 @@ test('Chat retains more than 200 messages and supports chronological cursor pagi
   assert.strictEqual(earliestPageById.messages.length, 60);
   assert.strictEqual(earliestPageById.messages[0].text, 'Повідомлення №1');
   assert.strictEqual(earliestPageById.messages[59].text, 'Повідомлення №60');
+});
+
+test('clearAllChatMessages removes all messages, clears pinned message and reports, and preserves slowMode', () => {
+  const db = createTestDb();
+  const alice = makeUser('user_clear_alice', 'Аліна');
+  const bob = makeUser('user_clear_bob', 'Богдан');
+  db.guestAccounts.push(alice, bob);
+
+  const sent = appendChatMessage(db, alice, 'Перше повідомлення');
+  assert.strictEqual(sent.ok, true);
+  if (!sent.ok) return;
+
+  setPinnedChatMessage(db, { messageId: sent.message.id }, { displayName: 'Адмін' });
+  setChatSlowMode(db, 10);
+  createChatReport(db, { messageId: sent.message.id, reason: 'Тест' }, { uid: bob.uid, displayName: bob.displayName });
+
+  const cleared = clearAllChatMessages(db);
+  assert.strictEqual(cleared.ok, true);
+  assert.strictEqual(cleared.deletedCount, 1);
+  assert.strictEqual(db.chatMessages.length, 0);
+  assert.strictEqual(db.chatMeta?.pinnedMessage, null);
+  assert.strictEqual(db.chatMeta?.slowModeSeconds, 10);
+  assert.strictEqual(db.chatReports?.length, 0);
 });

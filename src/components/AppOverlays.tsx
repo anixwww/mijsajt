@@ -1,4 +1,4 @@
-import { BellRing, Trophy, X } from 'lucide-react';
+import { BellRing, X } from 'lucide-react';
 import { AnimatePresence, m } from 'motion/react';
 import { memo, Suspense, useCallback } from 'react';
 import { useAuthStore } from '../store/useAuthStore.ts';
@@ -18,14 +18,12 @@ import type {
   StoreProduct,
   TelegramSubscriptionState,
 } from '../types.ts';
-import { trackClick } from '../utils/analytics.ts';
 import { useAllRadioTracks } from '../utils/radioSelectors.ts';
 import {
   AuthorStudioModalConnected,
   CartLibraryDrawer,
   GlobalChatModal,
   GuestAuthModal,
-  MinimizedRadioButtonConnected,
   MusicSelectionsModalConnected,
   TelegramVerifyModal,
   UserLeaderboardModal,
@@ -156,7 +154,6 @@ export const AppOverlays = memo(function AppOverlays({
 
   const removeFromCartStore = useCartStore((s) => s.removeFromCart);
   const clearDeviceLibraryStore = useCartStore((s) => s.clearDeviceLibrary);
-  const radioEnabled = useRadioStore((s) => s.radioEnabled);
   const selectRadioTrack = useRadioStore((s) => s.handlers.selectTrack);
   const changeRadioStation = useRadioStore((s) => s.handlers.changeStation);
   const allRadioTracks = useAllRadioTracks();
@@ -330,44 +327,6 @@ export const AppOverlays = memo(function AppOverlays({
       )}
 
       <RadioEngine getGuestToken={getGuestToken} getAdminToken={getAdminToken} />
-
-      {/* Floating Leaderboard Button when signed in & not on home */}
-      <AnimatePresence>
-        {guestUser && activeSection !== 'home' && !isPoetryImmersed && (
-          <m.button
-            key="floating-leaderboard-btn"
-            type="button"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            transition={{ duration: 0.2 }}
-            onClick={() => {
-              trackClick('floating:leaderboard', 'Рейтинг (плаваюча кнопка)', 'section');
-              setLeaderboardOpen(true);
-            }}
-            aria-label="Рейтинг читачів"
-            title="Рейтинг читачів"
-            className="fixed bottom-[74px] sm:bottom-[78px] left-3.5 sm:left-6 z-30 w-9 h-9 rounded-full bg-paper dark:bg-night-panel text-[#B45309] dark:text-amber-400 shadow-[0_6px_18px_-5px_rgba(20,20,19,0.22)] dark:shadow-[0_8px_22px_-6px_rgba(0,0,0,0.72)] flex items-center justify-center hover:scale-105 active:scale-[0.94] transition-transform duration-150 cursor-pointer"
-          >
-            <Trophy className="w-4 h-4" strokeWidth={1.9} />
-          </m.button>
-        )}
-      </AnimatePresence>
-
-      {/* Minimized persistent Radio button on non-radio sections */}
-      <AnimatePresence>
-        {radioEnabled && guestUser && activeSection !== 'radio' && !isPoetryImmersed && (
-          <m.div
-            key="minimized-radio-btn"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            transition={{ duration: 0.2 }}
-          >
-            <MinimizedRadioButtonConnected onClick={handleOpenRadioStable} />
-          </m.div>
-        )}
-      </AnimatePresence>
 
       {/* User Leaderboard Modal */}
       {leaderboardOpen && (

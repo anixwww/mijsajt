@@ -1,12 +1,18 @@
 import { DatabaseSync } from 'node:sqlite';
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import crypto from 'crypto';
 import { INITIAL_DATABASE, type SiteDatabase } from './seedData.ts';
 import type { OrderRecord } from '../src/types.ts';
 import { emitProductionAlert } from './monitoring.ts';
 
-const DATA_DIR = path.join(process.cwd(), 'data');
+const DEFAULT_DATA_DIR = process.env.NODE_TEST_CONTEXT
+  ? path.join(os.tmpdir(), `dankiv-test-data-${process.pid}`)
+  : path.join(process.cwd(), 'data');
+const DATA_DIR = process.env.SITE_DATA_DIR
+  ? path.resolve(process.env.SITE_DATA_DIR)
+  : DEFAULT_DATA_DIR;
 const DB_PATH = path.join(DATA_DIR, 'app.db');
 const STORE_JSON_PATH = path.join(DATA_DIR, 'store.json');
 const PENDING_INVOICES_PATH = path.join(DATA_DIR, 'pending-invoices.json');
