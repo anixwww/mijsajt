@@ -27,6 +27,7 @@ import type {
   SocialLinkItem,
 } from '../types.ts';
 import { trackClick } from '../utils/analytics.ts';
+import { sanitizeSafeHref } from '../utils/urlRouting.ts';
 import { EditorialImage } from './EditorialImage.tsx';
 import { SignatureLogo } from './SignatureLogo.tsx';
 import { SocialPlatformIcon } from './SocialIcons.tsx';
@@ -1654,7 +1655,7 @@ export const HeroSection = memo(function HeroSection({
 
                             {hasTelegram && tg && (
                               <a
-                                href={tg.url}
+                                href={sanitizeSafeHref(tg.url)}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="w-full touch-surface flex items-center justify-between gap-3 p-4 sm:p-5 rounded-xl bg-white dark:bg-night-card hover:bg-paper-warm dark:hover:bg-night-elevated transition-colors group"
@@ -1729,7 +1730,7 @@ export const HeroSection = memo(function HeroSection({
                           )}
 
                           <a
-                            href={monobankJarUrl}
+                            href={sanitizeSafeHref(monobankJarUrl)}
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={() => {
@@ -1865,7 +1866,7 @@ export const HeroSection = memo(function HeroSection({
 
                             {selectedInterview.url && (
                               <a
-                                href={selectedInterview.url}
+                                href={sanitizeSafeHref(selectedInterview.url)}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 onClick={() =>
@@ -1944,7 +1945,7 @@ export const HeroSection = memo(function HeroSection({
                           return (
                             <a
                               key={item.id}
-                              href={item.url || '#'}
+                              href={sanitizeSafeHref(item.url)}
                               target="_blank"
                               rel="noopener noreferrer"
                               onClick={() =>

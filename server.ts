@@ -39,6 +39,7 @@ import {
   broadcastGlobalChatRefresh,
   registerChatRoutes,
 } from './server/chat.ts';
+import { createSecurityMiddleware } from './server/security.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -66,14 +67,13 @@ async function startServer() {
 
   app.set('trust proxy', 1);
   app.disable('x-powered-by');
+  app.use(createSecurityMiddleware(process.env.NODE_ENV === 'production'));
   app.use(compression({ threshold: 512 }));
 
-  // Strict security headers & no-store caching for payment, auth, and protected routes
+  // Permissions-Policy & no-store caching for payment, auth, and protected routes
   // Note: public GET /api/leaderboard and anonymous GET /api/chat/messages manage
   // Vary + stale-while-revalidate caching directly inside their respective modules.
   app.use((req: Request, res: Response, next) => {
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     res.setHeader('Permissions-Policy', 'interest-cohort=()');
     if (
       req.path.startsWith('/api/payments') ||

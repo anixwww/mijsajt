@@ -2,6 +2,30 @@ import type { CatalogResponse, SectionId } from '../types.ts';
 
 export const VALID_SECTIONS: SectionId[] = ['home', 'poetry', 'prose', 'blog', 'radio', 'store'];
 
+export function sanitizeSafeHref(
+  rawUrl: string | undefined | null,
+  fallback = '#',
+  options?: { allowMailto?: boolean }
+): string {
+  const trimmed = typeof rawUrl === 'string' ? rawUrl.trim() : '';
+  if (!trimmed) return fallback;
+  if (trimmed.startsWith('/') && !trimmed.startsWith('//')) {
+    return trimmed;
+  }
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
+      return parsed.toString();
+    }
+    if (options?.allowMailto && parsed.protocol === 'mailto:') {
+      return parsed.toString();
+    }
+  } catch {
+    return fallback;
+  }
+  return fallback;
+}
+
 export function parseLocationHash(): {
   section: SectionId;
   itemId: string | null;

@@ -29,6 +29,7 @@ import {
 } from '../types.ts';
 import { setActiveMoment, trackClick } from '../utils/analytics.ts';
 import { createEncryptedPaymentEnvelope } from '../utils/paymentCrypto.ts';
+import { sanitizeSafeHref } from '../utils/urlRouting.ts';
 import { EditorialImage } from './EditorialImage.tsx';
 
 interface CartLibraryDrawerProps {
@@ -771,7 +772,7 @@ export const CartLibraryDrawer = memo(function CartLibraryDrawer({
                       )}
 
                       <a
-                        href={pendingStoreInvoice.pageUrl}
+                        href={sanitizeSafeHref(pendingStoreInvoice.pageUrl)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="w-full inline-flex items-center justify-center gap-2 min-h-[46px] px-5 py-2.5 rounded-xl bg-ink dark:bg-white text-white dark:text-ink text-xs sm:text-sm font-semibold hover:opacity-92 transition-opacity"
@@ -1029,7 +1030,7 @@ export const CartLibraryDrawer = memo(function CartLibraryDrawer({
 
                               <div className="flex flex-wrap items-center gap-2">
                                 <a
-                                  href={item.gdocGuestUrl}
+                                  href={sanitizeSafeHref(item.gdocGuestUrl)}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="btn-editorial-primary min-h-[42px]"
@@ -1137,10 +1138,10 @@ export const CartLibraryDrawer = memo(function CartLibraryDrawer({
                                 </p>
                               )}
                               <a
-                                href={
+                                href={sanitizeSafeHref(
                                   item.downloadUrl ||
 `/api/ebooks/${encodeURIComponent(item.productId)}/download?order=${encodeURIComponent(item.orderCode)}`
-                                }
+                                )}
                                 download={item.ebookFileName || true}
                                 className="btn-editorial-ink min-h-[42px]"
                               >
