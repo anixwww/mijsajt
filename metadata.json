@@ -1,6 +1,6 @@
 {
   "name": "Андрій Даньків — Письменник",
-  "description": "",
+  "description": "Офіційний сайт письменника Андрія Даньківа: поезія, мала і велика проза, авторський блог та крамниця електронних книг і рукописів у процесі написання.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

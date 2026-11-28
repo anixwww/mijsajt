@@ -129,27 +129,38 @@ export function ReviewsBlock({
     setSubmitting(true);
     setStatusMessage(null);
     try {
+      const sendCreate = async (authToken: string | null) =>
+        fetch('/api/reviews', {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+          },
+          body: JSON.stringify({
+            targetType,
+            targetId,
+            rating: activeRating,
+            comment: trimmedComment,
+            authorUid: effectiveAuthorUid,
+            authorName: effectiveAuthorName,
+            authorPhotoUrl: guestUser?.photoUrl,
+          }),
+        });
+
       let token = (await getGuestToken?.()) || guestUser?.sessionToken || null;
       if (token?.startsWith('guest_v1.') && getGuestToken) {
         const refreshed = await getGuestToken(true);
         if (refreshed) token = refreshed;
       }
-      const response = await fetch('/api/reviews', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({
-          targetType,
-          targetId,
-          rating: activeRating,
-          comment: trimmedComment,
-          authorUid: effectiveAuthorUid,
-          authorName: effectiveAuthorName,
-          authorPhotoUrl: guestUser?.photoUrl,
-        }),
-      });
+      let response = await sendCreate(token);
+      if ((response.status === 401 || response.status === 403) && getGuestToken) {
+        const refreshed = await getGuestToken(true);
+        if (refreshed && refreshed !== token) {
+          response = await sendCreate(refreshed);
+        }
+      }
       const data = await response.json();
       if (!response.ok) {
         setStatusMessage({ text: data.error || 'Не вдалося зберегти відгук.', isError: true });
@@ -197,6 +208,19 @@ export function ReviewsBlock({
     setEditError(null);
   };
 
+  const resolveModifyToken = async (forceRefresh = false): Promise<string | null> => {
+    if (isAdmin && getAdminToken) {
+      const adminTok = await getAdminToken(forceRefresh).catch(() => null);
+      if (adminTok) return adminTok;
+    }
+    let guestTok = (await getGuestToken?.(forceRefresh).catch(() => null)) || guestUser?.sessionToken || null;
+    if (!forceRefresh && guestTok?.startsWith('guest_v1.') && getGuestToken) {
+      const refreshed = await getGuestToken(true).catch(() => null);
+      if (refreshed) guestTok = refreshed;
+    }
+    return guestTok;
+  };
+
   const handleSaveEdit = async (reviewId: string) => {
     const clean = editCommentText.trim();
     if (!clean) {
@@ -206,22 +230,33 @@ export function ReviewsBlock({
     setEditSubmitting(true);
     setEditError(null);
     try {
-      let token = (await getAdminToken?.()) || (await getGuestToken?.()) || guestUser?.sessionToken || null;
-      const res = await fetch(`/api/reviews/${reviewId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ comment: clean }),
-      });
+      const sendPatch = async (authToken: string | null) =>
+        fetch(`/api/reviews/${encodeURIComponent(reviewId)}`, {
+          method: 'PATCH',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+          },
+          body: JSON.stringify({ comment: clean }),
+        });
+
+      const firstToken = await resolveModifyToken(false);
+      let res = await sendPatch(firstToken);
+      if (res.status === 401 || res.status === 403) {
+        const refreshed = await resolveModifyToken(true);
+        if (refreshed && refreshed !== firstToken) {
+          res = await sendPatch(refreshed);
+        }
+      }
       const data = await res.json();
       if (!res.ok) {
         setEditError(data.error || 'Не вдалося відредагувати коментар.');
         return;
       }
       setLocalReviews((prev) =>
-        prev.map((r) => (r.id === reviewId ? { ...r, comment: clean } : r))
+        prev.map((r) => (r.id === reviewId ? (data.review ? { ...r, ...data.review } : { ...r, comment: clean }) : r))
       );
       if (data.poem || data.prose || data.product) {
         onReviewSubmitted({ poem: data.poem, prose: data.prose, product: data.product });
@@ -239,13 +274,24 @@ export function ReviewsBlock({
     setDeleteSubmittingId(reviewId);
     setActionStatus(null);
     try {
-      let token = (await getAdminToken?.()) || (await getGuestToken?.()) || guestUser?.sessionToken || null;
-      const res = await fetch(`/api/reviews/${reviewId}`, {
-        method: 'DELETE',
-        headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-      });
+      const sendDelete = async (authToken: string | null) =>
+        fetch(`/api/reviews/${encodeURIComponent(reviewId)}`, {
+          method: 'DELETE',
+          credentials: 'include',
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+          },
+        });
+
+      const firstToken = await resolveModifyToken(false);
+      let res = await sendDelete(firstToken);
+      if (res.status === 401 || res.status === 403) {
+        const refreshed = await resolveModifyToken(true);
+        if (refreshed && refreshed !== firstToken) {
+          res = await sendDelete(refreshed);
+        }
+      }
       const data = await res.json();
       if (!res.ok) {
         setActionStatus({ text: data.error || 'Не вдалося видалити коментар.', isError: true });
@@ -343,18 +389,34 @@ export function ReviewsBlock({
             )}
           </div>
 
-          <textarea
-            rows={2}
-            maxLength={1500}
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            placeholder={
-              activeRating !== null
-                ? 'Додайте коментар до вашої оцінки (або підтвердьте саму оцінку)...'
-                : 'Напишіть коментар...'
-            }
-            className="input-editorial"
-          />
+          <div className="rounded-xl bg-[#F3F1EC] dark:bg-[#2E2E2E] focus-within:ring-1 focus-within:ring-[#2C5937]/30 dark:focus-within:ring-white/25 transition-all">
+            <textarea
+              rows={2}
+              maxLength={1500}
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              placeholder={
+                activeRating !== null
+                  ? 'Додайте коментар до вашої оцінки (або підтвердьте саму оцінку)...'
+                  : 'Напишіть коментар...'
+              }
+              className="w-full bg-transparent px-3.5 pt-3 pb-1 text-sm text-[#141413] dark:text-[#F4F1EA] placeholder:text-[#7A7870] dark:placeholder:text-[#8E8A80] focus:outline-none resize-none"
+            />
+            <div className="flex items-center justify-end px-2.5 pb-2">
+              <button
+                type="submit"
+                disabled={!canSubmit}
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[11px] font-semibold bg-[#2C5937] text-white dark:bg-[#F4F1EA] dark:text-[#141413] hover:opacity-90 active:scale-[0.97] transition-all cursor-pointer disabled:opacity-35 disabled:pointer-events-none whitespace-nowrap shrink-0"
+              >
+                {hasSelectedRating && !hasComment ? (
+                  <Check className="w-3 h-3" strokeWidth={2.2} />
+                ) : (
+                  <Send className="w-3 h-3" strokeWidth={1.9} />
+                )}
+                <span>{submitLabel}</span>
+              </button>
+            </div>
+          </div>
 
           {statusMessage && (
             <p
@@ -365,21 +427,6 @@ export function ReviewsBlock({
               {statusMessage.text}
             </p>
           )}
-
-          <div className="flex justify-end">
-            <button
-              type="submit"
-              disabled={!canSubmit}
-              className="btn-editorial-primary px-5 py-2.5 disabled:opacity-45 disabled:pointer-events-none"
-            >
-              {hasSelectedRating && !hasComment ? (
-                <Check className="w-3.5 h-3.5" strokeWidth={2} />
-              ) : (
-                <Send className="w-3.5 h-3.5" strokeWidth={1.8} />
-              )}
-              <span>{submitLabel}</span>
-            </button>
-          </div>
         </form>
       )}
 

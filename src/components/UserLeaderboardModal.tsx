@@ -86,9 +86,53 @@ export function UserLeaderboardModal({
     try {
       setLoading(true);
       const token = (await getGuestTokenRef.current?.().catch(() => null)) || authTokenRef.current;
+
+      try {
+        const rawIntent = localStorage.getItem('dankiv_pending_monobank_intent');
+        if (rawIntent) {
+          const parsed = JSON.parse(rawIntent) as {
+            intentId?: string;
+            createdAtMs?: number;
+            donorName?: string;
+          };
+          if (
+            parsed?.intentId &&
+            typeof parsed.createdAtMs === 'number' &&
+            Date.now() - parsed.createdAtMs < 60 * 60 * 1000
+          ) {
+            const checkHeaders: Record<string, string> = {
+              'Content-Type': 'application/json',
+              'X-Requested-With': 'XMLHttpRequest',
+            };
+            if (token) checkHeaders['Authorization'] = `Bearer ${token}`;
+            const checkRes = await fetch('/api/monobank/jar/check', {
+              method: 'POST',
+              credentials: 'include',
+              headers: checkHeaders,
+              body: JSON.stringify({
+                intentId: parsed.intentId,
+                donorName: parsed.donorName,
+              }),
+            }).catch(() => null);
+            if (checkRes?.ok) {
+              const checkData = (await checkRes.json().catch(() => null)) as {
+                status?: string;
+              } | null;
+              if (checkData?.status === 'credited' || checkData?.status === 'expired') {
+                localStorage.removeItem('dankiv_pending_monobank_intent');
+              }
+            }
+          } else {
+            localStorage.removeItem('dankiv_pending_monobank_intent');
+          }
+        }
+      } catch {
+        // Ignore transient jar check / storage errors
+      }
+
       const headers: Record<string, string> = {};
       if (token) headers['Authorization'] = `Bearer ${token}`;
-      const res = await fetch('/api/leaderboard', { headers });
+      const res = await fetch('/api/leaderboard', { headers, credentials: 'include' });
       if (!res.ok) throw new Error('Помилка завантаження рейтингу');
       const json = (await res.json()) as UserLeaderboardResponse;
       setData(json);

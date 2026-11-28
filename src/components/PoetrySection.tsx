@@ -773,67 +773,6 @@ export function PoetrySection({
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
-            {poemSourceTab !== 'weekly' && sortedPoems.length > 0 && (
-              <div ref={sortMenuRef} className="relative">
-                <button
-                  type="button"
-                  aria-haspopup="listbox"
-                  aria-expanded={sortMenuOpen}
-                  aria-label="Фільтр віршів"
-                  title="Сортування віршів"
-                  onClick={() => setSortMenuOpen((prev) => !prev)}
-                  className="w-10 h-10 inline-flex items-center justify-center rounded-xl bg-[#EAE7DF] dark:bg-[#262626] hover:bg-[#E2DFD5] dark:hover:bg-[#323232] text-[#141413] dark:text-[#F4F1EA] active:scale-[0.95] transition-all cursor-pointer"
-                >
-                  <Filter className="w-4 h-4 text-[#2C5937] dark:text-[#E5E5E5] shrink-0" strokeWidth={1.85} />
-                </button>
-
-                <AnimatePresence initial={false}>
-                  {sortMenuOpen && (
-                    <m.div
-                      initial={{ opacity: 0, scale: 0.95, y: 6 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.95, y: 6 }}
-                      transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
-                      role="listbox"
-                      aria-label="Оберіть порядок віршів"
-                      className="absolute right-0 top-12 w-44 z-30 overflow-hidden rounded-xl bg-white dark:bg-[#202020] shadow-[0_14px_34px_-14px_rgba(20,20,19,0.22)] dark:shadow-[0_16px_36px_-12px_rgba(0,0,0,0.72)]"
-                    >
-                      <div className="p-1 space-y-0.5">
-                        {(
-                          [
-                            { value: 'newest', label: 'Найновіші' },
-                            { value: 'rating', label: 'За рейтингом' },
-                          ] as const
-                        ).map((option) => {
-                          const selected = sortBy === option.value;
-                          return (
-                            <button
-                              key={option.value}
-                              type="button"
-                              role="option"
-                              aria-selected={selected}
-                              onClick={() => {
-                                handleSortChange(option.value);
-                                setSortMenuOpen(false);
-                              }}
-                              className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs text-left transition-colors duration-150 cursor-pointer ${
-                                selected
-                                  ? 'bg-pear-pine-gradient text-white font-semibold'
-                                  : 'font-medium text-[#5C5C58] dark:text-[#C4BFB4] hover:text-[#141413] dark:hover:text-[#F4F1EA] hover:bg-[#F3F1EB] dark:hover:bg-[#323232]'
-                              }`}
-                            >
-                              <span>{option.label}</span>
-                              {selected && <Check className="w-3.5 h-3.5 shrink-0" strokeWidth={2.2} />}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </m.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            )}
-
             <button
               type="button"
               onClick={handleOpenSubmitModal}
@@ -1737,20 +1676,79 @@ export function PoetrySection({
                       type="button"
                       onClick={() => setCommentsOpen((prev) => !prev)}
                       aria-expanded={commentsOpen}
-                      title={currentPoem.reviews.length > 0 ? `Відгуки (${currentPoem.reviews.length})` : 'Залишити відгук'}
+                      title="Відгуки"
                       aria-label="Відгуки"
                       style={actionIconStyle}
-                      className={`relative btn-editorial-icon ${
+                      className={`btn-editorial-icon ${
                         hasCustomSurface ? 'hover:opacity-95' : ''
                       }`}
                     >
                       <MessageSquare className="w-4 h-4" strokeWidth={1.75} />
-                      {currentPoem.reviews.length > 0 && (
-                        <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-[#2C5937] dark:bg-[#E5E5E5] text-white dark:text-[#181818] font-mono text-[10px] font-bold flex items-center justify-center tabular-nums shadow-xs">
-                          {currentPoem.reviews.length}
-                        </span>
-                      )}
                     </button>
+
+                    {sortedPoems.length > 0 && (
+                      <div ref={sortMenuRef} className="relative">
+                        <button
+                          type="button"
+                          aria-haspopup="listbox"
+                          aria-expanded={sortMenuOpen}
+                          aria-label="Сортування віршів"
+                          title={`Сортування: ${sortBy === 'rating' ? 'За рейтингом' : 'Найновіші'}`}
+                          onClick={() => setSortMenuOpen((prev) => !prev)}
+                          style={actionIconStyle}
+                          className={`btn-editorial-icon ${
+                            hasCustomSurface ? 'hover:opacity-95' : ''
+                          }`}
+                        >
+                          <Filter className="w-4 h-4" strokeWidth={1.75} />
+                        </button>
+
+                        <AnimatePresence initial={false}>
+                          {sortMenuOpen && (
+                            <m.div
+                              initial={{ opacity: 0, scale: 0.95, y: 6 }}
+                              animate={{ opacity: 1, scale: 1, y: 0 }}
+                              exit={{ opacity: 0, scale: 0.95, y: 6 }}
+                              transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
+                              role="listbox"
+                              aria-label="Оберіть порядок віршів"
+                              className="absolute left-0 bottom-12 w-44 z-30 overflow-hidden rounded-xl bg-white dark:bg-[#202020] shadow-[0_14px_34px_-14px_rgba(20,20,19,0.22)] dark:shadow-[0_16px_36px_-12px_rgba(0,0,0,0.72)]"
+                            >
+                              <div className="p-1 space-y-0.5">
+                                {(
+                                  [
+                                    { value: 'newest', label: 'Найновіші' },
+                                    { value: 'rating', label: 'За рейтингом' },
+                                  ] as const
+                                ).map((option) => {
+                                  const selected = sortBy === option.value;
+                                  return (
+                                    <button
+                                      key={option.value}
+                                      type="button"
+                                      role="option"
+                                      aria-selected={selected}
+                                      onClick={() => {
+                                        handleSortChange(option.value);
+                                        setSortMenuOpen(false);
+                                      }}
+                                      className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs text-left transition-colors duration-150 cursor-pointer ${
+                                        selected
+                                          ? 'bg-pear-pine-gradient text-white font-semibold'
+                                          : 'font-medium text-[#5C5C58] dark:text-[#C4BFB4] hover:text-[#141413] dark:hover:text-[#F4F1EA] hover:bg-[#F3F1EB] dark:hover:bg-[#323232]'
+                                      }`}
+                                    >
+                                      <span>{option.label}</span>
+                                      {selected && <Check className="w-3.5 h-3.5 shrink-0" strokeWidth={2.2} />}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </m.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    )}
                   </div>
 
                   {/* Redesigned Views Badge Aligned With Action Controls */}

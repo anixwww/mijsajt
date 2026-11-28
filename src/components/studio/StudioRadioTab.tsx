@@ -6,6 +6,7 @@ import {
   reorderRadioTracksInFirestore,
   saveRadioTracksToFirestore,
 } from '../../utils/radioFirestore.ts';
+import { selectRadioStationRepertoire } from '../../utils/radioRepertoire.ts';
 import { STUDIO_INPUT_CLASS, type GetAuthHeadersFn } from './studioShared.ts';
 
 interface StudioRadioTabProps {
@@ -61,6 +62,11 @@ export function StudioRadioTab({
 
   const stationTracks = useMemo(
     () => radioTracks.filter((t) => (t.station || 'indie') === selectedStation),
+    [radioTracks, selectedStation]
+  );
+
+  const stationRepertoire = useMemo(
+    () => selectRadioStationRepertoire(radioTracks, selectedStation),
     [radioTracks, selectedStation]
   );
 
@@ -494,22 +500,50 @@ export function StudioRadioTab({
         </div>
       ) : (
         <div className="rounded-xl bg-[#FAF9F5] dark:bg-[#262626] overflow-hidden">
-          {stationTracks.map((track, idx) => (
-            <div
-              key={track.id}
-              className="flex items-center gap-3 px-4 py-3 hover:bg-[#FAF9F5] dark:hover:bg-[#2E2E2E] transition-colors"
-            >
-              <span className="w-6 font-mono text-xs text-[#787872] dark:text-[#C4BFB4] tabular-nums shrink-0">
-                {String(idx + 1).padStart(2, '0')}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-[#141413] dark:text-[#EDEAE1] truncate">
-                  {track.title}
-                </p>
-                <p className="text-xs text-[#5C5C58] dark:text-[#A6A196] truncate">
-                  {track.artist}
-                </p>
-              </div>
+          <div className="px-4 py-2.5 text-[11px] text-[#5C5C58] dark:text-[#A6A196] border-b border-black/[0.06] dark:border-white/[0.06] flex flex-wrap items-center justify-between gap-2">
+            <span>
+              В активному ефірі: <strong>{stationRepertoire.repertoireTracks.length}</strong> треків (Топ-10 за лайками + 10 найновіших)
+            </span>
+            <span className="font-mono tabular-nums">
+              Поріг Топ-10: {stationRepertoire.tenthTopLikesThreshold} лайк.
+            </span>
+          </div>
+          {stationTracks.map((track, idx) => {
+            const bucket = stationRepertoire.bucketById.get(track.id) ?? null;
+            const likesCount = track.likesCount ?? 0;
+            return (
+              <div
+                key={track.id}
+                className="flex items-center gap-3 px-4 py-3 hover:bg-[#FAF9F5] dark:hover:bg-[#2E2E2E] transition-colors"
+              >
+                <span className="w-6 font-mono text-xs text-[#787872] dark:text-[#C4BFB4] tabular-nums shrink-0">
+                  {String(idx + 1).padStart(2, '0')}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <p className="text-sm font-medium text-[#141413] dark:text-[#EDEAE1] truncate">
+                      {track.title}
+                    </p>
+                    {bucket === 'top_liked' && (
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-rose-500/12 text-rose-700 dark:text-rose-300 shrink-0">
+                        Топ-10 ({likesCount})
+                      </span>
+                    )}
+                    {bucket === 'newest' && (
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#2C5937]/12 text-[#2C5937] dark:bg-emerald-500/15 dark:text-emerald-300 shrink-0">
+                        Нові-10 ({likesCount})
+                      </span>
+                    )}
+                    {bucket === null && (
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-black/[0.06] dark:bg-white/[0.08] text-[#5C5C58] dark:text-[#A6A196] shrink-0">
+                        Поза ефіром ({likesCount})
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-[#5C5C58] dark:text-[#A6A196] truncate">
+                    {track.artist}
+                  </p>
+                </div>
               <a
                 href={track.soundcloudUrl}
                 target="_blank"
@@ -551,7 +585,8 @@ export function StudioRadioTab({
                 )}
               </button>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

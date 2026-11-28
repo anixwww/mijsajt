@@ -1,4 +1,4 @@
-import { Disc3, X } from 'lucide-react';
+import { Headphones, X } from 'lucide-react';
 import { AnimatePresence, m } from 'motion/react';
 import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
@@ -76,9 +76,9 @@ export function MusicSelectionsModal({
               <div className="flex items-center gap-2 min-w-0">
                 <span
                   aria-hidden="true"
-                  className="w-8 h-8 rounded-xl bg-[#241407] dark:bg-[#2C180B] text-[#FB923C] inline-flex items-center justify-center shrink-0 shadow-xs"
+                  className="w-8 h-8 rounded-xl bg-[#F7F0EE] dark:bg-[#2D1B1D] text-[#8B1E1E] dark:text-[#D13B3B] inline-flex items-center justify-center shrink-0 shadow-xs"
                 >
-                  <Disc3 className="w-4 h-4 animate-[spin_12s_linear_infinite]" strokeWidth={1.85} />
+                  <Headphones className="w-4 h-4" strokeWidth={2} />
                 </span>
                 <div className="min-w-0">
                   <h3

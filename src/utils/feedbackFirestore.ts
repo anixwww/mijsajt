@@ -98,9 +98,30 @@ export function mergeSiteFeedbackLists(
     }
   }
 
-  return Array.from(byId.values()).sort(
+  const deduped: FeedbackRecord[] = [];
+  const sorted = Array.from(byId.values()).sort(
     (a, b) => (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0)
   );
+  for (const item of sorted) {
+    const msgNorm = item.message.trim().toLowerCase();
+    const authorNorm = (item.guestUid || item.firebaseUid || item.displayName || '').trim().toLowerCase();
+    const createdMs = Date.parse(item.createdAt) || 0;
+    const existingIdx = deduped.findIndex((existing) => {
+      const exMsg = existing.message.trim().toLowerCase();
+      const exAuthor = (existing.guestUid || existing.firebaseUid || existing.displayName || '').trim().toLowerCase();
+      const exMs = Date.parse(existing.createdAt) || 0;
+      return exMsg === msgNorm && exAuthor === authorNorm && Math.abs(exMs - createdMs) <= 15_000;
+    });
+    if (existingIdx >= 0) {
+      if (freshness(item) > freshness(deduped[existingIdx])) {
+        deduped[existingIdx] = item;
+      }
+      continue;
+    }
+    deduped.push(item);
+  }
+
+  return deduped;
 }
 
 export async function subscribeUserSiteFeedback(options: {

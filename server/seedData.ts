@@ -262,6 +262,13 @@ export interface WeeklyVoteLogEntry {
   createdAt: string;
 }
 
+export interface MonobankJarWatermark {
+  jarId: string;
+  extJarId?: string;
+  lastAmountKopecks: number;
+  updatedAt: string;
+}
+
 export interface SiteDatabase {
   heroLeadText: string;
   authorAboutText: string;
@@ -269,6 +276,7 @@ export interface SiteDatabase {
   authorPhotos: string[];
   socialLinks: SocialLinkItem[];
   monobankJarUrl: string;
+  monobankJarWatermark?: MonobankJarWatermark;
   monobankModalTitle: string;
   monobankModalSubtitle: string;
   monobankCardLabel: string;

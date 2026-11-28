@@ -6,10 +6,12 @@ import {
   ChevronRight,
   Copy,
   ExternalLink,
+  Headphones,
   Heart,
   LogIn,
   Mail,
   Pencil,
+  RefreshCw,
   Settings2,
   User,
   X,
@@ -290,6 +292,20 @@ export function HeroSection({
   const [copiedMonobank, setCopiedMonobank] = useState(false);
   const [copiedEmail, setCopiedEmail] = useState(false);
 
+  // Live Monobank jar tracking state
+  const MONOBANK_INTENT_STORAGE_KEY = 'dankiv_pending_monobank_intent';
+  const [jarInfo, setJarInfo] = useState<{
+    enabled: boolean;
+    title?: string;
+    amountUah?: number;
+    goalUah?: number | null;
+  } | null>(null);
+  const [jarIntentId, setJarIntentId] = useState<string | null>(null);
+  const [donorNameDraft, setDonorNameDraft] = useState('');
+  const [jarCheckState, setJarCheckState] = useState<'idle' | 'watching' | 'checking' | 'credited'>('idle');
+  const [creditedAmountUah, setCreditedAmountUah] = useState<number | null>(null);
+  const [jarStatusNote, setJarStatusNote] = useState<string | null>(null);
+
   const selectedInterview =
     activeModal === 'interviews' && selectedInterviewId
       ? interviews.find((item) => item.id === selectedInterviewId) || null
@@ -477,6 +493,201 @@ export function HeroSection({
     }
   }, [selectedInterviewId]);
 
+  const buildMonobankHeaders = async (withJson = false): Promise<Record<string, string>> => {
+    const headers: Record<string, string> = {
+      'X-Requested-With': 'XMLHttpRequest',
+    };
+    if (withJson) headers['Content-Type'] = 'application/json';
+    const token = await getGuestToken?.().catch(() => null);
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    return headers;
+  };
+
+  const ensureMonobankIntent = async (forceNew = false): Promise<string | null> => {
+    if (!monobankJarUrl) return null;
+    if (!forceNew && jarIntentId) return jarIntentId;
+    try {
+      if (!forceNew) {
+        const raw = localStorage.getItem(MONOBANK_INTENT_STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw) as {
+            intentId?: string;
+            createdAtMs?: number;
+            donorName?: string;
+          };
+          if (
+            parsed?.intentId &&
+            typeof parsed.createdAtMs === 'number' &&
+            Date.now() - parsed.createdAtMs < 55 * 60 * 1000
+          ) {
+            setJarIntentId(parsed.intentId);
+            if (!guestUser && parsed.donorName && !donorNameDraft) {
+              setDonorNameDraft(parsed.donorName);
+            }
+            return parsed.intentId;
+          }
+        }
+      }
+    } catch {
+      // Ignore storage read failures
+    }
+
+    try {
+      const headers = await buildMonobankHeaders(true);
+      const res = await fetch('/api/monobank/jar/intent', {
+        method: 'POST',
+        credentials: 'include',
+        headers,
+        body: JSON.stringify({
+          donorName: guestUser?.displayName || donorNameDraft.trim() || undefined,
+        }),
+      });
+      if (!res.ok) return null;
+      const data = (await res.json()) as {
+        intentId?: string;
+        jarTitle?: string;
+        amountUah?: number;
+        goalUah?: number | null;
+      };
+      if (data.intentId) {
+        setJarIntentId(data.intentId);
+        if (typeof data.amountUah === 'number') {
+          setJarInfo((prev) => ({
+            enabled: true,
+            title: data.jarTitle || prev?.title,
+            amountUah: data.amountUah,
+            goalUah: data.goalUah ?? prev?.goalUah ?? null,
+          }));
+        }
+        try {
+          localStorage.setItem(
+            MONOBANK_INTENT_STORAGE_KEY,
+            JSON.stringify({
+              intentId: data.intentId,
+              createdAtMs: Date.now(),
+              donorName: guestUser?.displayName || donorNameDraft.trim() || undefined,
+            })
+          );
+        } catch {
+          // Ignore storage write failures
+        }
+        return data.intentId;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  };
+
+  const checkMonobankDonation = async (manualTrigger = false) => {
+    const activeId = jarIntentId || (await ensureMonobankIntent(false));
+    if (!activeId) return;
+    if (manualTrigger) {
+      setJarCheckState('checking');
+      setJarStatusNote(null);
+    }
+    try {
+      const headers = await buildMonobankHeaders(true);
+      const res = await fetch('/api/monobank/jar/check', {
+        method: 'POST',
+        credentials: 'include',
+        headers,
+        body: JSON.stringify({
+          intentId: activeId,
+          donorName: !guestUser && donorNameDraft.trim() ? donorNameDraft.trim() : undefined,
+        }),
+      });
+      if (!res.ok) {
+        if (manualTrigger) {
+          setJarCheckState('watching');
+          setJarStatusNote('Поки не вдалося перевірити стан банки. Спробуйте за кілька секунд.');
+        }
+        return;
+      }
+      const data = (await res.json()) as {
+        status?: 'pending' | 'credited' | 'expired';
+        amountUah?: number;
+        currentJarUah?: number;
+      };
+      if (typeof data.currentJarUah === 'number') {
+        setJarInfo((prev) => (prev ? { ...prev, amountUah: data.currentJarUah } : prev));
+      }
+      if (data.status === 'credited' && typeof data.amountUah === 'number') {
+        setJarCheckState('credited');
+        setCreditedAmountUah(data.amountUah);
+        setJarStatusNote(null);
+        setJarIntentId(null);
+        try {
+          localStorage.removeItem(MONOBANK_INTENT_STORAGE_KEY);
+        } catch {
+          // Ignore storage removal errors
+        }
+        return;
+      }
+      if (data.status === 'expired') {
+        try {
+          localStorage.removeItem(MONOBANK_INTENT_STORAGE_KEY);
+        } catch {
+          // Ignore storage removal errors
+        }
+        setJarIntentId(null);
+        const freshId = await ensureMonobankIntent(true);
+        setJarCheckState(freshId ? 'watching' : 'idle');
+        if (manualTrigger) {
+          setJarStatusNote('Очікуємо надходження донату на банку...');
+        }
+        return;
+      }
+      if (manualTrigger) {
+        setJarCheckState('watching');
+        setJarStatusNote('Нового зарахування ще не зафіксовано. Monobank оновлює баланс протягом кількох секунд.');
+      }
+    } catch {
+      if (manualTrigger) {
+        setJarCheckState('watching');
+        setJarStatusNote('Помилка перевірки з’єднання. Спробуйте ще раз.');
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (activeModal !== 'monobank' || !monobankJarUrl) return;
+    let active = true;
+    void fetch('/api/monobank/jar/info')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((info) => {
+        if (active && info && info.enabled) {
+          setJarInfo(info);
+        }
+      })
+      .catch(() => {});
+    void ensureMonobankIntent(false);
+    return () => {
+      active = false;
+    };
+  }, [activeModal, monobankJarUrl]);
+
+  useEffect(() => {
+    if (activeModal !== 'monobank' || !monobankJarUrl || jarCheckState !== 'watching') return;
+    const intervalId = window.setInterval(() => {
+      void checkMonobankDonation(false);
+    }, 4000);
+    const onFocusOrVisible = () => {
+      if (document.visibilityState === 'visible') {
+        void checkMonobankDonation(false);
+      }
+    };
+    window.addEventListener('focus', onFocusOrVisible);
+    document.addEventListener('visibilitychange', onFocusOrVisible);
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', onFocusOrVisible);
+      document.removeEventListener('visibilitychange', onFocusOrVisible);
+    };
+  }, [activeModal, monobankJarUrl, jarCheckState, jarIntentId, donorNameDraft, guestUser]);
+
   const handleOpenModal = (modal: 'about' | 'contact' | 'monobank' | 'interviews') => {
     trackClick(`home_action:${modal}`, `Головна: ${modal}`, 'action');
     if (modal === 'contact') {
@@ -491,6 +702,11 @@ export function HeroSection({
     }
     if (modal === 'interviews') {
       setSelectedInterviewId(null);
+    }
+    if (modal === 'monobank') {
+      setJarCheckState('idle');
+      setCreditedAmountUah(null);
+      setJarStatusNote(null);
     }
     setActiveModal(modal);
   };
@@ -712,6 +928,25 @@ export function HeroSection({
               </svg>
             </button>
 
+            {onOpenWeeklyMusic && (
+              <button
+                type="button"
+                onClick={() => {
+                  trackClick('header:weekly_music', 'Кнопка музичних підбірок', 'section');
+                  onOpenWeeklyMusic();
+                }}
+                aria-label="Щомісячні підбірки музики"
+                title="Щомісячні підбірки музики"
+                className="group relative overflow-hidden touch-surface inline-flex items-center justify-center w-[38px] sm:w-[40px] h-[38px] sm:h-[40px] rounded-lg bg-[#F7F0EE] dark:bg-[#2D1B1D] text-[#8B1E1E] dark:text-[#D13B3B] hover:bg-[#EFE3E0] dark:hover:bg-[#3A2225] shadow-[0_4px_12px_-6px_rgba(139,30,30,0.35),inset_0_1px_0_rgba(255,255,255,0.55)] dark:shadow-[0_6px_16px_-6px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.08)] hover:scale-105 active:scale-[0.94] transition-all duration-200 shrink-0 cursor-pointer"
+              >
+                <Headphones
+                  className="relative z-10 w-[18px] h-[18px] transition-transform duration-300 group-hover:scale-110"
+                  strokeWidth={2}
+                  aria-hidden="true"
+                />
+              </button>
+            )}
+
             <button
               type="button"
               onClick={() => {
@@ -815,65 +1050,6 @@ export function HeroSection({
                 </>
               )}
             </button>
-
-            {onOpenWeeklyMusic && (
-              <button
-                type="button"
-                onClick={() => {
-                  trackClick('header:weekly_music', 'Кнопка музичних підбірок', 'section');
-                  onOpenWeeklyMusic();
-                }}
-                aria-label="Щомісячні підбірки музики"
-                title="Щомісячні підбірки музики"
-                className="group relative overflow-hidden touch-surface inline-flex items-center justify-center w-[38px] sm:w-[40px] h-[38px] sm:h-[40px] rounded-lg bg-[linear-gradient(135deg,#1F1106_0%,#351F0D_50%,#24121F_100%)] text-[#FED7AA] shadow-[0_6px_16px_-6px_rgba(35,17,6,0.8),0_0_14px_-4px_rgba(249,115,22,0.38),inset_0_1px_0_rgba(255,255,255,0.18)] hover:shadow-[0_8px_20px_-6px_rgba(35,17,6,0.9),0_0_20px_-2px_rgba(251,146,60,0.55),inset_0_1px_0_rgba(255,255,255,0.28)] hover:scale-105 active:scale-[0.94] transition-all duration-200 shrink-0 cursor-pointer"
-              >
-                {/* Sunset ambient glow */}
-                <span
-                  aria-hidden="true"
-                  className="pointer-events-none absolute -left-2 -top-2 w-7 h-7 rounded-full bg-[#EA580C]/30 blur-md group-hover:bg-[#F97316]/45 transition-colors duration-300"
-                />
-                <span
-                  aria-hidden="true"
-                  className="pointer-events-none absolute -right-2 -bottom-2 w-7 h-7 rounded-full bg-[#DB2777]/25 blur-md group-hover:bg-[#F43F5E]/40 transition-colors duration-300"
-                />
-
-                {/* Star / vinyl dust glints */}
-                <svg
-                  aria-hidden="true"
-                  viewBox="0 0 40 40"
-                  fill="none"
-                  className="pointer-events-none absolute inset-0 w-full h-full opacity-80 group-hover:opacity-100 transition-opacity duration-300"
-                >
-                  <circle cx="8" cy="9" r="0.65" fill="#FFEDD5" opacity="0.8" />
-                  <circle cx="32" cy="9" r="0.75" fill="#FDE047" opacity="0.85" className="animate-pulse" />
-                  <circle cx="9" cy="31" r="0.6" fill="#FDBA74" opacity="0.65" />
-                  <circle cx="31" cy="31" r="0.65" fill="#FECDD3" opacity="0.75" />
-                </svg>
-
-                {/* Light sweep on hover */}
-                <span
-                  aria-hidden="true"
-                  className="pointer-events-none absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-out bg-gradient-to-r from-transparent via-white/15 to-transparent"
-                />
-
-                {/* Vinyl record / music selection pictogram */}
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={1.65}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                  className="relative z-10 w-[18px] h-[18px] transition-transform duration-500 group-hover:rotate-45 group-hover:scale-110"
-                >
-                  <circle cx="12" cy="12" r="8.75" />
-                  <circle cx="12" cy="12" r="5.2" strokeDasharray="2.8 2.5" strokeOpacity={0.6} />
-                  <circle cx="12" cy="12" r="2.2" className="fill-[#F97316]/35" />
-                  <circle cx="12" cy="12" r="0.7" fill="currentColor" stroke="none" />
-                </svg>
-              </button>
-            )}
 
             <button
               type="button"
@@ -1474,12 +1650,20 @@ export function HeroSection({
                     <div className="space-y-4">
                       {(monobankCardLabel.trim().length > 0 || monobankModalText.trim().length > 0) && (
                         <div className="p-4 sm:p-5 rounded-xl bg-white dark:bg-[#262626] space-y-2.5">
-                          {monobankCardLabel.trim().length > 0 && (
-                            <div className="inline-flex items-center gap-2 text-xs font-semibold text-[#2C5937] dark:text-[#E5E5E5]">
-                              <Heart className="w-4 h-4" strokeWidth={1.85} />
-                              <span>{monobankCardLabel}</span>
-                            </div>
-                          )}
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            {monobankCardLabel.trim().length > 0 && (
+                              <div className="inline-flex items-center gap-2 text-xs font-semibold text-[#2C5937] dark:text-[#E5E5E5]">
+                                <Heart className="w-4 h-4" strokeWidth={1.85} />
+                                <span>{monobankCardLabel}</span>
+                              </div>
+                            )}
+                            {jarInfo?.enabled && typeof jarInfo.amountUah === 'number' && (
+                              <span className="font-mono text-xs font-semibold text-[#2C5937] dark:text-emerald-400 tabular-nums">
+                                У банці: {jarInfo.amountUah.toLocaleString('uk-UA')} ₴
+                                {jarInfo.goalUah ? ` / ${jarInfo.goalUah.toLocaleString('uk-UA')} ₴` : ''}
+                              </span>
+                            )}
+                          </div>
                           {monobankModalText.trim().length > 0 && (
                             <p className="text-sm text-[#3A3A37] dark:text-[#D4D4D4] leading-relaxed whitespace-pre-line">
                               {monobankModalText}
@@ -1490,36 +1674,102 @@ export function HeroSection({
 
                       {monobankJarUrl ? (
                         <div className="space-y-2.5">
+                          {guestUser ? (
+                            <p className="text-xs text-[#5C5C58] dark:text-[#A8A49B] px-1">
+                              Донат автоматично зарахується у рейтинг на ім’я <strong className="text-[#141413] dark:text-[#F4F1EA]">{guestUser.displayName}</strong>.
+                            </p>
+                          ) : (
+                            <div className="space-y-1">
+                              <input
+                                type="text"
+                                value={donorNameDraft}
+                                onChange={(e) => setDonorNameDraft(e.target.value)}
+                                maxLength={80}
+                                placeholder="Ваше ім’я для рейтингу (необов’язково)"
+                                aria-label="Ваше ім’я для рейтингу донатерів"
+                                className="input-editorial text-xs py-2.5"
+                              />
+                            </div>
+                          )}
+
                           <a
                             href={monobankJarUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            onClick={() =>
-                              trackClick('monobank:open', 'Донат: Відкрито банку Монобанку', 'action')
-                            }
-                            className="w-full touch-surface inline-flex items-center justify-center gap-2 min-h-[46px] px-5 py-2.5 text-xs sm:text-sm font-semibold text-white bg-pear-pine-gradient rounded-xl shadow-[0_8px_20px_-8px_rgba(30,58,41,0.5)] dark:shadow-[0_8px_20px_-8px_rgba(0,0,0,0.65)] active:scale-[0.98] transition-all duration-150"
+                            onClick={() => {
+                              trackClick('monobank:open', 'Донат: Відкрито банку Монобанку', 'action');
+                              setJarStatusNote(null);
+                              setJarCheckState('watching');
+                              void ensureMonobankIntent(false);
+                            }}
+                            className="w-full touch-surface inline-flex items-center justify-center gap-2 min-h-[46px] px-5 py-2.5 text-xs sm:text-sm font-semibold text-white bg-pear-pine-gradient rounded-xl shadow-[0_8px_20px_-8px_rgba(30,58,41,0.5)] dark:shadow-[0_8px_20px_-8px_rgba(0,0,0,0.65)] active:scale-[0.98] transition-all duration-150 whitespace-nowrap shrink-0"
                           >
                             <span>Відкрити банку Монобанку</span>
                             <ExternalLink className="w-4 h-4" strokeWidth={1.9} />
                           </a>
 
-                          <button
-                            type="button"
-                            onClick={() => handleCopyText(monobankJarUrl, 'monobank')}
-                            className="w-full touch-surface inline-flex items-center justify-center gap-2 min-h-[42px] px-4 py-2 text-xs font-medium text-[#141413] dark:text-[#F4F1EA] bg-[#EAE7DF] dark:bg-[#323232] hover:bg-[#E1DDD3] dark:hover:bg-[#3D3D3D] rounded-xl transition-colors cursor-pointer"
-                          >
-                            {copiedMonobank ? (
-                              <>
-                                <Check className="w-3.5 h-3.5 text-[#2C5937] dark:text-[#E5E5E5]" />
-                                <span>Посилання скопійовано</span>
-                              </>
-                            ) : (
-                              <>
-                                <Copy className="w-3.5 h-3.5" />
-                                <span>Скопіювати посилання на банку</span>
-                              </>
+                          {jarCheckState === 'credited' && creditedAmountUah !== null && (
+                            <div className="p-3 rounded-xl bg-emerald-500/12 text-emerald-800 dark:text-emerald-300 text-xs font-medium flex items-center gap-2">
+                              <Check className="w-4 h-4 shrink-0" strokeWidth={2.2} />
+                              <span>
+                                Дякуємо! +{creditedAmountUah.toLocaleString('uk-UA')} ₴ автоматично додано до рейтингу донатерів.
+                              </span>
+                            </div>
+                          )}
+
+                          {(jarCheckState === 'watching' || jarCheckState === 'checking') && (
+                            <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-[#EAE7DF]/70 dark:bg-[#2A2A2A] text-xs text-[#3A3A37] dark:text-[#D4D4D4]">
+                              <span>Очікуємо переказ у банку…</span>
+                              <button
+                                type="button"
+                                disabled={jarCheckState === 'checking'}
+                                onClick={() => void checkMonobankDonation(true)}
+                                className="inline-flex items-center gap-1.5 font-semibold text-[#2C5937] dark:text-[#F4F1EA] hover:underline cursor-pointer whitespace-nowrap shrink-0 disabled:opacity-50"
+                              >
+                                <RefreshCw
+                                  className={`w-3.5 h-3.5 ${jarCheckState === 'checking' ? 'animate-spin' : ''}`}
+                                />
+                                <span>Перевірити зарахування</span>
+                              </button>
+                            </div>
+                          )}
+
+                          {jarStatusNote && (
+                            <p className="text-[11px] text-[#5C5C58] dark:text-[#A8A49B] px-1">
+                              {jarStatusNote}
+                            </p>
+                          )}
+
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleCopyText(monobankJarUrl, 'monobank')}
+                              className="flex-1 touch-surface inline-flex items-center justify-center gap-2 min-h-[42px] px-4 py-2 text-xs font-medium text-[#141413] dark:text-[#F4F1EA] bg-[#EAE7DF] dark:bg-[#323232] hover:bg-[#E1DDD3] dark:hover:bg-[#3D3D3D] rounded-xl transition-colors cursor-pointer whitespace-nowrap shrink-0"
+                            >
+                              {copiedMonobank ? (
+                                <>
+                                  <Check className="w-3.5 h-3.5 text-[#2C5937] dark:text-[#E5E5E5]" />
+                                  <span>Посилання скопійовано</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="w-3.5 h-3.5" />
+                                  <span>Скопіювати посилання</span>
+                                </>
+                              )}
+                            </button>
+
+                            {jarCheckState === 'idle' && (
+                              <button
+                                type="button"
+                                onClick={() => void checkMonobankDonation(true)}
+                                className="touch-surface inline-flex items-center justify-center gap-1.5 min-h-[42px] px-3.5 py-2 text-xs font-medium text-[#2C5937] dark:text-[#E5E5E5] bg-[#EAE7DF] dark:bg-[#323232] hover:bg-[#E1DDD3] dark:hover:bg-[#3D3D3D] rounded-xl transition-colors cursor-pointer whitespace-nowrap shrink-0"
+                              >
+                                <RefreshCw className="w-3.5 h-3.5" />
+                                <span>Я вже задонатив</span>
+                              </button>
                             )}
-                          </button>
+                          </div>
                         </div>
                       ) : (
                         <div className="space-y-3">

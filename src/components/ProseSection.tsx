@@ -42,10 +42,7 @@ import {
   type WeeklyProseWinner,
 } from '../types.ts';
 import { setActiveMoment, trackClick } from '../utils/analytics.ts';
-import {
-  buildMonobankJarPayUrl,
-  createEncryptedPaymentEnvelope,
-} from '../utils/paymentCrypto.ts';
+import { createEncryptedPaymentEnvelope } from '../utils/paymentCrypto.ts';
 import {
   readOfflineProseContent,
   readOfflineProsePdf,
@@ -193,7 +190,7 @@ export function ProseSection({
   proseTags = [],
   proseAuthDiscountPercent = 0,
   proseTelegramDiscountPercent = 50,
-  monobankJarUrl = '',
+  monobankJarUrl: _monobankJarUrl = '',
   monobankAcquiringEnabled = false,
   telegramSubscription,
   onOpenTelegramModal,
@@ -272,20 +269,6 @@ export function ProseSection({
     statusText?: string;
   } | null>(null);
   const [checkingMonobankStatus, setCheckingMonobankStatus] = useState(false);
-  const [pendingJarCheckout, setPendingJarCheckout] = useState<{
-    workId: string;
-    jarUrl: string;
-    comment: string;
-    amountUah: number;
-    buyerName: string;
-    buyerEmail: string;
-  } | null>(null);
-  const [copiedJarField, setCopiedJarField] = useState<'url' | 'comment' | null>(null);
-
-  const safeMonobankJarUrl = useMemo(() => {
-    const trimmed = monobankJarUrl.trim();
-    return /^https?:\/\/\S+$/i.test(trimmed) ? trimmed : '';
-  }, [monobankJarUrl]);
 
   const modalScrollRef = useRef<HTMLDivElement>(null);
   const modalContentRef = useRef<HTMLDivElement>(null);
@@ -944,16 +927,6 @@ export function ProseSection({
     return () => window.clearInterval(timer);
   }, [activeWork, pendingMonobankInvoice, checkMonobankInvoiceStatus]);
 
-  const handleCopyJarValue = async (value: string, field: 'url' | 'comment') => {
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopiedJarField(field);
-      window.setTimeout(() => setCopiedJarField((prev) => (prev === field ? null : prev)), 2200);
-    } catch {
-      // Ignore if clipboard unavailable
-    }
-  };
-
   const executeMonobankInvoicePurchase = async (work: ProseWork, name: string, email: string) => {
     setPaymentError(null);
     trackClick(`prose_purchase:${work.id}`, `Оплата доступу до прози через Монобанк: «${work.title}»`, 'store');
@@ -993,7 +966,6 @@ export function ProseSection({
       }
 
       if (data.mode === 'acquiring' && typeof data.invoiceId === 'string' && typeof data.pageUrl === 'string') {
-        setPendingJarCheckout(null);
         setPendingMonobankInvoice({
           workId: work.id,
           invoiceId: data.invoiceId,
@@ -1004,25 +976,28 @@ export function ProseSection({
         return;
       }
 
-      if (typeof data.content === 'string') {
-        setLoadedContents((prev) => ({ ...prev, [work.id]: data.content }));
-      }
-      if (Array.isArray(data.chapters)) {
-        setLoadedChapters((prev) => ({ ...prev, [work.id]: data.chapters }));
-      }
-      setPendingJarCheckout(null);
-      setJustUnlockedOrder({ workId: work.id, orderCode: data.orderCode });
-      onProsePurchased(data.unlockedAccess, data.orderCode);
-      setPaywallView('offer');
-      setBuyerName('');
-      setBuyerEmail('');
+      if (data.paid && data.unlockedAccess) {
+        if (typeof data.content === 'string') {
+          setLoadedContents((prev) => ({ ...prev, [work.id]: data.content }));
+        }
+        if (Array.isArray(data.chapters)) {
+          setLoadedChapters((prev) => ({ ...prev, [work.id]: data.chapters }));
+        }
+        setJustUnlockedOrder({ workId: work.id, orderCode: data.orderCode });
+        onProsePurchased(data.unlockedAccess, data.orderCode);
+        setPaywallView('offer');
+        setBuyerName('');
+        setBuyerEmail('');
 
-      if (data.hasPdf || work.hasPdf) {
-        await fetchUnlockedPdf(work, data.orderCode);
-      }
+        if (data.hasPdf || work.hasPdf) {
+          await fetchUnlockedPdf(work, data.orderCode);
+        }
 
-      if (modalScrollRef.current) {
-        modalScrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+        if (modalScrollRef.current) {
+          modalScrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      } else {
+        setPaymentError('Очікується підтвердження оплати від Монобанк.');
       }
     } catch (err) {
       setPaymentError(err instanceof Error && err.message ? err.message : 'Помилка з’єднання із сервером.');
@@ -1040,20 +1015,6 @@ export function ProseSection({
     const cleanEmail = buyerEmail.trim();
     if (cleanName.length < 2 || !cleanEmail.includes('@')) {
       setPaymentError('Будь ласка, вкажіть ім’я та коректний email.');
-      return;
-    }
-
-    if (!monobankAcquiringEnabled && safeMonobankJarUrl) {
-      const comment = `Проза: «${activeWork.title}» · ${cleanEmail}`;
-      const jarUrl = buildMonobankJarPayUrl(safeMonobankJarUrl, activeWorkEffectivePrice, comment);
-      setPendingJarCheckout({
-        workId: activeWork.id,
-        jarUrl,
-        comment,
-        amountUah: activeWorkEffectivePrice,
-        buyerName: cleanName,
-        buyerEmail: cleanEmail,
-      });
       return;
     }
 
@@ -1550,11 +1511,11 @@ export function ProseSection({
                 <button
                   type="button"
                   onClick={() => openWork(work, 'offer', true)}
-                  className="inline-flex items-center gap-1 text-[#5C5C58] dark:text-[#C4BFB4] hover:text-[#141413] dark:hover:text-[#F4F1EA] transition-colors cursor-pointer tabular-nums shrink-0"
+                  className="inline-flex items-center text-[#5C5C58] dark:text-[#C4BFB4] hover:text-[#141413] dark:hover:text-[#F4F1EA] transition-colors cursor-pointer shrink-0"
                   title="Відгуки читачів"
+                  aria-label="Відгуки читачів"
                 >
                   <MessageSquare className="w-3.5 h-3.5" strokeWidth={1.75} />
-                  <span>{work.reviews.length}</span>
                 </button>
               )}
             </div>
@@ -3224,125 +3185,6 @@ export function ProseSection({
                             </p>
                           )}
                         </div>
-                      ) : pendingJarCheckout && pendingJarCheckout.workId === activeWork.id ? (
-                        <div className="space-y-4">
-                          <div className="flex items-center justify-between gap-2">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setPendingJarCheckout(null);
-                                setPaymentError(null);
-                              }}
-                              className="inline-flex items-center gap-1.5 min-h-[36px] -ml-1.5 px-1.5 text-xs font-medium text-[#5C5C58] dark:text-[#A8A49B] hover:text-[#2C5937] dark:hover:text-white rounded-lg transition-colors cursor-pointer"
-                            >
-                              <ArrowLeft className="w-3.5 h-3.5" />
-                              <span>Змінити дані</span>
-                            </button>
-
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#141413] text-white text-[11px] font-semibold tracking-tight">
-                              <span>Монобанк</span>
-                              <span className="text-white/50">·</span>
-                              <span className="font-mono tabular-nums">{pendingJarCheckout.amountUah} ₴</span>
-                            </span>
-                          </div>
-
-                          <div className="p-4 sm:p-5 rounded-xl bg-white dark:bg-[#262626] space-y-3.5">
-                            <div className="space-y-1">
-                              <p className="text-sm font-semibold text-[#141413] dark:text-[#F4F1EA]">
-                                Оплата на банку Монобанку
-                              </p>
-                              <p className="text-xs text-[#5C5C58] dark:text-[#A8A49B] leading-relaxed">
-                                Перейдіть до банки Монобанку (тієї ж, що й у розділі підтримки) та поповніть її на{' '}
-                                <strong className="font-mono text-[#141413] dark:text-[#F4F1EA]">
-                                  {pendingJarCheckout.amountUah} ₴
-                                </strong>
-                                . Після переказу натисніть «Я оплатив(ла) — відкрити доступ».
-                              </p>
-                            </div>
-
-                            <div className="px-3 py-2 rounded-lg bg-[#F5F3EE] dark:bg-[#1E1E1E] flex items-center justify-between gap-2">
-                              <div className="min-w-0">
-                                <span className="block text-[10px] text-[#5C5C58] dark:text-[#C4BFB4]">
-                                  Коментар до переказу
-                                </span>
-                                <span className="block text-xs font-mono text-[#141413] dark:text-[#F4F1EA] truncate">
-                                  {pendingJarCheckout.comment}
-                                </span>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => handleCopyJarValue(pendingJarCheckout.comment, 'comment')}
-                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-white dark:bg-[#2E2E2E] text-[#141413] dark:text-[#F4F1EA] hover:opacity-85 shrink-0 cursor-pointer"
-                              >
-                                {copiedJarField === 'comment' ? (
-                                  <>
-                                    <Check className="w-3.5 h-3.5 text-[#2C5937] dark:text-[#6EE7B7]" />
-                                    <span>Скопійовано</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <Copy className="w-3.5 h-3.5" />
-                                    <span>Копіювати</span>
-                                  </>
-                                )}
-                              </button>
-                            </div>
-
-                            <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
-                              <a
-                                href={pendingJarCheckout.jarUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex-1 inline-flex items-center justify-center gap-2 min-h-[46px] px-5 py-2.5 rounded-xl bg-[#141413] dark:bg-white text-white dark:text-[#141413] text-xs sm:text-sm font-semibold hover:opacity-92 transition-opacity"
-                              >
-                                <span>Відкрити банку Монобанку · {pendingJarCheckout.amountUah} ₴</span>
-                                <ExternalLink className="w-4 h-4 shrink-0" />
-                              </a>
-
-                              <button
-                                type="button"
-                                disabled={submittingPayment}
-                                onClick={() =>
-                                  executeMonobankInvoicePurchase(
-                                    activeWork,
-                                    pendingJarCheckout.buyerName,
-                                    pendingJarCheckout.buyerEmail
-                                  )
-                                }
-                                className="btn-editorial-primary min-h-[46px] px-4 py-2.5 text-xs sm:text-sm"
-                              >
-                                <CheckCircle2 className="w-4 h-4 shrink-0" />
-                                <span>
-                                  {submittingPayment ? 'Відкриття доступу...' : 'Я оплатив(ла) — відкрити доступ'}
-                                </span>
-                              </button>
-                            </div>
-
-                            <button
-                              type="button"
-                              onClick={() => handleCopyJarValue(safeMonobankJarUrl, 'url')}
-                              className="inline-flex items-center gap-1.5 text-[11px] font-medium text-[#5C5C58] dark:text-[#A8A49B] hover:text-[#141413] dark:hover:text-[#F4F1EA] cursor-pointer"
-                            >
-                              {copiedJarField === 'url' ? (
-                                <>
-                                  <Check className="w-3.5 h-3.5 text-[#2C5937] dark:text-[#6EE7B7]" />
-                                  <span>Посилання на банку скопійовано</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Copy className="w-3.5 h-3.5" />
-                                  <span>Скопіювати посилання на банку</span>
-                                </>
-                              )}
-                            </button>
-                          </div>
-
-                          {paymentError && (
-                            <p className="text-xs text-rose-700 dark:text-rose-400 font-medium" role="alert">
-                              {paymentError}
-                            </p>
-                          )}
-                        </div>
                       ) : (
                         <form onSubmit={handlePurchaseProse} className="space-y-4">
                           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -3350,7 +3192,6 @@ export function ProseSection({
                               type="button"
                               onClick={() => {
                                 setPaywallView('offer');
-                                setPendingJarCheckout(null);
                                 setPaymentError(null);
                               }}
                               className="inline-flex items-center gap-1.5 min-h-[36px] -ml-1.5 px-1.5 text-xs font-medium text-[#5C5C58] dark:text-[#A8A49B] hover:text-[#2C5937] dark:hover:text-white rounded-lg transition-colors cursor-pointer"
@@ -3371,9 +3212,7 @@ export function ProseSection({
                                 Оплата тільки через Монобанк
                               </p>
                               <p className="text-[11px] text-white/70 mt-0.5 truncate">
-                                {safeMonobankJarUrl && !monobankAcquiringEnabled
-                                  ? `Банка Монобанку · доступ до «${activeWork.title}»`
-                                  : `Повний доступ до «${activeWork.title}»`}
+                                Повний доступ до «{activeWork.title}»
                               </p>
                             </div>
                             <div className="text-right shrink-0 font-mono tabular-nums">
@@ -3434,38 +3273,26 @@ export function ProseSection({
                             </p>
                           )}
 
+                          {!monobankAcquiringEnabled && (
+                            <p className="text-xs text-amber-800 dark:text-amber-300 font-medium" role="status">
+                              Онлайн-еквайринг Монобанк наразі не налаштовано на сервері.
+                            </p>
+                          )}
+
                           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 pt-1">
-                            {safeMonobankJarUrl ? (
-                              <a
-                                href={buildMonobankJarPayUrl(
-                                  safeMonobankJarUrl,
-                                  activeWorkEffectivePrice,
-                                  `Проза: ${activeWork.title}`
-                                )}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1.5 text-xs font-medium text-[#2C5937] dark:text-[#E5E5E5] hover:underline"
-                              >
-                                <span>Відкрити банку Монобанку</span>
-                                <ExternalLink className="w-3.5 h-3.5 shrink-0" />
-                              </a>
-                            ) : (
-                              <p className="text-[11px] text-[#5C5C58] dark:text-[#A8A49B]">
-                                Миттєве відкриття тексту після підтвердження платежу через Монобанк.
-                              </p>
-                            )}
+                            <p className="text-[11px] text-[#5C5C58] dark:text-[#A8A49B]">
+                              Миттєве відкриття тексту після підтвердження платежу через Монобанк.
+                            </p>
 
                             <button
                               type="submit"
-                              disabled={submittingPayment}
+                              disabled={submittingPayment || !monobankAcquiringEnabled}
                               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 min-h-[48px] px-6 py-3 rounded-xl bg-[#141413] dark:bg-white text-white dark:text-[#141413] text-sm font-semibold hover:opacity-92 active:scale-[0.98] transition-all duration-150 cursor-pointer disabled:opacity-55 tabular-nums whitespace-nowrap shrink-0"
                             >
                               <span>
                                 {submittingPayment
                                   ? 'Оформлення Монобанк...'
-                                  : !monobankAcquiringEnabled && safeMonobankJarUrl
-                                    ? `Перейти до банки Монобанку · ${activeWorkEffectivePrice} ₴`
-                                    : `Оплатити через Монобанк · ${activeWorkEffectivePrice} ₴`}
+                                  : `Оплатити через Монобанк · ${activeWorkEffectivePrice} ₴`}
                               </span>
                             </button>
                           </div>
@@ -3543,16 +3370,11 @@ export function ProseSection({
                     type="button"
                     onClick={() => setCommentsOpen((prev) => !prev)}
                     aria-expanded={commentsOpen}
-                    title={activeWork.reviews.length > 0 ? `Відгуки (${activeWork.reviews.length})` : 'Залишити відгук'}
+                    title="Відгуки"
                     aria-label="Відгуки"
-                    className="relative btn-editorial-icon"
+                    className="btn-editorial-icon"
                   >
                     <MessageSquare className="w-4 h-4" strokeWidth={1.75} />
-                    {activeWork.reviews.length > 0 && (
-                      <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-[#2C5937] dark:bg-[#E5E5E5] text-white dark:text-[#181818] font-mono text-[10px] font-bold flex items-center justify-center tabular-nums shadow-xs">
-                        {activeWork.reviews.length}
-                      </span>
-                    )}
                   </button>
                 </div>
 

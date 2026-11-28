@@ -26,7 +26,11 @@ export function StudioOrdersTab({ orders, isActive }: StudioOrdersTabProps) {
     return () => window.clearTimeout(timer);
   }, [revealedOrderCodes]);
 
-  const totalRevenue = orders.reduce((acc, o) => acc + (Number(o.totalUah) || 0), 0);
+  const totalRevenue = orders.reduce((acc, o) => {
+    const status = o.payment?.status;
+    if (status && status !== 'paid') return acc;
+    return acc + (Number(o.totalUah) || 0);
+  }, 0);
 
   return (
     <div className="max-w-4xl space-y-5">
@@ -165,17 +169,30 @@ export function StudioOrdersTab({ orders, isActive }: StudioOrdersTabProps) {
 
                 {ord.payment && (
                   <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono pt-1">
-                    <span className="text-emerald-800 dark:text-[#E5E5E5]">
-                      Оплачено · {ord.payment.providerLabel}
+                    <span
+                      className={
+                        ord.payment.status === 'pending'
+                          ? 'text-amber-700 dark:text-amber-300'
+                          : ord.payment.status === 'failed' || ord.payment.status === 'expired'
+                            ? 'text-rose-700 dark:text-rose-400'
+                            : 'text-emerald-800 dark:text-[#E5E5E5]'
+                      }
+                    >
+                      {ord.payment.status === 'pending'
+                        ? 'Очікує оплати'
+                        : ord.payment.status === 'failed' || ord.payment.status === 'expired'
+                          ? 'Не оплачено'
+                          : 'Оплачено'}{' '}
+                      · {ord.payment.providerLabel}
                       {ord.payment.cardLast4 ? ` (•••• ${ord.payment.cardLast4})` : ''} · {ord.payment.transactionId}
                     </span>
-                    {ord.integrityVerified === true && (
+                    {ord.payment.status === 'paid' && ord.integrityVerified === true && (
                       <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-[#E5E5E5]">
                         <ShieldCheck className="w-3.5 h-3.5" />
                         <span>HMAC перевірено</span>
                       </span>
                     )}
-                    {ord.integrityVerified === false && (
+                    {ord.payment.status === 'paid' && ord.integrityVerified === false && (
                       <span className="text-rose-700 dark:text-rose-400">
                         Підпис квитанції потребує перевірки
                       </span>

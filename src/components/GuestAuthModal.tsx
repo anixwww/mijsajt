@@ -7,6 +7,7 @@ import {
   ArrowLeft,
   ArrowUpRight,
   BookOpen,
+  Check,
   CheckCircle2,
   Clock,
   Copy,
@@ -143,6 +144,7 @@ export function GuestAuthModal({
 }: GuestAuthModalProps) {
   const [cabinetTab, setCabinetTab] = useState<CabinetTab>('profile');
   const [displayNameInput, setDisplayNameInput] = useState('');
+  const [editingDisplayName, setEditingDisplayName] = useState(false);
   const [donorChatTextInput, setDonorChatTextInput] = useState('');
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileSuccessMsg, setProfileSuccessMsg] = useState<string | null>(null);
@@ -257,6 +259,7 @@ export function GuestAuthModal({
     setWorksFeedback(null);
     setEditingWorkKey(null);
     setEditDraft(null);
+    setEditingDisplayName(false);
 
     let active = true;
     if (guestUser) {
@@ -653,28 +656,38 @@ export function GuestAuthModal({
     window.addEventListener('message', onMessage);
   };
 
-  const handleSaveProfile = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!guestUser) return;
+  const saveProfileData = async (overrides?: { displayName?: string; donorChatText?: string }) => {
+    if (!guestUser || profileSaving) return;
+    const nextDisplayName = (overrides?.displayName ?? displayNameInput).trim();
+    if (!nextDisplayName) {
+      setErrorMsg('Вкажіть ім’я або псевдонім.');
+      return;
+    }
     setProfileSaving(true);
     setErrorMsg(null);
     setProfileSuccessMsg(null);
     try {
-      const token = await getGuestToken();
+      let token = await getGuestToken();
+      if (token?.startsWith('guest_v1.')) {
+        const refreshed = await getGuestToken(true);
+        if (refreshed) token = refreshed;
+      }
       if (!token) {
         setErrorMsg('Сесія авторизації закінчилась. Увійдіть повторно.');
         return;
       }
       const res = await fetch('/api/guest/profile', {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          displayName: displayNameInput.trim(),
+          displayName: nextDisplayName,
           ...(liveBadges?.donorRank && liveBadges.donorRank <= 3
-            ? { donorChatText: donorChatTextInput.trim() }
+            ? { donorChatText: (overrides?.donorChatText ?? donorChatTextInput).trim() }
             : {}),
         }),
       });
@@ -684,12 +697,18 @@ export function GuestAuthModal({
         return;
       }
       onUserUpdated(data.user);
+      setEditingDisplayName(false);
       setProfileSuccessMsg('Профіль оновлено');
     } catch {
       setErrorMsg('Помилка з’єднання із сервером.');
     } finally {
       setProfileSaving(false);
     }
+  };
+
+  const handleSaveProfile = async (e: FormEvent) => {
+    e.preventDefault();
+    await saveProfileData();
   };
 
   const handleGoogleLogin = async () => {
@@ -1122,51 +1141,114 @@ export function GuestAuthModal({
         {guestUser ? (
           <div className="space-y-4">
             {/* User Info Bar */}
-            <div className="flex items-center gap-3 p-3 bg-white dark:bg-[#262626] rounded-xl">
+            <div className="flex items-center gap-3.5 p-3.5 bg-white dark:bg-[#262626] rounded-2xl shadow-2xs">
               {guestUser.photoUrl ? (
                 <img
                   src={guestUser.photoUrl}
                   alt={guestUser.displayName}
                   referrerPolicy="no-referrer"
-                  className="w-9 h-9 rounded-full object-cover shrink-0"
+                  className="w-11 h-11 rounded-full object-cover shrink-0 ring-1 ring-black/8 dark:ring-white/12"
                 />
               ) : (
-                <span className="w-9 h-9 rounded-full bg-[#EFECE6] dark:bg-[#323232] inline-flex items-center justify-center text-[#5C5C58] dark:text-[#C4BFB4] shrink-0">
-                  <User className="w-4 h-4" />
+                <span className="w-11 h-11 rounded-full bg-[#EFECE6] dark:bg-[#323232] inline-flex items-center justify-center text-[#5C5C58] dark:text-[#C4BFB4] shrink-0">
+                  <User className="w-5 h-5" />
                 </span>
               )}
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-                  <p className="text-xs font-semibold text-[#141413] dark:text-[#F4F1EA] truncate max-w-full">
-                    {guestUser.displayName}
-                  </p>
-                  <UserRankBadges badges={liveBadges} size="xs" />
+              <div className="min-w-0 flex-1 space-y-0.5">
+                <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 min-w-0">
+                  {editingDisplayName ? (
+                    <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                      <input
+                        type="text"
+                        autoFocus
+                        maxLength={80}
+                        value={displayNameInput}
+                        onChange={(e) => setDisplayNameInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            void saveProfileData();
+                          } else if (e.key === 'Escape') {
+                            setDisplayNameInput(guestUser.displayName || '');
+                            setEditingDisplayName(false);
+                          }
+                        }}
+                        aria-label="Нове ім’я або псевдонім"
+                        className="flex-1 min-w-0 bg-transparent border-b border-[#2C5937] dark:border-[#F4F1EA] px-0.5 py-0.5 text-sm font-semibold text-[#141413] dark:text-[#F4F1EA] focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        disabled={profileSaving || !displayNameInput.trim()}
+                        onClick={() => void saveProfileData()}
+                        aria-label="Зберегти нікнейм"
+                        title="Зберегти"
+                        className="p-0.5 text-[#2C5937] dark:text-emerald-400 hover:opacity-80 cursor-pointer disabled:opacity-40"
+                      >
+                        <Check className="w-4 h-4" strokeWidth={2.2} />
+                      </button>
+                      <button
+                        type="button"
+                        disabled={profileSaving}
+                        onClick={() => {
+                          setDisplayNameInput(guestUser.displayName || '');
+                          setEditingDisplayName(false);
+                        }}
+                        aria-label="Скасувати редагування нікнейма"
+                        title="Скасувати"
+                        className="p-0.5 text-[#7A7870] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-[#F4F1EA] cursor-pointer"
+                      >
+                        <X className="w-3.5 h-3.5" strokeWidth={2} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
+                      <p className="text-sm font-semibold text-[#141413] dark:text-[#F4F1EA] truncate max-w-full">
+                        {guestUser.displayName}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDisplayNameInput(guestUser.displayName || '');
+                          setEditingDisplayName(true);
+                          setErrorMsg(null);
+                          setProfileSuccessMsg(null);
+                        }}
+                        aria-label="Змінити нікнейм"
+                        title="Змінити нікнейм"
+                        className="p-0.5 bg-transparent border-0 text-[#7A7870] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-[#F4F1EA] transition-colors cursor-pointer shrink-0"
+                      >
+                        <Pencil className="w-3.5 h-3.5" strokeWidth={1.85} />
+                      </button>
+                      <UserRankBadges badges={liveBadges} size="xs" />
+                    </div>
+                  )}
+
+                  {guestUser.createdAt && !editingDisplayName && (
+                    <span className="text-[11px] text-[#7A7870] dark:text-[#A6A196] font-normal tabular-nums shrink-0">
+                      Зареєстрований{' '}
+                      {new Date(guestUser.createdAt).toLocaleDateString('uk-UA', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                      })}
+                    </span>
+                  )}
                 </div>
-                <p className="text-[11px] text-[#5C5C58] dark:text-[#C4BFB4] truncate">
-                  {guestUser.email}
-                </p>
+
+                {guestUser.email && (
+                  <p className="text-[11px] text-[#5C5C58] dark:text-[#A6A196] truncate">
+                    {guestUser.email}
+                  </p>
+                )}
               </div>
             </div>
 
             {(liveBadges?.activityRank || liveBadges?.donorRank) && (
-              <div className="px-3 py-2.5 bg-white/75 dark:bg-[#262626] rounded-xl space-y-2">
+              <div className="px-3.5 py-2.5 bg-white/80 dark:bg-[#262626] rounded-xl space-y-2">
                 <p className="text-[11px] text-[#5C5C58] dark:text-[#C4BFB4]">
                   Відзнаки рейтингу:
                 </p>
                 <UserRankBadges badges={liveBadges} size="md" />
-              </div>
-            )}
-
-            {guestUser.createdAt && (
-              <div className="px-3 py-2 bg-white/75 dark:bg-[#262626] rounded-xl flex items-center justify-between text-[11px]">
-                <span className="text-[#5C5C58] dark:text-[#C4BFB4]">Зареєстрований на сайті:</span>
-                <span className="font-medium text-[#141413] dark:text-[#F4F1EA]">
-                  {new Date(guestUser.createdAt).toLocaleDateString('uk-UA', {
-                    day: 'numeric',
-                    month: 'long',
-                    year: 'numeric',
-                  })}
-                </span>
               </div>
             )}
 
@@ -1292,20 +1374,6 @@ export function GuestAuthModal({
                 </div>
               ) : (
                 <form onSubmit={handleSaveProfile} className="space-y-3.5 pt-1">
-                  <div className="space-y-1.5">
-                    <label className="block text-[11px] font-medium text-[#5C5C58] dark:text-[#C4BFB4]">
-                      Ім’я або псевдонім
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      maxLength={80}
-                      value={displayNameInput}
-                      onChange={(e) => setDisplayNameInput(e.target.value)}
-                      className="w-full bg-[#EFECE6] dark:bg-[#2A2A2A] rounded-xl px-3 py-2 text-xs text-[#141413] dark:text-[#F4F1EA] focus:outline-none focus:bg-white dark:focus:bg-[#323232] transition-colors"
-                    />
-                  </div>
-
                   {liveBadges?.donorRank && liveBadges.donorRank <= 3 && (
                     <div className="space-y-1.5">
                       <label className="block text-[11px] font-medium text-[#5C5C58] dark:text-[#C4BFB4]">
@@ -1323,7 +1391,7 @@ export function GuestAuthModal({
                   )}
 
                   {/* Quick 4-digit PIN management */}
-                  <div className="p-3 rounded-xl bg-white/85 dark:bg-[#262626] space-y-2.5">
+                  <div className="p-3.5 rounded-xl bg-white/85 dark:bg-[#262626] space-y-2.5">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-start gap-2.5 min-w-0">
                         <span className="w-7 h-7 rounded-lg bg-[#EFECE6] dark:bg-[#323232] text-[#141413] dark:text-[#F4F1EA] inline-flex items-center justify-center shrink-0 mt-0.5">
@@ -1400,13 +1468,15 @@ export function GuestAuthModal({
                       )}
                     </div>
 
-                    <button
-                      type="submit"
-                      disabled={profileSaving}
-                      className="px-4 py-2 bg-[#141413] text-[#FAF9F5] dark:bg-[#F4F1EA] dark:text-[#141413] rounded-xl text-xs font-medium hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-50"
-                    >
-                      {profileSaving ? 'Збереження...' : 'Зберегти'}
-                    </button>
+                    {liveBadges?.donorRank && liveBadges.donorRank <= 3 && (
+                      <button
+                        type="submit"
+                        disabled={profileSaving}
+                        className="px-4 py-2 bg-[#141413] text-[#FAF9F5] dark:bg-[#F4F1EA] dark:text-[#141413] rounded-xl text-xs font-medium hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-50"
+                      >
+                        {profileSaving ? 'Збереження...' : 'Зберегти'}
+                      </button>
+                    )}
                   </div>
                 </form>
               )

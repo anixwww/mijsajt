@@ -153,6 +153,7 @@ export function SiteFeedbackModal({
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (submitting) return;
     if (!message.trim()) {
       setError('Будь ласка, введіть ваш відгук або пропозицію.');
       return;
@@ -220,7 +221,7 @@ export function SiteFeedbackModal({
                 Відгук про сайт
               </h2>
               <p className="text-[11px] text-[#A6A196]">
-                Пропозиції, враження та відповіді автора
+                Пропозиції та відповіді автора
               </p>
             </div>
           </div>
@@ -250,16 +251,14 @@ export function SiteFeedbackModal({
             )}
 
             <div>
-              <label className="block text-xs font-medium text-[#FAF9F5]/70 mb-1.5">
-                Що змінити, додати чи ваші враження
-              </label>
               <textarea
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                placeholder="Опишіть ваші побажання щодо функціоналу, дизайну чи контенту..."
+                placeholder="Опишіть ваші враження або побажання щодо функціоналу, дизайну чи контенту..."
                 rows={3}
                 maxLength={2000}
                 required
+                aria-label="Текст відгуку про сайт"
                 className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-[#2A2A2A] focus:bg-[#323232] text-[#FAF9F5] placeholder:text-[#7E7B73] focus:outline-none transition-colors resize-none"
               />
             </div>

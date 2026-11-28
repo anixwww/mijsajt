@@ -1,6 +1,7 @@
 import {
   ExternalLink,
   Heart,
+  ListMusic,
   Loader2,
   Music2,
   Pause,
@@ -23,6 +24,10 @@ import {
 } from '../types.ts';
 import { trackClick } from '../utils/analytics.ts';
 import { deleteRadioTrackFromFirestore, saveRadioTracksToFirestore } from '../utils/radioFirestore.ts';
+import {
+  getSavedRadioTracks,
+  selectRadioStationRepertoire,
+} from '../utils/radioRepertoire.ts';
 import { formatDurationMs } from '../utils/soundcloudWidget.ts';
 import { EmptySectionState } from './EmptySectionState.tsx';
 import { LiveRadioEqualizer } from './LiveRadioEqualizer.tsx';
@@ -31,6 +36,8 @@ interface RadioSectionProps {
   allTracks: RadioTrack[];
   activeStation: RadioStationId;
   onSelectStation: (station: RadioStationId) => void;
+  playbackScope?: 'repertoire' | 'saved';
+  onChangePlaybackScope?: (scope: 'repertoire' | 'saved') => void;
   guestUser: GuestUser | null;
   getGuestToken?: (forceRefresh?: boolean) => Promise<string | null>;
   isAdmin: boolean;
@@ -58,7 +65,7 @@ interface RadioSectionProps {
   showDirectEmbed?: boolean;
   onToggleDirectEmbed?: () => void;
   onTogglePlay: () => void;
-  onSelectTrack?: (trackId: string, autoPlay?: boolean) => void;
+  onSelectTrack?: (trackId: string, autoPlay?: boolean, scope?: 'repertoire' | 'saved') => void;
   onNextTrack: () => void;
   onPrevTrack: () => void;
   onSeekTo: (ms: number) => void;
@@ -141,6 +148,8 @@ export function RadioSection({
   allTracks,
   activeStation,
   onSelectStation,
+  playbackScope = 'repertoire',
+  onChangePlaybackScope,
   guestUser,
   getGuestToken,
   isAdmin,
@@ -169,6 +178,9 @@ export function RadioSection({
   const [urlInput, setUrlInput] = useState('');
   const [importing, setImporting] = useState(false);
   const [likingTrackId, setLikingTrackId] = useState<string | null>(null);
+  const [localViewMode, setLocalViewMode] = useState<'stream' | 'saved'>(
+    playbackScope === 'saved' ? 'saved' : 'stream'
+  );
   const [adminMessage, setAdminMessage] = useState<{ type: 'ok' | 'err'; text: string } | null>(
     null
   );
@@ -176,31 +188,58 @@ export function RadioSection({
   const isOnline = useOnlineStatus();
   const isAuthorized = Boolean(guestUser);
 
-  const stationCounts = useMemo(() => {
-    let indie = 0;
-    let electronic = 0;
-    for (const track of allTracks) {
-      if ((track.station || 'indie') === 'electronic') electronic += 1;
-      else indie += 1;
-    }
-    return { indie, electronic };
-  }, [allTracks]);
+  const radioViewMode: 'stream' | 'saved' = isAuthorized ? localViewMode : 'stream';
+
+  const indieRepertoire = useMemo(
+    () => selectRadioStationRepertoire(allTracks, 'indie').repertoireTracks,
+    [allTracks]
+  );
+  const electronicRepertoire = useMemo(
+    () => selectRadioStationRepertoire(allTracks, 'electronic').repertoireTracks,
+    [allTracks]
+  );
+
+  const stationCounts = useMemo(
+    () => ({
+      indie: indieRepertoire.length,
+      electronic: electronicRepertoire.length,
+    }),
+    [indieRepertoire.length, electronicRepertoire.length]
+  );
 
   const tracks = useMemo(
-    () => allTracks.filter((t) => (t.station || 'indie') === activeStation),
-    [allTracks, activeStation]
+    () => (activeStation === 'electronic' ? electronicRepertoire : indieRepertoire),
+    [activeStation, indieRepertoire, electronicRepertoire]
+  );
+
+  const savedTracks = useMemo(
+    () => getSavedRadioTracks(allTracks, guestUser?.likedRadioTrackIds),
+    [allTracks, guestUser?.likedRadioTrackIds]
   );
 
   const activeStationLabel =
     RADIO_STATIONS.find((s) => s.id === activeStation)?.label ?? 'Інді';
 
-  const currentIndex = useMemo(() => {
-    if (tracks.length === 0) return -1;
-    const found = tracks.findIndex((t) => t.id === currentTrackId);
-    return found >= 0 ? found : 0;
-  }, [tracks, currentTrackId]);
+  const activePlaybackList =
+    playbackScope === 'saved' && savedTracks.length > 0 ? savedTracks : tracks;
 
-  const activeTrack = currentIndex >= 0 ? tracks[currentIndex] : null;
+  const currentIndex = useMemo(() => {
+    if (activePlaybackList.length === 0) return -1;
+    const found = activePlaybackList.findIndex((t) => t.id === currentTrackId);
+    if (found >= 0) return found;
+    return 0;
+  }, [activePlaybackList, currentTrackId]);
+
+  const activeTrack = useMemo(() => {
+    if (currentTrackId) {
+      const exact = allTracks.find((t) => t.id === currentTrackId);
+      if (exact && (playbackScope === 'saved' || (exact.station || 'indie') === activeStation)) {
+        return exact;
+      }
+    }
+    return currentIndex >= 0 ? activePlaybackList[currentIndex] : null;
+  }, [allTracks, currentTrackId, playbackScope, activeStation, currentIndex, activePlaybackList]);
+
   const activeSafeHref = getSafeExternalSoundCloudUrl(activeTrack?.soundcloudUrl);
   const progressPercent =
     durationMs > 0 ? Math.min(100, Math.max(0, (positionMs / durationMs) * 100)) : 0;
@@ -384,37 +423,69 @@ export function RadioSection({
   };
 
   const waveSelector = (
-    <div
-      role="tablist"
-      aria-label="Хвилі радіостанції"
-      className="inline-flex items-center gap-1 p-1 bg-[#EAE7DF] dark:bg-[#262626] rounded-xl"
-    >
-      {RADIO_STATIONS.map((station) => {
-        const active = activeStation === station.id;
-        const count = stationCounts[station.id];
-        return (
-          <button
-            key={station.id}
-            type="button"
-            role="tab"
-            aria-selected={active}
-            onClick={() => {
-              trackClick(`radio:wave:${station.id}`, `Хвиля: ${station.label}`, 'action');
-              onSelectStation(station.id);
-            }}
-            className={`touch-surface px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-150 whitespace-nowrap shrink-0 cursor-pointer inline-flex items-center gap-2 ${
-              active
-                ? 'bg-white dark:bg-[#323232] text-[#141413] dark:text-[#F4F1EA] shadow-xs'
-                : 'text-[#5C5C58] dark:text-[#C4BFB4] hover:text-[#141413] dark:hover:text-[#F4F1EA]'
-            }`}
-          >
-            <span>{station.label}</span>
-            {count > 0 && (
-              <span className="font-mono text-[11px] opacity-65 tabular-nums">{count}</span>
-            )}
-          </button>
-        );
-      })}
+    <div className="flex flex-wrap items-center gap-2.5">
+      <div
+        role="tablist"
+        aria-label="Хвилі радіостанції"
+        className="inline-flex items-center gap-1 p-1 bg-[#EAE7DF] dark:bg-[#262626] rounded-xl"
+      >
+        {RADIO_STATIONS.map((station) => {
+          const active = radioViewMode === 'stream' && activeStation === station.id;
+          const count = stationCounts[station.id];
+          return (
+            <button
+              key={station.id}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => {
+                trackClick(`radio:wave:${station.id}`, `Хвиля: ${station.label}`, 'action');
+                setLocalViewMode('stream');
+                onChangePlaybackScope?.('repertoire');
+                onSelectStation(station.id);
+              }}
+              className={`touch-surface px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-150 whitespace-nowrap shrink-0 cursor-pointer inline-flex items-center gap-2 ${
+                active
+                  ? 'bg-white dark:bg-[#323232] text-[#141413] dark:text-[#F4F1EA] shadow-xs'
+                  : 'text-[#5C5C58] dark:text-[#C4BFB4] hover:text-[#141413] dark:hover:text-[#F4F1EA]'
+              }`}
+            >
+              <span>{station.label}</span>
+              {count > 0 && (
+                <span className="font-mono text-[11px] opacity-65 tabular-nums">{count}</span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      <button
+        type="button"
+        onClick={() => {
+          const nextMode = radioViewMode === 'saved' ? 'stream' : 'saved';
+          setLocalViewMode(nextMode);
+          onChangePlaybackScope?.(nextMode === 'saved' ? 'saved' : 'repertoire');
+          trackClick(
+            nextMode === 'saved' ? 'radio:open_saved_list' : 'radio:close_saved_list',
+            nextMode === 'saved' ? 'Радіо: Мій список' : 'Радіо: Ефір',
+            'action'
+          );
+        }}
+        aria-pressed={radioViewMode === 'saved'}
+        className={`touch-surface px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-150 whitespace-nowrap shrink-0 cursor-pointer inline-flex items-center gap-2 ${
+          radioViewMode === 'saved'
+            ? 'bg-[#2C5937] text-white dark:bg-[#F4F1EA] dark:text-[#141413] shadow-xs'
+            : 'bg-[#EAE7DF] dark:bg-[#262626] text-[#141413] dark:text-[#F4F1EA] hover:bg-[#E1DDD3] dark:hover:bg-[#323232]'
+        }`}
+      >
+        <ListMusic className="w-4 h-4 shrink-0" strokeWidth={1.85} />
+        <span>Мій список</span>
+        {savedTracks.length > 0 && (
+          <span className="font-mono text-[11px] opacity-80 tabular-nums">
+            {savedTracks.length}
+          </span>
+        )}
+      </button>
     </div>
   );
 
@@ -696,11 +767,13 @@ export function RadioSection({
               />
               <div className="min-w-0 flex-1 space-y-1.5">
                 <div className="flex flex-wrap items-center gap-2 text-[11px] font-mono uppercase tracking-[0.12em] text-[#E5E5E5]">
-                  <span>{activeStationLabel}</span>
+                  <span>
+                    {playbackScope === 'saved' ? 'Мій список' : activeStationLabel}
+                  </span>
                   <span className="text-[#666666]">·</span>
                   <span className="tabular-nums text-[#D8D3C8]">
                     {String(currentIndex + 1).padStart(2, '0')} /{' '}
-                    {String(tracks.length).padStart(2, '0')}
+                    {String(activePlaybackList.length).padStart(2, '0')}
                   </span>
                   {isPlaying && (
                     <>
@@ -886,100 +959,130 @@ export function RadioSection({
             )}
           </m.div>
 
-          {/* Wave Playlist Queue */}
-          <div className="rounded-2xl bg-[var(--surface-card)] overflow-hidden">
-            {tracks.map((track, idx) => {
-              const isCurrent = track.id === activeTrack?.id;
-              const href = getSafeExternalSoundCloudUrl(track.soundcloudUrl);
-              return (
-                <div
-                  key={track.id}
-                  className={`flex items-center gap-3 px-4 py-2.5 transition-colors ${
-                    isCurrent ? 'bg-[#EAE7DF]/70 dark:bg-[#323232]' : 'hover:bg-[#FAF9F5] dark:hover:bg-[#2C2C2C]'
-                  }`}
+          {/* General Repertoire Queue is intentionally hidden in stream mode; User Saved Playlist shows in Мій список mode */}
+          {radioViewMode === 'saved' && (
+            <div className="rounded-2xl bg-[var(--surface-card)] overflow-hidden">
+              <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-black/[0.06] dark:border-white/[0.06]">
+                <div className="flex items-center gap-2">
+                  <Heart className="w-4 h-4 text-rose-500 fill-rose-500" strokeWidth={1.8} />
+                  <h3 className="text-sm font-semibold text-[#141413] dark:text-[#F4F1EA]">
+                    Мій список вподобаних пісень
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLocalViewMode('stream');
+                    onChangePlaybackScope?.('repertoire');
+                  }}
+                  className="text-xs font-medium text-[#5C5C58] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-white transition-colors cursor-pointer whitespace-nowrap shrink-0"
                 >
-                  <button
-                    type="button"
-                    onClick={() => onSelectTrack?.(track.id, true)}
-                    className="flex items-center gap-3 min-w-0 flex-1 text-left cursor-pointer py-0.5"
-                  >
-                    <span
-                      className={`w-6 font-mono text-xs tabular-nums shrink-0 ${
-                        isCurrent
-                          ? 'text-[#2B5434] dark:text-[#E5E5E5] font-semibold'
-                          : 'text-[#787872] dark:text-[#C4BFB4]'
-                      }`}
-                    >
-                      {String(idx + 1).padStart(2, '0')}
-                    </span>
-                    <TrackArtwork artworkUrl={track.artworkUrl} title={track.title} />
-                    <div className="min-w-0 flex-1">
-                      <p
-                        className={`text-sm truncate ${
+                  Повернутись до ефіру
+                </button>
+              </div>
+
+              {savedTracks.length === 0 ? (
+                <div className="px-6 py-10 text-center space-y-2">
+                  <Heart
+                    className="w-6 h-6 text-[#787872] dark:text-[#A6A196] mx-auto"
+                    strokeWidth={1.6}
+                  />
+                  <p className="text-sm font-medium text-[#141413] dark:text-[#F4F1EA]">
+                    Ваш список поки порожній
+                  </p>
+                  <p className="text-xs text-[#5C5C58] dark:text-[#A6A196] max-w-sm mx-auto">
+                    Натискайте серце на плеєрі під час прослуховування — улюблені пісні автоматично збиратимуться тут у ваш персональний плейлист.
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  {savedTracks.map((track, idx) => {
+                    const isCurrent = track.id === activeTrack?.id;
+                    const href = getSafeExternalSoundCloudUrl(track.soundcloudUrl);
+                    const stationLabel =
+                      RADIO_STATIONS.find((s) => s.id === (track.station || 'indie'))?.label ??
+                      'Інді';
+                    return (
+                      <div
+                        key={track.id}
+                        className={`flex items-center gap-3 px-4 py-2.5 transition-colors ${
                           isCurrent
-                            ? 'font-semibold text-[#141413] dark:text-white'
-                            : 'font-medium text-[#141413] dark:text-[#F4F1EA]'
+                            ? 'bg-[#EAE7DF]/70 dark:bg-[#323232]'
+                            : 'hover:bg-[#FAF9F5] dark:hover:bg-[#2C2C2C]'
                         }`}
                       >
-                        {track.title}
-                      </p>
-                      <p className="text-xs text-[#5C5C58] dark:text-[#A6A196] truncate">
-                        {track.artist}
-                      </p>
-                    </div>
-                  </button>
-                  <button
-                    type="button"
-                    disabled={likingTrackId === track.id}
-                    onClick={() => void handleToggleTrackLike(track)}
-                    aria-pressed={Boolean(track.isLiked)}
-                    aria-label={
-                      track.isLiked
-                        ? `Прибрати вподобайку з «${track.title}»`
-                        : `Вподобати «${track.title}»`
-                    }
-                    title={track.isLiked ? 'Прибрати вподобайку' : 'Вподобати'}
-                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg font-mono text-xs tabular-nums transition-colors cursor-pointer shrink-0 disabled:opacity-60 ${
-                      track.isLiked
-                        ? 'text-rose-600 dark:text-rose-400 bg-rose-500/12 hover:bg-rose-500/20'
-                        : 'text-[#5C5C58] dark:text-[#A6A196] hover:text-rose-600 dark:hover:text-rose-400 hover:bg-[#EAE7DF] dark:hover:bg-[#3A3A3A]'
-                    }`}
-                  >
-                    <Heart
-                      className={`w-3.5 h-3.5 transition-transform ${
-                        track.isLiked ? 'fill-rose-600 dark:fill-rose-400 scale-110' : ''
-                      }`}
-                      strokeWidth={1.8}
-                    />
-                    {(track.likesCount ?? 0) > 0 && <span>{track.likesCount}</span>}
-                  </button>
-                  {href && (
-                    <a
-                      href={href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label={`Відкрити ${track.title} на SoundCloud`}
-                      title="Відкрити на SoundCloud"
-                      className="p-2 rounded-lg text-[#5C5C58] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-white hover:bg-[#EAE7DF] dark:hover:bg-[#3A3A3A] transition-colors shrink-0"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                    </a>
-                  )}
-                  {isAdmin && (
-                    <button
-                      type="button"
-                      onClick={() => void handleDeleteTrack(track.id)}
-                      aria-label="Видалити трек із плейлиста"
-                      title="Видалити трек"
-                      className="p-2 rounded-lg text-rose-700 dark:text-rose-400 hover:bg-rose-700/10 cursor-pointer shrink-0 transition-colors"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  )}
+                        <button
+                          type="button"
+                          onClick={() => onSelectTrack?.(track.id, true, 'saved')}
+                          className="flex items-center gap-3 min-w-0 flex-1 text-left cursor-pointer py-0.5"
+                        >
+                          <span
+                            className={`w-6 font-mono text-xs tabular-nums shrink-0 ${
+                              isCurrent
+                                ? 'text-[#2B5434] dark:text-[#E5E5E5] font-semibold'
+                                : 'text-[#787872] dark:text-[#C4BFB4]'
+                            }`}
+                          >
+                            {String(idx + 1).padStart(2, '0')}
+                          </span>
+                          <TrackArtwork artworkUrl={track.artworkUrl} title={track.title} />
+                          <div className="min-w-0 flex-1">
+                            <p
+                              className={`text-sm truncate ${
+                                isCurrent
+                                  ? 'font-semibold text-[#141413] dark:text-white'
+                                  : 'font-medium text-[#141413] dark:text-[#F4F1EA]'
+                              }`}
+                            >
+                              {track.title}
+                            </p>
+                            <p className="text-xs text-[#5C5C58] dark:text-[#A6A196] truncate">
+                              {track.artist} · {stationLabel}
+                            </p>
+                          </div>
+                        </button>
+                        <button
+                          type="button"
+                          disabled={likingTrackId === track.id}
+                          onClick={() => void handleToggleTrackLike(track)}
+                          aria-pressed={Boolean(track.isLiked)}
+                          aria-label={`Прибрати вподобайку з «${track.title}»`}
+                          title="Прибрати зі списку"
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg font-mono text-xs tabular-nums transition-colors cursor-pointer shrink-0 disabled:opacity-60 text-rose-600 dark:text-rose-400 bg-rose-500/12 hover:bg-rose-500/20"
+                        >
+                          <Heart className="w-3.5 h-3.5 fill-rose-600 dark:fill-rose-400" strokeWidth={1.8} />
+                          {(track.likesCount ?? 0) > 0 && <span>{track.likesCount}</span>}
+                        </button>
+                        {href && (
+                          <a
+                            href={href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label={`Відкрити ${track.title} на SoundCloud`}
+                            title="Відкрити на SoundCloud"
+                            className="p-2 rounded-lg text-[#5C5C58] dark:text-[#A6A196] hover:text-[#141413] dark:hover:text-white hover:bg-[#EAE7DF] dark:hover:bg-[#3A3A3A] transition-colors shrink-0"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+                        )}
+                        {isAdmin && (
+                          <button
+                            type="button"
+                            onClick={() => void handleDeleteTrack(track.id)}
+                            aria-label="Видалити трек із бази"
+                            title="Видалити трек"
+                            className="p-2 rounded-lg text-rose-700 dark:text-rose-400 hover:bg-rose-700/10 cursor-pointer shrink-0 transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
-              );
-            })}
-          </div>
+              )}
+            </div>
+          )}
         </div>
       )}
       </div>

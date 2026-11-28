@@ -3,13 +3,13 @@ import {
   ArrowRight,
   BookOpen,
   Check,
-  CheckCircle2,
   Copy,
   Download,
   ExternalLink,
   FileText,
   Lock,
   Package,
+  RefreshCw,
   Search,
   ShieldCheck,
   ShoppingBag,
@@ -19,7 +19,7 @@ import {
   X,
 } from 'lucide-react';
 import { AnimatePresence, m } from 'motion/react';
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import {
   getEffectivePriceUah,
   isPhysicalProduct,
@@ -28,10 +28,7 @@ import {
   type StoreProduct,
 } from '../types.ts';
 import { setActiveMoment, trackClick } from '../utils/analytics.ts';
-import {
-  buildMonobankJarPayUrl,
-  createEncryptedPaymentEnvelope,
-} from '../utils/paymentCrypto.ts';
+import { createEncryptedPaymentEnvelope } from '../utils/paymentCrypto.ts';
 import { EditorialImage } from './EditorialImage.tsx';
 
 interface CartLibraryDrawerProps {
@@ -52,7 +49,7 @@ interface CartLibraryDrawerProps {
   onOpenProse?: (proseId: string) => void;
 }
 
-type CheckoutStep = 'review' | 'checkout' | 'monobank_jar';
+type CheckoutStep = 'review' | 'checkout' | 'acquiring';
 type ShippingCarrier = 'nova_poshta';
 
 
@@ -115,7 +112,7 @@ export function CartLibraryDrawer({
   unlockedItems,
   guestUser = null,
   getGuestToken,
-  monobankJarUrl = '',
+  monobankJarUrl: _monobankJarUrl = '',
   onOpenAuthModal: _onOpenAuthModal,
   onRestoreOrders,
   onClearDeviceLibrary,
@@ -138,18 +135,20 @@ export function CartLibraryDrawer({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [lastOrderCode, setLastOrderCode] = useState<string | null>(null);
   const [copiedUrlId, setCopiedUrlId] = useState<string | null>(null);
-  const [copiedJarField, setCopiedJarField] = useState<'url' | 'comment' | null>(null);
+  const [pendingStoreInvoice, setPendingStoreInvoice] = useState<{
+    invoiceId: string;
+    pageUrl: string;
+    orderCode: string;
+    totalUah: number;
+    statusText?: string;
+  } | null>(null);
+  const [checkingStorePayment, setCheckingStorePayment] = useState(false);
 
   const [restoreQuery, setRestoreQuery] = useState('');
   const [restoreStatus, setRestoreStatus] = useState<{ ok: boolean; text: string } | null>(null);
   const [restoring, setRestoring] = useState(false);
   const [confirmClearDevice, setConfirmClearDevice] = useState(false);
   const [deviceClearedNotice, setDeviceClearedNotice] = useState(false);
-
-  const safeMonobankJarUrl = useMemo(() => {
-    const trimmed = monobankJarUrl.trim();
-    return /^https?:\/\/\S+$/i.test(trimmed) ? trimmed : '';
-  }, [monobankJarUrl]);
 
   const {
     totalUah,
@@ -198,7 +197,8 @@ export function CartLibraryDrawer({
     if (!isOpen) {
       setCheckoutStep('review');
       setErrorMsg(null);
-      setCopiedJarField(null);
+      setPendingStoreInvoice(null);
+      setCheckingStorePayment(false);
       setConfirmClearDevice(false);
       setDeviceClearedNotice(false);
       return;
@@ -257,25 +257,95 @@ export function CartLibraryDrawer({
     }
   }, [isOpen, activeTab, checkoutStep]);
 
-  const handleCopyJarField = async (value: string, field: 'url' | 'comment') => {
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopiedJarField(field);
-      window.setTimeout(() => setCopiedJarField((prev) => (prev === field ? null : prev)), 2200);
-    } catch {
-      // Ignore if clipboard unavailable
+  const checkStoreInvoiceStatus = useCallback(
+    async (
+      invoiceId: string,
+      orderCode: string,
+      options?: { manual?: boolean }
+    ) => {
+      if (options?.manual) {
+        setCheckingStorePayment(true);
+        setErrorMsg(null);
+      }
+      try {
+        const authToken = getGuestToken ? await getGuestToken() : null;
+        const response = await fetch(
+          `/api/orders/monobank/status?invoiceId=${encodeURIComponent(invoiceId)}&orderCode=${encodeURIComponent(orderCode)}`,
+          {
+            headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined,
+          }
+        );
+        const data = await response.json();
+        if (!response.ok) {
+          if (options?.manual) {
+            setErrorMsg(data.error || 'Не вдалося перевірити статус оплати Монобанк.');
+          }
+          return;
+        }
+
+        if (data.paid && data.order) {
+          setPendingStoreInvoice(null);
+          setLastOrderCode(data.order.orderCode);
+          onCheckoutSuccess(data.order.items || [], data.order.orderCode);
+          setCheckoutStep('review');
+          onTabChange('library');
+          setBuyerName('');
+          setBuyerEmail('');
+          setPhone('');
+          setCity('');
+          setAddressOrBranch('');
+          setDeliveryComment('');
+          return;
+        }
+
+        if (data.status === 'failure' || data.status === 'expired' || data.status === 'reversed') {
+          setPendingStoreInvoice((prev) =>
+            prev && prev.invoiceId === invoiceId
+              ? {
+                  ...prev,
+                  statusText:
+                    data.failureReason ||
+                    (data.status === 'expired'
+                      ? 'Термін дії рахунку вийшов. Поверніться та створіть новий рахунок.'
+                      : 'Оплату через Монобанк скасовано або не завершено.'),
+                }
+              : prev
+          );
+        } else if (options?.manual) {
+          setPendingStoreInvoice((prev) =>
+            prev && prev.invoiceId === invoiceId
+              ? {
+                  ...prev,
+                  statusText: 'Очікуємо підтвердження платежу від Монобанк…',
+                }
+              : prev
+          );
+        }
+      } catch {
+        if (options?.manual) {
+          setErrorMsg('Помилка з’єднання із сервером під час перевірки оплати.');
+        }
+      } finally {
+        if (options?.manual) {
+          setCheckingStorePayment(false);
+        }
+      }
+    },
+    [getGuestToken, onCheckoutSuccess, onTabChange]
+  );
+
+  useEffect(() => {
+    if (!isOpen || checkoutStep !== 'acquiring' || !pendingStoreInvoice) {
+      return;
     }
-  };
-
-  const jarPaymentComment = useMemo(() => {
-    const cleanEmail = buyerEmail.trim();
-    return cleanEmail ? `Замовлення · ${cleanEmail}` : 'Замовлення у крамниці';
-  }, [buyerEmail]);
-
-  const jarPayUrl = useMemo(() => {
-    if (!safeMonobankJarUrl) return '';
-    return buildMonobankJarPayUrl(safeMonobankJarUrl, totalUah, jarPaymentComment);
-  }, [safeMonobankJarUrl, totalUah, jarPaymentComment]);
+    const timer = window.setInterval(() => {
+      void checkStoreInvoiceStatus(
+        pendingStoreInvoice.invoiceId,
+        pendingStoreInvoice.orderCode
+      );
+    }, 3200);
+    return () => window.clearInterval(timer);
+  }, [isOpen, checkoutStep, pendingStoreInvoice, checkStoreInvoiceStatus]);
 
   const executeStoreMonobankOrder = async () => {
     if (cartProducts.length === 0) return;
@@ -319,16 +389,37 @@ export function CartLibraryDrawer({
         return;
       }
 
-      setLastOrderCode(data.order.orderCode);
-      onCheckoutSuccess(data.order.items, data.order.orderCode);
-      setCheckoutStep('review');
-      onTabChange('library');
-      setBuyerName('');
-      setBuyerEmail('');
-      setPhone('');
-      setCity('');
-      setAddressOrBranch('');
-      setDeliveryComment('');
+      if (
+        data.mode === 'acquiring' &&
+        typeof data.invoiceId === 'string' &&
+        typeof data.pageUrl === 'string' &&
+        typeof data.orderCode === 'string'
+      ) {
+        setPendingStoreInvoice({
+          invoiceId: data.invoiceId,
+          pageUrl: data.pageUrl,
+          orderCode: data.orderCode,
+          totalUah: Number(data.totalUah || totalUah),
+        });
+        setCheckoutStep('acquiring');
+        return;
+      }
+
+      if (data.order?.payment?.status === 'paid' && Array.isArray(data.order.items)) {
+        setLastOrderCode(data.order.orderCode);
+        onCheckoutSuccess(data.order.items, data.order.orderCode);
+        setCheckoutStep('review');
+        onTabChange('library');
+        setBuyerName('');
+        setBuyerEmail('');
+        setPhone('');
+        setCity('');
+        setAddressOrBranch('');
+        setDeliveryComment('');
+        return;
+      }
+
+      setErrorMsg('Очікується підтвердження оплати від Монобанк.');
     } catch (err) {
       setErrorMsg(err instanceof Error && err.message ? err.message : 'Помилка з’єднання із сервером.');
     } finally {
@@ -352,11 +443,6 @@ export function CartLibraryDrawer({
         setErrorMsg('Будь ласка, вкажіть коректний номер телефону, місто та відділення або поштомат Нової Пошти.');
         return;
       }
-    }
-
-    if (safeMonobankJarUrl) {
-      setCheckoutStep('monobank_jar');
-      return;
     }
 
     await executeStoreMonobankOrder();
@@ -478,17 +564,18 @@ export function CartLibraryDrawer({
               {/* Contextual Step Bar inside Cart tab when items exist */}
               {activeTab ==='cart'&& cartProducts.length > 0 && (
                 <div className="flex items-center justify-between gap-3 pt-1 text-xs">
-                  {checkoutStep === 'monobank_jar' ? (
+                  {checkoutStep === 'acquiring' ? (
                     <button
                       type="button"
                       onClick={() => {
                         setCheckoutStep('checkout');
+                        setPendingStoreInvoice(null);
                         setErrorMsg(null);
                       }}
                       className="inline-flex items-center gap-1.5 min-h-[32px] -ml-1.5 px-1.5 text-[#5C5C58] dark:text-[#A8A49B] hover:text-[#2C5937] dark:hover:text-white font-medium rounded-lg transition-colors cursor-pointer whitespace-nowrap"
                     >
                       <ArrowLeft className="w-3.5 h-3.5 shrink-0" strokeWidth={1.85} />
-                      <span>Назад до даних доставки</span>
+                      <span>Змінити дані замовлення</span>
                     </button>
                   ) : checkoutStep ==='checkout'? (
                     <button
@@ -656,84 +743,42 @@ export function CartLibraryDrawer({
                       )}
                     </div>
                   </div>
-                ) : checkoutStep === 'monobank_jar' ? (
-                  /* STEP 2B: Monobank Jar Payment Confirmation */
+                ) : checkoutStep === 'acquiring' && pendingStoreInvoice ? (
+                  /* STEP 2B: Verified Monobank Acquiring Invoice Status */
                   <div className="space-y-5">
                     <div className="p-4 sm:p-5 rounded-xl bg-white dark:bg-[#262626] space-y-4">
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-sm font-semibold text-[#141413] dark:text-[#F4F1EA]">
-                          Оплата на банку Монобанку
+                          Рахунок Монобанк створено
                         </span>
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#141413] text-white text-[11px] font-semibold font-mono tabular-nums">
-                          {totalUah} ₴
+                          {pendingStoreInvoice.totalUah} ₴
                         </span>
                       </div>
 
                       <p className="text-xs text-[#5C5C58] dark:text-[#A8A49B] leading-relaxed">
-                        Перейдіть до банки Монобанку (та ж банка, що й у розділі підтримки) та перекажіть{' '}
+                        Перейдіть на сторінку оплати Монобанк для підтвердження платежу на суму{' '}
                         <strong className="font-mono text-[#141413] dark:text-[#F4F1EA]">
-                          {totalUah} ₴
-                        </strong>
-                        . У призначенні вкажіть коментар нижче, а після оплати натисніть кнопку підтвердження внизу.
+                          {pendingStoreInvoice.totalUah} ₴
+                        </strong>{' '}
+                        (замовлення #{pendingStoreInvoice.orderCode}). Доступ і підтвердження відкриються автоматично одразу після оплати.
                       </p>
 
-                      <div className="px-3 py-2.5 rounded-lg bg-[#F5F3EE] dark:bg-[#1E1E1E] flex items-center justify-between gap-2">
-                        <div className="min-w-0">
-                          <span className="block text-[10px] text-[#5C5C58] dark:text-[#C4BFB4]">
-                            Коментар до переказу
-                          </span>
-                          <span className="block text-xs font-mono text-[#141413] dark:text-[#F4F1EA] truncate">
-                            {jarPaymentComment}
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => handleCopyJarField(jarPaymentComment, 'comment')}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-medium bg-white dark:bg-[#2E2E2E] text-[#141413] dark:text-[#F4F1EA] hover:opacity-85 shrink-0 cursor-pointer"
-                        >
-                          {copiedJarField === 'comment' ? (
-                            <>
-                              <Check className="w-3.5 h-3.5 text-[#2C5937] dark:text-[#6EE7B7]" />
-                              <span>Скопійовано</span>
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="w-3.5 h-3.5" />
-                              <span>Копіювати</span>
-                            </>
-                          )}
-                        </button>
-                      </div>
+                      {pendingStoreInvoice.statusText && (
+                        <p className="text-xs font-medium text-[#2C5937] dark:text-[#E5E5E5]" role="status">
+                          {pendingStoreInvoice.statusText}
+                        </p>
+                      )}
 
-                      <div className="space-y-2.5 pt-1">
-                        <a
-                          href={jarPayUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="w-full inline-flex items-center justify-center gap-2 min-h-[46px] px-5 py-2.5 rounded-xl bg-[#141413] dark:bg-white text-white dark:text-[#141413] text-xs sm:text-sm font-semibold hover:opacity-92 transition-opacity"
-                        >
-                          <span>Відкрити банку Монобанку · {totalUah} ₴</span>
-                          <ExternalLink className="w-4 h-4 shrink-0" />
-                        </a>
-
-                        <button
-                          type="button"
-                          onClick={() => handleCopyJarField(safeMonobankJarUrl, 'url')}
-                          className="w-full inline-flex items-center justify-center gap-1.5 min-h-[40px] px-4 py-2 rounded-xl bg-[#EFECE6] dark:bg-[#323232] text-xs font-medium text-[#141413] dark:text-[#F4F1EA] hover:opacity-90 cursor-pointer"
-                        >
-                          {copiedJarField === 'url' ? (
-                            <>
-                              <Check className="w-3.5 h-3.5 text-[#2C5937] dark:text-[#6EE7B7]" />
-                              <span>Посилання на банку скопійовано</span>
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="w-3.5 h-3.5" />
-                              <span>Скопіювати посилання на банку</span>
-                            </>
-                          )}
-                        </button>
-                      </div>
+                      <a
+                        href={pendingStoreInvoice.pageUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full inline-flex items-center justify-center gap-2 min-h-[46px] px-5 py-2.5 rounded-xl bg-[#141413] dark:bg-white text-white dark:text-[#141413] text-xs sm:text-sm font-semibold hover:opacity-92 transition-opacity"
+                      >
+                        <span>Відкрити оплату Монобанк · {pendingStoreInvoice.totalUah} ₴</span>
+                        <ExternalLink className="w-4 h-4 shrink-0" />
+                      </a>
                     </div>
                   </div>
                 ) : (
@@ -893,9 +938,7 @@ export function CartLibraryDrawer({
                             Оплата тільки через Монобанк
                           </p>
                           <p className="text-[11px] text-white/70 mt-0.5 truncate">
-                            {safeMonobankJarUrl
-                              ? 'Оплата на банку Монобанку автора'
-                              : 'Безпечна оплата замовлення через Монобанк'}
+                            Безпечна оплата замовлення через еквайринг Монобанку
                           </p>
                         </div>
                         <div className="text-right shrink-0 font-mono tabular-nums">
@@ -1260,18 +1303,27 @@ export function CartLibraryDrawer({
                     <span>Оформити замовлення</span>
                     <ArrowRight className="w-4 h-4"strokeWidth={1.85} />
                   </button>
-                ) : checkoutStep === 'monobank_jar' ? (
+                ) : checkoutStep === 'acquiring' && pendingStoreInvoice ? (
                   <button
                     type="button"
-                    onClick={executeStoreMonobankOrder}
-                    disabled={submitting}
+                    onClick={() =>
+                      void checkStoreInvoiceStatus(
+                        pendingStoreInvoice.invoiceId,
+                        pendingStoreInvoice.orderCode,
+                        { manual: true }
+                      )
+                    }
+                    disabled={checkingStorePayment}
                     className="w-full btn-editorial-primary min-h-[48px] py-3 text-sm tabular-nums"
                   >
-                    <CheckCircle2 className="w-4 h-4" strokeWidth={1.85} />
+                    <RefreshCw
+                      className={`w-4 h-4 ${checkingStorePayment ? 'animate-spin' : ''}`}
+                      strokeWidth={1.85}
+                    />
                     <span>
-                      {submitting
-                        ? 'Підтвердження замовлення...'
-                        : 'Я оплатив(ла) — підтвердити замовлення'}
+                      {checkingStorePayment
+                        ? 'Перевірка платежу...'
+                        : 'Я оплатив(ла) — перевірити оплату'}
                     </span>
                   </button>
                 ) : (
@@ -1284,10 +1336,8 @@ export function CartLibraryDrawer({
                     <Lock className="w-4 h-4"strokeWidth={1.85} />
                     <span>
                       {submitting
-                        ? 'Захищена обробка оплати...'
-                        : safeMonobankJarUrl
-                          ? `Перейти до оплати Монобанк · ${totalUah} ₴`
-                          : `Оплатити через Монобанк · ${totalUah} ₴`}
+                        ? 'Створення рахунку Монобанк...'
+                        : `Оплатити через Монобанк · ${totalUah} ₴`}
                     </span>
                   </button>
                 )}

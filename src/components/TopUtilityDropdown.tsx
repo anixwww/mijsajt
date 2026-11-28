@@ -635,7 +635,7 @@ export function TopUtilityDropdown({
                       </p>
                       <p className="text-[11px] text-[#5C5C58] dark:text-[#C4BFB4] truncate">
                         {unreadFeedbackRepliesCount > 0
-                          ? `Є нова відповідь автора (${unreadFeedbackRepliesCount})`
+                          ? 'Є нова відповідь автора'
                           : 'Що змінити чи додати'}
                       </p>
                     </div>

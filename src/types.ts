@@ -273,7 +273,7 @@ export interface ShippingDetails {
 }
 
 export interface PaymentSummary {
-  status: 'paid';
+  status: 'pending' | 'paid' | 'failed' | 'expired';
   providerLabel: string;
   method: 'card' | 'apple_google_pay' | 'monobank';
   cardBrand?: string;
@@ -347,6 +347,8 @@ export interface OrderRecord {
   shipping?: ShippingDetails;
   payment?: PaymentSummary;
   items: PurchasedAccess[];
+  pendingProductIds?: string[];
+  pendingProseId?: string;
 }
 
 export type SocialPlatform =
@@ -536,6 +538,8 @@ export interface RadioTrack {
   addedAt: string;
   likesCount?: number;
   isLiked?: boolean;
+  inRepertoire?: boolean;
+  repertoireBucket?: 'top_liked' | 'newest' | null;
 }
 
 

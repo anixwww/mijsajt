@@ -3,6 +3,7 @@ import compression from 'compression';
 import crypto from 'crypto';
 import dns from 'dns/promises';
 import express, { type Request, type Response } from 'express';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import fs from 'fs';
 import http from 'http';
 import net from 'net';
@@ -31,6 +32,7 @@ import {
   type DonorRecord,
   type FeedbackRecord,
   type GuestAccountRecord,
+  type MonobankJarWatermark,
   type PoemSubmissionRecord,
   type ProseSubmissionRecord,
   type RawBlogPost,
@@ -116,58 +118,84 @@ import {
   recordSiteVisit,
 } from './src/api/visitAnalytics.ts';
 import {
-  cloudSyncState,
-  deleteChatMessageInFirestore,
-  deleteDonationInFirestore,
-  deletePoemSubmissionInFirestore,
-  deleteProseSubmissionInFirestore,
-  deleteRadioTrackInFirestore,
-  deleteReviewsForTargetInFirestore,
-  deleteSiteFeedbackInFirestore,
-  deleteWeeklyMusicSelectionInFirestore,
-  hydrateAdminOrdersFromFirestore,
-  hydrateAdminPoemSubmissionsFromFirestore,
-  hydrateAdminProseSubmissionsFromFirestore,
-  hydrateAdminSecretsFromFirestore,
-  hydrateAdminSiteFeedbackFromFirestore,
-  hydrateAuthorizedProseAndRadio,
-  hydrateCommunityStateFromFirestore,
-  hydrateGuestLikesFromFirestore,
-  hydratePoemLikesFromFirestore,
-  hydratePublicCatalogFromFirestore,
-  hydrateRadioLikesFromFirestore,
-  hydrateSingleAuthorizedProse,
-  hydrateUserPoemSubmissionsFromFirestore,
-  hydrateUserProseSubmissionsFromFirestore,
-  hydrateUserSiteFeedbackFromFirestore,
-  loadMediaAssetFromFirestore,
-  queueDatabaseSyncToFirestore,
-  syncSiteFeedbackToFirestore,
-  saveMediaAssetToFirestore,
-  syncAdminTelegramTokenToFirestore,
-  syncChatMessageToFirestore,
-  syncDonationToFirestore,
-  deleteReviewsForTargetInFirestore,
-  deleteSingleReviewInFirestore,
-  syncGuestLikesToFirestore,
-  syncOrderToFirestore,
-  syncPoemLikeEntryToFirestore,
-  syncPoemSubmissionToFirestore,
-  syncProseSubmissionToFirestore,
-  syncPublicUserProfileToFirestore,
-  syncRadioLikeEntryToFirestore,
-  syncReviewToFirestore,
-  syncSingleWeeklyMusicSelectionInFirestore,
-  syncUserPoemLikeEntriesToFirestore,
-  syncWorkVoteToFirestore,
-  updateSingleReviewInFirestore,
-} from './server/firestoreSync.ts';
-import {
   ensureWeeklyWinnersUpToDate,
   getWeekPeriodForDate,
   getWeekPeriodForWeekKey,
   recordWeeklyVoteLog,
 } from './server/weeklyHighlights.ts';
+import {
+  selectRadioStationRepertoire,
+  type RadioRepertoireBucket,
+} from './src/utils/radioRepertoire.ts';
+import {
+  checkPersistentRateLimit,
+  configurePersistentRateLimitPath,
+  createPersistentRateLimitStore,
+} from './server/persistentRateLimit.ts';
+import {
+  loadSiteDatabaseFromSqlite,
+  saveSiteDatabaseToSqlite,
+  savePaymentSessionToSqlite,
+  getAndConsumePaymentSessionFromSqlite,
+  purgeExpiredPaymentSessionsSqlite,
+  upsertMonobankInvoiceSqlite,
+  getMonobankInvoiceSqlite,
+  purgeExpiredMonobankInvoicesSqlite,
+  type SqliteMonobankInvoice,
+} from './server/sqliteStore.ts';
+import {
+  cloudSyncState,
+  paymentSessions,
+  pendingMonobankStoreInvoices,
+  pendingMonobankProseInvoices,
+  getMonobankToken,
+  persistPendingInvoices,
+  ensurePendingInvoicesLoaded,
+  queueDatabaseSyncToFirestore,
+  syncWorkVoteToFirestore,
+  syncReviewToFirestore,
+  updateSingleReviewInFirestore,
+  deleteSingleReviewInFirestore,
+  hydrateAdminPoemSubmissionsFromFirestore,
+  hydrateAdminProseSubmissionsFromFirestore,
+  hydrateAdminOrdersFromFirestore,
+  hydrateAdminSiteFeedbackFromFirestore,
+  syncDonationToFirestore,
+  deleteDonationInFirestore,
+  syncSiteFeedbackToFirestore,
+  hydrateUserSiteFeedbackFromFirestore,
+  deleteSiteFeedbackInFirestore,
+  deleteReviewsForTargetInFirestore,
+  syncPoemSubmissionToFirestore,
+  saveMediaAssetToFirestore,
+  loadMediaAssetFromFirestore,
+  deletePoemSubmissionInFirestore,
+  syncProseSubmissionToFirestore,
+  deleteProseSubmissionInFirestore,
+  deleteRadioTrackInFirestore,
+  syncSingleWeeklyMusicSelectionInFirestore,
+  deleteWeeklyMusicSelectionInFirestore,
+  syncPublicUserProfileToFirestore,
+  hydrateSingleAuthorizedProse,
+  syncChatMessageToFirestore,
+  deleteChatMessageInFirestore,
+  syncAdminTelegramTokenToFirestore,
+  hydrateAuthorizedProseAndRadio,
+  hydratePublicCatalogFromFirestore,
+  hydrateUserPoemSubmissionsFromFirestore,
+  hydrateUserProseSubmissionsFromFirestore,
+  syncGuestLikesToFirestore,
+  syncRadioLikeEntryToFirestore,
+  syncUserPoemLikeEntriesToFirestore,
+  syncPoemLikeEntryToFirestore,
+  syncOrderToFirestore,
+  hydratePoemLikesFromFirestore,
+  hydrateRadioLikesFromFirestore,
+  hydrateCommunityStateFromFirestore,
+  hydrateGuestLikesFromFirestore,
+  hydrateAdminSecretsFromFirestore,
+  type PendingMonobankStoreInvoice,
+} from './server/firestoreStubs.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -175,7 +203,6 @@ const DATA_DIR = path.join(__dirname, 'data');
 const UPLOADS_DIR = path.join(DATA_DIR, 'uploads');
 const EBOOKS_DIR = path.join(DATA_DIR, 'ebooks');
 const PROSE_PDF_DIR = path.join(DATA_DIR, 'prose-pdfs');
-const DATA_FILE = path.join(DATA_DIR, 'store.json');
 const ADMIN_EMAILS = new Set<string>([
   'andrijdankiv5@gmail.com',
   'andriidankiv.writer@gmail.com',
@@ -208,6 +235,7 @@ interface VerifiedFirebaseClaims {
   uid: string;
   email: string | null;
   emailVerified: boolean;
+  email_verified?: boolean;
   name: string | null;
   picture: string | null;
 }
@@ -493,37 +521,10 @@ function ensureDataDirectories(): void {
 }
 
 function flushDatabaseSync(): void {
-  if (!cachedDb || !dirtyPendingWrite) return;
-  if (pendingFlushTimer) {
-    clearTimeout(pendingFlushTimer);
-    pendingFlushTimer = null;
-    pendingFlushDelayMs = 150;
+  if (cachedDb && dirtyPendingWrite) {
+    saveSiteDatabaseToSqlite(cachedDb);
+    dirtyPendingWrite = false;
   }
-  ensureDataDirectories();
-  const tmpFile = `${DATA_FILE}.tmp`;
-  fs.writeFileSync(tmpFile, JSON.stringify(cachedDb), 'utf-8');
-  fs.renameSync(tmpFile, DATA_FILE);
-  dirtyPendingWrite = false;
-}
-
-function registerShutdownFlush(): void {
-  if (shutdownHooksRegistered) return;
-  shutdownHooksRegistered = true;
-  const onExit = () => {
-    try {
-      flushDatabaseSync();
-    } catch {
-      // Best-effort flush on exit
-    }
-  };
-  process.once('SIGINT', () => {
-    onExit();
-    process.exit(0);
-  });
-  process.once('SIGTERM', () => {
-    onExit();
-    process.exit(0);
-  });
 }
 
 function ensureDatabase(): SiteDatabase {
@@ -531,721 +532,10 @@ function ensureDatabase(): SiteDatabase {
     return cachedDb;
   }
   ensureDataDirectories();
-  registerShutdownFlush();
-  if (!fs.existsSync(DATA_FILE)) {
-    const seeded = structuredClone(INITIAL_DATABASE);
-    fs.writeFileSync(DATA_FILE, JSON.stringify(seeded), 'utf-8');
-    cachedDb = seeded;
-    syncRuntimeSets(cachedDb);
-    return cachedDb;
-  }
-  try {
-    const raw = fs.readFileSync(DATA_FILE, 'utf-8');
-    const parsed = JSON.parse(raw) as Partial<SiteDatabase>;
-    const mergedProducts = Array.isArray(parsed.products) ? parsed.products : [];
-    const rawAnalytics = parsed.analytics;
-    const analytics: SiteAnalyticsData = rawAnalytics
-      ? {
-          totalSessions: Number(rawAnalytics.totalSessions) || 0,
-          seenSessionIds: Array.isArray(rawAnalytics.seenSessionIds) ? rawAnalytics.seenSessionIds : [],
-          totalClicks: Number(rawAnalytics.totalClicks) || 0,
-          totalTrackedSeconds: Number(rawAnalytics.totalTrackedSeconds) || 0,
-          clicksByTarget: rawAnalytics.clicksByTarget ?? {},
-          dwellByTarget: rawAnalytics.dwellByTarget ?? {},
-          exitsByMoment: rawAnalytics.exitsByMoment ?? {},
-          recentEvents: Array.isArray(rawAnalytics.recentEvents) ? rawAnalytics.recentEvents : [],
-          visitRecords: Array.isArray(rawAnalytics.visitRecords) ? rawAnalytics.visitRecords : [],
-        }
-      : createEmptyAnalytics();
-
-    const existingProse = Array.isArray(parsed.prose) ? parsed.prose : INITIAL_DATABASE.prose;
-    const mergedProseTags: ProseTag[] = Array.isArray(parsed.proseTags)
-      ? parsed.proseTags
-          .filter((t): t is ProseTag => Boolean(t && typeof t.id === 'string' && typeof t.label === 'string' && t.label.trim()))
-          .map((t) => ({
-            id: t.id,
-            label: t.label.trim().slice(0, 60),
-            color: normalizeProseTagColor(t.color),
-          }))
-      : structuredClone(INITIAL_DATABASE.proseTags);
-    const validProseTagIds = new Set(mergedProseTags.map((t) => t.id));
-
-    const seedProseById = new Map(INITIAL_DATABASE.prose.map((p) => [p.id, p]));
-    let mergedProse: RawProseWork[] = existingProse.map((rawWork) => {
-      const work = rawWork as RawProseWork & { year?: number; readingMinutes?: number };
-      const seed = seedProseById.get(work.id);
-      const normalizedPublishedAt =
-        typeof work.publishedAt === 'string' && work.publishedAt.trim()
-          ? work.publishedAt.trim()
-          : seed?.publishedAt ??
-            (work.year
-              ? `1 січня ${work.year}`
-              : new Date().toLocaleDateString('uk-UA', { day: 'numeric', month: 'long', year: 'numeric' }));
-      const normalizedSlogan =
-        typeof work.slogan === 'string'
-          ? work.slogan.trim()
-          : seed?.slogan ?? '';
-      const normalizedTagIds = Array.isArray(work.tagIds)
-        ? work.tagIds.filter((id): id is string => typeof id === 'string' && validProseTagIds.has(id))
-        : (seed?.tagIds ?? []).filter((id) => validProseTagIds.has(id));
-      const normalizedChapters: ProseChapter[] = Array.isArray(work.chapters)
-        ? work.chapters
-            .filter((ch): ch is ProseChapter => Boolean(ch && typeof ch.id === 'string' && typeof ch.title === 'string'))
-            .map((ch) => ({
-              id: ch.id,
-              title: ch.title.trim(),
-              content: typeof ch.content === 'string' ? ch.content : '',
-              publishedAt:
-                typeof ch.publishedAt === 'string' && ch.publishedAt.trim()
-                  ? ch.publishedAt.trim()
-                  : normalizedPublishedAt,
-            }))
-        : [];
-      const normalizedPages = computeProseWorkPages({
-        content: work.content,
-        chapters: normalizedChapters,
-        hasPdf: Boolean(work.pdfStorageKey),
-        fallbackPages:
-          typeof work.pages === 'number' && work.pages > 0
-            ? Math.round(work.pages)
-            : seed?.pages ?? 1,
-      });
-
-      const validPhotoUrlPattern = /^(\/src\/assets\/|\/uploads\/|\/assets\/|https?:\/\/)/i;
-      const normalizedMoodboardUrls = Array.isArray(work.moodboardUrls)
-        ? Array.from(
-            new Set(
-              work.moodboardUrls
-                .filter((item): item is string => typeof item === 'string' && validPhotoUrlPattern.test(item.trim()))
-                .map((item) => normalizeBuiltInImageUrl(item.trim()))
-            )
-          ).slice(0, 20)
-        : seed?.moodboardUrls ?? [];
-
-      const { year: _y, readingMinutes: _rm, ...restWork } = work;
-      const rawStatus = work.status as ProseStatus | 'none' | undefined;
-      const normalizedStatus =
-        rawStatus === ('none' as unknown)
-          ? undefined
-          : normalizeProseStatus(rawStatus) ?? (rawStatus === undefined ? seed?.status : undefined);
-      const resolvedMode = resolveProseAccessMode({
-        accessMode:
-          work.accessMode === 'public' || work.accessMode === 'authorized' || work.accessMode === 'paid'
-            ? work.accessMode
-            : work.requiresAuth === undefined && !work.isPaid
-              ? seed?.accessMode
-              : undefined,
-        requiresAuth:
-          work.requiresAuth !== undefined
-            ? Boolean(work.requiresAuth)
-            : !work.isPaid
-              ? seed?.requiresAuth
-              : false,
-        isPaid: typeof work.isPaid === 'boolean' ? work.isPaid : seed?.isPaid,
-        priceUah:
-          typeof work.priceUah === 'number'
-            ? work.priceUah
-            : seed?.priceUah,
-      });
-
-      const baseNormalized: RawProseWork = {
-        ...restWork,
-        pages: normalizedPages,
-        publishedAt: normalizedPublishedAt,
-        slogan: normalizedSlogan,
-        tagIds: normalizedTagIds,
-        status: normalizedStatus,
-        accessMode: resolvedMode,
-        requiresAuth: resolvedMode === 'authorized',
-        isPaid: resolvedMode === 'paid',
-        priceUah:
-          resolvedMode === 'paid'
-            ? Math.max(10, Math.round(Number(work.priceUah || seed?.priceUah || 75)))
-            : 0,
-        chapters: normalizedChapters,
-        moodboardUrls: normalizedMoodboardUrls,
-        ...(work.isCommunity === true ? { isCommunity: true } : {}),
-        ...(typeof work.authorUid === 'string' && work.authorUid.trim() ? { authorUid: work.authorUid.trim() } : {}),
-        ...(typeof work.authorName === 'string' && work.authorName.trim() ? { authorName: work.authorName.trim() } : {}),
-        ...(typeof work.authorPhotoUrl === 'string' && work.authorPhotoUrl.trim()
-          ? { authorPhotoUrl: work.authorPhotoUrl.trim() }
-          : {}),
-        ...(typeof work.submissionId === 'string' && work.submissionId.trim()
-          ? { submissionId: work.submissionId.trim() }
-          : {}),
-      };
-      return baseNormalized;
-    });
-    // Preserve user-authored prose list without re-injecting starter seeds
-
-    const existingSocialMap = new Map(
-      Array.isArray(parsed.socialLinks)
-        ? parsed.socialLinks
-            .filter((item): item is SocialLinkItem => Boolean(item && typeof item.platform === 'string'))
-            .map((item) => [item.platform, item])
-        : []
-    );
-    const mergedSocialLinks: SocialLinkItem[] = DEFAULT_SOCIAL_LINKS.map((seed) => {
-      const existing = existingSocialMap.get(seed.platform);
-      if (!existing) return { ...seed };
-      return {
-        platform: seed.platform,
-        label: typeof existing.label === 'string' && existing.label.trim() ? existing.label.trim() : seed.label,
-        url: typeof existing.url === 'string' ? existing.url.trim() : seed.url,
-        enabled: Boolean(existing.enabled),
-      };
-    });
-
-    const normalizedInterviews: InterviewLinkItem[] = Array.isArray(parsed.interviews)
-      ? parsed.interviews
-          .filter(
-            (item): item is InterviewLinkItem =>
-              Boolean(
-                item &&
-                  typeof item.id === 'string' &&
-                  typeof item.title === 'string' &&
-                  item.title.trim() &&
-                  ((typeof item.content === 'string' && item.content.trim()) ||
-                    (typeof item.url === 'string' && item.url.trim()))
-              )
-          )
-          .map((item) => {
-            const trimmedContent = typeof item.content === 'string' ? item.content.trim() : '';
-            const trimmedUrl = typeof item.url === 'string' ? item.url.trim() : '';
-            return {
-              id: item.id.trim(),
-              title: item.title.trim(),
-              outlet: typeof item.outlet === 'string' ? item.outlet.trim() : '',
-              dateLabel: typeof item.dateLabel === 'string' ? item.dateLabel.trim() : '',
-              ...(trimmedContent ? { content: trimmedContent } : {}),
-              ...(trimmedUrl ? { url: trimmedUrl } : {}),
-            };
-          })
-      : DEFAULT_INTERVIEWS;
-
-    const normalizedContactMessages: ContactMessageRecord[] = Array.isArray(parsed.contactMessages)
-      ? parsed.contactMessages
-          .filter(
-            (m): m is ContactMessageRecord =>
-              Boolean(m && typeof m.id === 'string' && typeof m.message === 'string')
-          )
-          .map((m) => ({
-            id: m.id,
-            name: typeof m.name === 'string' ? m.name : '',
-            contact: typeof m.contact === 'string' ? m.contact : '',
-            message: m.message,
-            createdAt: typeof m.createdAt === 'string' ? m.createdAt : new Date().toISOString(),
-            read: Boolean(m.read),
-          }))
-      : [];
-
-    const fallbackAuthorPhoto =
-      typeof parsed.authorPhotoUrl === 'string' && parsed.authorPhotoUrl.trim()
-        ? normalizeBuiltInImageUrl(parsed.authorPhotoUrl.trim())
-        : DEFAULT_AUTHOR_PHOTO_URL;
-    const rawAuthorPhotos = Array.isArray(parsed.authorPhotos)
-      ? Array.from(
-          new Set(
-            parsed.authorPhotos
-              .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
-              .map((item) => normalizeBuiltInImageUrl(item.trim()))
-          )
-        ).slice(0, 20)
-      : [];
-    const normalizedAuthorPhotos =
-      rawAuthorPhotos.length > 0 ? rawAuthorPhotos : [fallbackAuthorPhoto];
-
-    const hydrated: SiteDatabase = {
-      heroLeadText:
-        typeof parsed.heroLeadText === 'string'
-          ? parsed.heroLeadText.trim()
-          : DEFAULT_HERO_LEAD_TEXT,
-      authorAboutText:
-        typeof parsed.authorAboutText === 'string'
-          ? parsed.authorAboutText.trim()
-          : DEFAULT_AUTHOR_ABOUT_TEXT,
-      authorPhotoUrl: normalizedAuthorPhotos[0],
-      authorPhotos: normalizedAuthorPhotos,
-      socialLinks: mergedSocialLinks,
-      monobankJarUrl:
-        typeof parsed.monobankJarUrl === 'string'
-          ? parsed.monobankJarUrl.trim()
-          : DEFAULT_MONOBANK_JAR_URL,
-      monobankModalTitle:
-        typeof parsed.monobankModalTitle === 'string' && parsed.monobankModalTitle.trim()
-          ? parsed.monobankModalTitle.trim()
-          : DEFAULT_MONOBANK_MODAL_TITLE,
-      monobankModalSubtitle:
-        typeof parsed.monobankModalSubtitle === 'string'
-          ? parsed.monobankModalSubtitle.trim()
-          : DEFAULT_MONOBANK_MODAL_SUBTITLE,
-      monobankCardLabel:
-        typeof parsed.monobankCardLabel === 'string'
-          ? parsed.monobankCardLabel.trim()
-          : DEFAULT_MONOBANK_CARD_LABEL,
-      monobankModalText:
-        typeof parsed.monobankModalText === 'string'
-          ? parsed.monobankModalText.trim()
-          : DEFAULT_MONOBANK_MODAL_TEXT,
-      monobankEmptyText:
-        typeof parsed.monobankEmptyText === 'string'
-          ? parsed.monobankEmptyText.trim()
-          : DEFAULT_MONOBANK_EMPTY_TEXT,
-      contactEmail:
-        typeof parsed.contactEmail === 'string'
-          ? parsed.contactEmail.trim()
-          : DEFAULT_CONTACT_EMAIL,
-      interviews: normalizedInterviews,
-      homeActionAboutTitle:
-        typeof parsed.homeActionAboutTitle === 'string' && parsed.homeActionAboutTitle.trim()
-          ? parsed.homeActionAboutTitle.trim()
-          : DEFAULT_HOME_ACTION_ABOUT,
-      homeActionContactTitle:
-        typeof parsed.homeActionContactTitle === 'string' &&
-        parsed.homeActionContactTitle.trim() &&
-        parsed.homeActionContactTitle.trim() !== 'Зв’язатися з автором' &&
-        parsed.homeActionContactTitle.trim() !== "Зв'язатися з автором"
-          ? parsed.homeActionContactTitle.trim()
-          : DEFAULT_HOME_ACTION_CONTACT,
-      homeActionMonobankTitle:
-        typeof parsed.homeActionMonobankTitle === 'string' && parsed.homeActionMonobankTitle.trim()
-          ? parsed.homeActionMonobankTitle.trim()
-          : DEFAULT_HOME_ACTION_MONOBANK,
-      homeActionInterviewsTitle:
-        typeof parsed.homeActionInterviewsTitle === 'string' && parsed.homeActionInterviewsTitle.trim()
-          ? parsed.homeActionInterviewsTitle.trim()
-          : DEFAULT_HOME_ACTION_INTERVIEWS,
-      homeRepeaters: normalizeHomeRepeatersConfig(parsed.homeRepeaters),
-      contactMessages: normalizedContactMessages,
-      poems: parsed.poems ?? INITIAL_DATABASE.poems,
-      poemSubmissions: Array.isArray(parsed.poemSubmissions)
-        ? parsed.poemSubmissions.filter(
-            (sub): sub is PoemSubmissionRecord =>
-              Boolean(
-                sub &&
-                  typeof sub.id === 'string' &&
-                  typeof sub.authorUid === 'string' &&
-                  typeof sub.authorName === 'string' &&
-                  typeof sub.title === 'string' &&
-                  typeof sub.content === 'string'
-              )
-          )
-        : [],
-      prose: mergedProse,
-      proseSubmissions: Array.isArray(parsed.proseSubmissions)
-        ? parsed.proseSubmissions.filter(
-            (sub): sub is ProseSubmissionRecord =>
-              Boolean(
-                sub &&
-                  typeof sub.id === 'string' &&
-                  typeof sub.authorUid === 'string' &&
-                  typeof sub.authorName === 'string' &&
-                  typeof sub.title === 'string' &&
-                  typeof sub.content === 'string'
-              )
-          )
-        : [],
-      proseTags: mergedProseTags,
-      proseAuthDiscountPercent:
-        typeof parsed.proseAuthDiscountPercent === 'number' &&
-        Number.isFinite(parsed.proseAuthDiscountPercent)
-          ? Math.max(0, Math.min(90, Math.round(parsed.proseAuthDiscountPercent)))
-          : INITIAL_DATABASE.proseAuthDiscountPercent,
-      proseTelegramDiscountPercent:
-        typeof parsed.proseTelegramDiscountPercent === 'number' &&
-        Number.isFinite(parsed.proseTelegramDiscountPercent)
-          ? Math.max(0, Math.min(90, Math.round(parsed.proseTelegramDiscountPercent)))
-          : typeof parsed.storeAuthDiscountPercent === 'number' &&
-              Number.isFinite(parsed.storeAuthDiscountPercent) &&
-              parsed.storeAuthDiscountPercent > 0
-            ? Math.max(0, Math.min(90, Math.round(parsed.storeAuthDiscountPercent)))
-            : INITIAL_DATABASE.proseTelegramDiscountPercent,
-      telegramChannelId:
-        typeof parsed.telegramChannelId === 'string'
-          ? parsed.telegramChannelId.trim()
-          : '',
-      storeAuthDiscountPercent: 0,
-      blog: (parsed.blog ?? INITIAL_DATABASE.blog).map((post) => ({
-        ...post,
-        coverImage: typeof post.coverImage === 'string' ? normalizeBuiltInImageUrl(post.coverImage) : post.coverImage,
-      })),
-      products: mergedProducts.map((product) => ({
-        ...product,
-        coverImage:
-          typeof product.coverImage === 'string' ? normalizeBuiltInImageUrl(product.coverImage) : product.coverImage,
-      })),
-      orders: parsed.orders ?? [],
-      poemVotes: parsed.poemVotes ?? {},
-      proseVotes: parsed.proseVotes ?? {},
-      productVotes: parsed.productVotes ?? {},
-      reviews: parsed.reviews ?? [],
-      recentRatings: Array.isArray(parsed.recentRatings) ? parsed.recentRatings : [],
-      poemViews: parsed.poemViews ?? {},
-      blogViews: parsed.blogViews ?? {},
-      visitorIpHashes: parsed.visitorIpHashes ?? [],
-      guestAccounts: Array.isArray(parsed.guestAccounts)
-        ? parsed.guestAccounts.map((acc) => ({
-            ...acc,
-            totalTimeSeconds:
-              typeof acc.totalTimeSeconds === 'number' && Number.isFinite(acc.totalTimeSeconds)
-                ? Math.max(0, Math.round(acc.totalTimeSeconds))
-                : 0,
-            lastSeenAt: typeof acc.lastSeenAt === 'string' ? acc.lastSeenAt : acc.updatedAt || acc.createdAt,
-            likedPoemIds: Array.isArray(acc.likedPoemIds)
-              ? Array.from(new Set(acc.likedPoemIds.filter((id): id is string => typeof id === 'string')))
-              : [],
-            likedRadioTrackIds: Array.isArray(acc.likedRadioTrackIds)
-              ? Array.from(
-                  new Set(acc.likedRadioTrackIds.filter((id): id is string => typeof id === 'string'))
-                )
-              : [],
-            ...(typeof acc.donorChatText === 'string' && acc.donorChatText.trim()
-              ? { donorChatText: acc.donorChatText.trim().slice(0, 80) }
-              : {}),
-            ...(typeof acc.pinHash === 'string' && typeof acc.pinSalt === 'string'
-              ? {
-                  pinHash: acc.pinHash,
-                  pinSalt: acc.pinSalt,
-                  ...(typeof acc.pinFailedAttempts === 'number' && Number.isFinite(acc.pinFailedAttempts)
-                    ? { pinFailedAttempts: Math.max(0, Math.round(acc.pinFailedAttempts)) }
-                    : {}),
-                  ...(typeof acc.pinLockedUntil === 'string' ? { pinLockedUntil: acc.pinLockedUntil } : {}),
-                  ...(typeof acc.pinUpdatedAt === 'string' ? { pinUpdatedAt: acc.pinUpdatedAt } : {}),
-                }
-              : {}),
-          }))
-        : [],
-      donations: Array.isArray(parsed.donations)
-        ? parsed.donations
-            .filter(
-              (item): item is DonorRecord =>
-                Boolean(
-                  item &&
-                    typeof item.id === 'string' &&
-                    typeof item.displayName === 'string' &&
-                    typeof item.amountUah === 'number' &&
-                    Number.isFinite(item.amountUah) &&
-                    item.amountUah > 0
-                )
-            )
-            .map((item) => ({
-              id: item.id.trim(),
-              ...(typeof item.guestUid === 'string' && item.guestUid.trim()
-                ? { guestUid: item.guestUid.trim() }
-                : {}),
-              displayName: item.displayName.trim().slice(0, 80),
-              ...(typeof item.photoUrl === 'string' && item.photoUrl.trim()
-                ? { photoUrl: item.photoUrl.trim() }
-                : {}),
-              amountUah: Math.max(1, Math.round(item.amountUah)),
-              ...(typeof item.note === 'string' && item.note.trim()
-                ? { note: item.note.trim().slice(0, 200) }
-                : {}),
-              donatedAt:
-                typeof item.donatedAt === 'string' && item.donatedAt
-                  ? item.donatedAt
-                  : new Date().toISOString(),
-            }))
-        : [],
-      feedback: Array.isArray(parsed.feedback)
-        ? parsed.feedback
-            .filter(
-              (item): item is FeedbackRecord =>
-                Boolean(
-                  item &&
-                    typeof item.id === 'string' &&
-                    typeof item.message === 'string' &&
-                    item.message.trim().length > 0
-                )
-            )
-            .map((item) => ({
-              id: item.id.trim(),
-              ...(typeof item.guestUid === 'string' && item.guestUid.trim()
-                ? { guestUid: item.guestUid.trim() }
-                : {}),
-              ...(typeof item.firebaseUid === 'string' && item.firebaseUid.trim()
-                ? { firebaseUid: item.firebaseUid.trim() }
-                : {}),
-              displayName: (typeof item.displayName === 'string' && item.displayName.trim() ? item.displayName.trim() : 'Гість').slice(0, 80),
-              ...(typeof item.authorPhotoUrl === 'string' && item.authorPhotoUrl.trim()
-                ? { authorPhotoUrl: item.authorPhotoUrl.trim().slice(0, 500) }
-                : {}),
-              ...(typeof item.contact === 'string' && item.contact.trim()
-                ? { contact: item.contact.trim().slice(0, 100) }
-                : {}),
-              message: item.message.trim().slice(0, 2000),
-              createdAt: typeof item.createdAt === 'string' && item.createdAt ? item.createdAt : new Date().toISOString(),
-              ...(typeof item.updatedAt === 'string' && item.updatedAt ? { updatedAt: item.updatedAt } : {}),
-              readByAdmin: Boolean(item.readByAdmin),
-              ...(typeof item.adminReply === 'string' && item.adminReply.trim()
-                ? { adminReply: item.adminReply.trim().slice(0, 2000) }
-                : {}),
-              ...(typeof item.adminReplyAt === 'string' && item.adminReplyAt.trim()
-                ? { adminReplyAt: item.adminReplyAt.trim().slice(0, 64) }
-                : {}),
-              ...(typeof item.adminReplyAuthorName === 'string' && item.adminReplyAuthorName.trim()
-                ? { adminReplyAuthorName: item.adminReplyAuthorName.trim().slice(0, 80) }
-                : {}),
-              readByUser: typeof item.readByUser === 'boolean' ? item.readByUser : true,
-            }))
-        : [],
-      chatMessages: Array.isArray(parsed.chatMessages)
-        ? parsed.chatMessages
-            .filter(
-              (item): item is GlobalChatMessage =>
-                Boolean(
-                  item &&
-                    typeof item.id === 'string' &&
-                    typeof item.authorUid === 'string' &&
-                    typeof item.authorName === 'string' &&
-                    typeof item.text === 'string' &&
-                    item.text.trim().length > 0
-                )
-            )
-            .slice(-200)
-            .map((item) => ({
-              id: item.id.trim(),
-              authorUid: item.authorUid.trim(),
-              authorName: item.authorName.trim().slice(0, 80),
-              ...(typeof item.authorPhotoUrl === 'string' && item.authorPhotoUrl.trim()
-                ? { authorPhotoUrl: item.authorPhotoUrl.trim() }
-                : {}),
-              ...(item.isAdmin ? { isAdmin: true } : {}),
-              text: item.text.trim().slice(0, 600),
-              ...(item.replyTo &&
-              typeof item.replyTo.id === 'string' &&
-              typeof item.replyTo.authorName === 'string' &&
-              typeof item.replyTo.text === 'string'
-                ? {
-                    replyTo: {
-                      id: item.replyTo.id.trim(),
-                      authorUid:
-                        typeof item.replyTo.authorUid === 'string'
-                          ? item.replyTo.authorUid.trim()
-                          : '',
-                      authorName: item.replyTo.authorName.trim().slice(0, 80),
-                      text: item.replyTo.text.trim().slice(0, 180),
-                    },
-                  }
-                : {}),
-              createdAt:
-                typeof item.createdAt === 'string' && item.createdAt
-                  ? item.createdAt
-                  : new Date().toISOString(),
-            }))
-        : [],
-      radioTracks: Array.isArray(parsed.radioTracks)
-        ? parsed.radioTracks
-            .filter(
-              (item): item is RadioTrack =>
-                Boolean(
-                  item &&
-                    typeof item.id === 'string' &&
-                    typeof item.title === 'string' &&
-                    typeof item.soundcloudUrl === 'string'
-                )
-            )
-            .map((item, idx) => ({
-              id: item.id.trim(),
-              title: item.title.trim(),
-              artist: typeof item.artist === 'string' && item.artist.trim() ? item.artist.trim() : 'SoundCloud',
-              soundcloudUrl: item.soundcloudUrl.trim(),
-              ...(typeof item.embedTargetUrl === 'string' && item.embedTargetUrl.trim()
-                ? { embedTargetUrl: item.embedTargetUrl.trim() }
-                : {}),
-              ...(typeof item.artworkUrl === 'string' && item.artworkUrl.trim()
-                ? { artworkUrl: item.artworkUrl.trim() }
-                : {}),
-              station: item.station === 'electronic' ? ('electronic' as const) : ('indie' as const),
-              order: typeof item.order === 'number' && Number.isFinite(item.order) ? item.order : idx,
-              addedAt: typeof item.addedAt === 'string' ? item.addedAt : new Date().toISOString(),
-            }))
-        : [],
-      monthlySelections: Array.isArray(parsed.monthlySelections)
-        ? parsed.monthlySelections
-            .filter(
-              (item): item is MonthlySelection =>
-                Boolean(
-                  item &&
-                    typeof item.id === 'string' &&
-                    typeof item.monthKey === 'string' &&
-                    /^\d{4}-(0[1-9]|1[0-2])$/.test(item.monthKey.trim()) &&
-                    typeof item.title === 'string' &&
-                    item.title.trim().length > 0
-                )
-            )
-            .map((item, idx) => ({
-              id: item.id.trim(),
-              monthKey: item.monthKey.trim(),
-              title: item.title.trim().slice(0, 160),
-              ...(typeof item.description === 'string' && item.description.trim()
-                ? { description: item.description.trim().slice(0, 1000) }
-                : {}),
-              tracks: Array.isArray(item.tracks)
-                ? item.tracks
-                    .filter(
-                      (t): t is MonthlySelectionTrack =>
-                        Boolean(
-                          t &&
-                            typeof t.id === 'string' &&
-                            typeof t.title === 'string' &&
-                            typeof t.soundcloudUrl === 'string'
-                        )
-                    )
-                    .slice(0, 100)
-                    .map((t) => ({
-                      id: t.id.trim(),
-                      title: t.title.trim().slice(0, 200),
-                      artist:
-                        typeof t.artist === 'string' && t.artist.trim()
-                          ? t.artist.trim().slice(0, 140)
-                          : 'SoundCloud',
-                      soundcloudUrl: t.soundcloudUrl.trim().slice(0, 500),
-                      embedTargetUrl:
-                        typeof t.embedTargetUrl === 'string' && t.embedTargetUrl.trim()
-                          ? t.embedTargetUrl.trim().slice(0, 500)
-                          : t.soundcloudUrl.trim().slice(0, 500),
-                      ...(typeof t.artworkUrl === 'string' && t.artworkUrl.trim()
-                        ? { artworkUrl: t.artworkUrl.trim().slice(0, 500) }
-                        : {}),
-                      ...(typeof t.note === 'string' && t.note.trim()
-                        ? { note: t.note.trim().slice(0, 300) }
-                        : {}),
-                      addedAt: typeof t.addedAt === 'string' && t.addedAt ? t.addedAt : new Date().toISOString(),
-                    }))
-                : [],
-              order: typeof item.order === 'number' && Number.isFinite(item.order) ? item.order : idx,
-              createdAt:
-                typeof item.createdAt === 'string' && item.createdAt ? item.createdAt : new Date().toISOString(),
-              updatedAt:
-                typeof item.updatedAt === 'string' && item.updatedAt ? item.updatedAt : new Date().toISOString(),
-            }))
-        : [],
-      weeklyMusicSelections: Array.isArray(parsed.weeklyMusicSelections)
-        ? parsed.weeklyMusicSelections
-            .filter(
-              (item): item is WeeklyMusicSelection =>
-                Boolean(
-                  item &&
-                    typeof item.id === 'string' &&
-                    typeof item.weekKey === 'string' &&
-                    /^\d{4}-W\d{2}$/.test(item.weekKey.trim()) &&
-                    typeof item.periodStart === 'string' &&
-                    typeof item.periodEnd === 'string' &&
-                    typeof item.periodLabel === 'string'
-                )
-            )
-            .map((item) => ({
-              id: item.id.trim(),
-              weekKey: item.weekKey.trim(),
-              periodStart: item.periodStart.trim(),
-              periodEnd: item.periodEnd.trim(),
-              periodLabel: item.periodLabel.trim().slice(0, 120),
-              ...(typeof item.text === 'string' && item.text.trim()
-                ? { text: item.text.trim().slice(0, 5000) }
-                : {}),
-              photos: Array.isArray(item.photos)
-                ? item.photos
-                    .filter((u): u is string => typeof u === 'string' && u.trim().length > 0)
-                    .map((u) => u.trim().slice(0, 1000))
-                    .slice(0, 12)
-                : [],
-              tracks: Array.isArray(item.tracks)
-                ? item.tracks
-                    .filter(
-                      (t): t is WeeklyMusicTrack =>
-                        Boolean(
-                          t &&
-                            typeof t.id === 'string' &&
-                            typeof t.title === 'string' &&
-                            typeof t.soundcloudUrl === 'string'
-                        )
-                    )
-                    .slice(0, 50)
-                    .map((t) => ({
-                      id: t.id.trim(),
-                      title: t.title.trim().slice(0, 200),
-                      artist:
-                        typeof t.artist === 'string' && t.artist.trim()
-                          ? t.artist.trim().slice(0, 140)
-                          : 'SoundCloud',
-                      soundcloudUrl: t.soundcloudUrl.trim().slice(0, 500),
-                      embedTargetUrl:
-                        typeof t.embedTargetUrl === 'string' && t.embedTargetUrl.trim()
-                          ? t.embedTargetUrl.trim().slice(0, 500)
-                          : t.soundcloudUrl.trim().slice(0, 500),
-                      ...(typeof t.artworkUrl === 'string' && t.artworkUrl.trim()
-                        ? { artworkUrl: t.artworkUrl.trim().slice(0, 500) }
-                        : {}),
-                    }))
-                : [],
-              createdAt:
-                typeof item.createdAt === 'string' && item.createdAt ? item.createdAt : new Date().toISOString(),
-              updatedAt:
-                typeof item.updatedAt === 'string' && item.updatedAt ? item.updatedAt : new Date().toISOString(),
-            }))
-        : [],
-      weeklyVoteLog: Array.isArray(parsed.weeklyVoteLog)
-        ? parsed.weeklyVoteLog
-            .filter(
-              (item): item is WeeklyVoteLogEntry =>
-                Boolean(
-                  item &&
-                    (item.targetType === 'poem' || item.targetType === 'prose') &&
-                    typeof item.targetId === 'string' &&
-                    typeof item.voterKey === 'string' &&
-                    typeof item.rating === 'number' &&
-                    Number.isFinite(item.rating) &&
-                    typeof item.weekKey === 'string' &&
-                    /^\d{4}-W\d{2}$/.test(item.weekKey)
-                )
-            )
-            .slice(-5000)
-        : [],
-      weeklyPoems: Array.isArray(parsed.weeklyPoems)
-        ? parsed.weeklyPoems.filter(
-            (item): item is WeeklyPoemWinner =>
-              Boolean(
-                item &&
-                  typeof item.id === 'string' &&
-                  typeof item.weekKey === 'string' &&
-                  typeof item.periodStart === 'string' &&
-                  typeof item.periodEnd === 'string' &&
-                  typeof item.periodLabel === 'string' &&
-                  typeof item.title === 'string' &&
-                  typeof item.content === 'string'
-              )
-          )
-        : [],
-      weeklyProse: Array.isArray(parsed.weeklyProse)
-        ? parsed.weeklyProse.filter(
-            (item): item is WeeklyProseWinner =>
-              Boolean(
-                item &&
-                  typeof item.id === 'string' &&
-                  typeof item.weekKey === 'string' &&
-                  typeof item.periodStart === 'string' &&
-                  typeof item.periodEnd === 'string' &&
-                  typeof item.periodLabel === 'string' &&
-                  typeof item.title === 'string'
-              )
-          )
-        : [],
-      analytics,
-    };
-    cachedDb = hydrated;
-    syncRuntimeSets(cachedDb);
-    if (typeof parsed.proseTelegramDiscountPercent !== 'number') {
-      fs.writeFileSync(DATA_FILE, JSON.stringify(cachedDb), 'utf-8');
-    }
-    return cachedDb;
-  } catch {
-    const fallback = structuredClone(INITIAL_DATABASE);
-    fs.writeFileSync(DATA_FILE, JSON.stringify(fallback), 'utf-8');
-    cachedDb = fallback;
-    syncRuntimeSets(cachedDb);
-    return cachedDb;
-  }
+  const db = loadSiteDatabaseFromSqlite();
+  cachedDb = db;
+  syncRuntimeSets(cachedDb);
+  return cachedDb;
 }
 
 function saveDatabase(
@@ -1254,52 +544,36 @@ function saveDatabase(
 ): void {
   cachedDb = db;
   const shouldBumpRevision = options?.bumpCatalogRevision !== false;
-  const requestedDelayMs =
-    typeof options?.flushDelayMs === 'number' && options.flushDelayMs >= 50
-      ? options.flushDelayMs
-      : 150;
-
   if (shouldBumpRevision) {
     catalogRevision += 1;
   }
-  dirtyPendingWrite = true;
+  saveSiteDatabaseToSqlite(db);
+}
 
-  if (pendingFlushTimer) {
-    if (requestedDelayMs >= pendingFlushDelayMs) {
-      return;
+function getNormalizedClientIp(req: Request): string {
+  const rawIp = req.ip || req.socket?.remoteAddress || '127.0.0.1';
+  return rawIp.startsWith('::ffff:') ? rawIp.slice(7) : rawIp;
+}
+
+function getTrustedWsIp(request: http.IncomingMessage): string {
+  const remote = request.socket?.remoteAddress || '127.0.0.1';
+  const forwarded = request.headers['x-forwarded-for'];
+  if (typeof forwarded === 'string' && forwarded.trim()) {
+    // Under trust proxy = 1, the single reverse proxy appends the real client IP as the rightmost hop
+    const hops = forwarded
+      .split(',')
+      .map((part) => part.trim())
+      .filter(Boolean);
+    if (hops.length > 0) {
+      const candidate = hops[hops.length - 1];
+      return candidate.startsWith('::ffff:') ? candidate.slice(7) : candidate;
     }
-    clearTimeout(pendingFlushTimer);
-    pendingFlushTimer = null;
   }
-
-  pendingFlushDelayMs = requestedDelayMs;
-  pendingFlushTimer = setTimeout(() => {
-    pendingFlushTimer = null;
-    pendingFlushDelayMs = 150;
-    if (!cachedDb || !dirtyPendingWrite) return;
-    const snapshot = JSON.stringify(cachedDb);
-    dirtyPendingWrite = false;
-    writeQueue = writeQueue
-      .then(async () => {
-        ensureDataDirectories();
-        const tmpFile = `${DATA_FILE}.tmp`;
-        await fs.promises.writeFile(tmpFile, snapshot, 'utf-8');
-        await fs.promises.rename(tmpFile, DATA_FILE);
-      })
-      .catch((err) => {
-        console.error('Failed to persist store.json:', err);
-      });
-  }, requestedDelayMs);
+  return remote.startsWith('::ffff:') ? remote.slice(7) : remote;
 }
 
 function getClientIpHash(req: Request): string {
-  const forwarded = req.headers['x-forwarded-for'];
-  const rawIp =
-    (typeof forwarded === 'string' ? forwarded.split(',')[0]?.trim() : undefined) ||
-    req.socket.remoteAddress ||
-    req.ip ||
-    '127.0.0.1';
-  return crypto.createHash('sha256').update(rawIp).digest('hex');
+  return crypto.createHash('sha256').update(getNormalizedClientIp(req)).digest('hex');
 }
 
 const GUEST_SESSION_SECRET_FILE = path.join(DATA_DIR, '.guest-session-secret');
@@ -2026,14 +1300,38 @@ async function tryAuthenticateOptionalGuest(
 }
 
 // Payment Vault: AES-256-GCM encryption at rest & HMAC-SHA256 integrity keys
-const EPHEMERAL_FALLBACK_VAULT_KEY = crypto.randomBytes(32);
+const DEV_VAULT_KEY_FILE = path.join(DATA_DIR, '.dev-vault-key');
 
 function getOrderVaultKey(): Buffer {
   const envSecret = process.env.PAYMENT_ENCRYPTION_KEY?.trim();
+  if (process.env.NODE_ENV === 'production') {
+    if (!envSecret || envSecret === 'MY_PAYMENT_ENCRYPTION_KEY' || envSecret.length < 16) {
+      console.error('CRITICAL: PAYMENT_ENCRYPTION_KEY must be configured with a secure secret (>= 16 chars) in production.');
+      process.exit(1);
+    }
+    return crypto.scryptSync(envSecret, 'dankiv-order-vault-v1', 32);
+  }
+
   if (envSecret && envSecret !== 'MY_PAYMENT_ENCRYPTION_KEY') {
     return crypto.scryptSync(envSecret, 'dankiv-order-vault-v1', 32);
   }
-  return EPHEMERAL_FALLBACK_VAULT_KEY;
+
+  try {
+    ensureDataDirectories();
+    if (fs.existsSync(DEV_VAULT_KEY_FILE)) {
+      const stored = fs.readFileSync(DEV_VAULT_KEY_FILE, 'utf-8').trim();
+      if (stored.length >= 32) {
+        return crypto.scryptSync(stored, 'dankiv-order-vault-v1', 32);
+      }
+    }
+    const generated = crypto.randomBytes(32).toString('hex');
+    fs.writeFileSync(DEV_VAULT_KEY_FILE, generated, { encoding: 'utf-8', mode: 0o600 });
+    console.warn('WARNING: PAYMENT_ENCRYPTION_KEY not set. Generated persistent development vault key in data/.dev-vault-key.');
+    return crypto.scryptSync(generated, 'dankiv-order-vault-v1', 32);
+  } catch {
+    const generated = crypto.randomBytes(32).toString('hex');
+    return crypto.scryptSync(generated, 'dankiv-order-vault-v1', 32);
+  }
 }
 
 function getOrderHmacKey(): Buffer {
@@ -2194,64 +1492,12 @@ function verifySameOrigin(req: Request): boolean {
   }
 }
 
-interface RateLimitBucket {
-  timestamps: number[];
-}
-
-const rateLimitStore = new Map<string, RateLimitBucket>();
-
 function checkRateLimit(bucketKey: string, maxRequests: number, windowMs: number): { allowed: boolean; retryAfterSec: number } {
-  const now = Date.now();
-  const existing = rateLimitStore.get(bucketKey);
-  const recent = existing ? existing.timestamps.filter((ts) => now - ts < windowMs) : [];
-  if (recent.length >= maxRequests) {
-    const oldest = recent[0] ?? now;
-    const retryAfterSec = Math.max(1, Math.ceil((windowMs - (now - oldest)) / 1000));
-    rateLimitStore.set(bucketKey, { timestamps: recent });
-    return { allowed: false, retryAfterSec };
-  }
-  recent.push(now);
-  rateLimitStore.set(bucketKey, { timestamps: recent });
-  if (rateLimitStore.size > 5000) {
-    for (const [k, v] of rateLimitStore.entries()) {
-      if (v.timestamps.every((ts) => now - ts >= windowMs)) {
-        rateLimitStore.delete(k);
-      }
-    }
-  }
-  return { allowed: true, retryAfterSec: 0 };
+  return checkPersistentRateLimit(bucketKey, maxRequests, windowMs);
 }
-
-interface EphemeralPaymentSession {
-  sessionId: string;
-  nonce: string;
-  serverPrivateKey: crypto.KeyObject;
-  kind: 'store' | 'prose';
-  expectedItemIds: string[];
-  expectedAmountUah: number;
-  authorizedDiscountUid?: string;
-  telegramDiscountTgId?: number;
-  expiresAtMs: number;
-  consumed: boolean;
-}
-
-const paymentSessions = new Map<string, EphemeralPaymentSession>();
 
 function purgeExpiredPaymentSessions(): void {
-  const now = Date.now();
-  for (const [id, session] of paymentSessions.entries()) {
-    if (session.expiresAtMs <= now || session.consumed) {
-      if (session.expiresAtMs <= now) {
-        paymentSessions.delete(id);
-      }
-    }
-  }
-  if (paymentSessions.size > 2000) {
-    const entries = Array.from(paymentSessions.entries()).sort((a, b) => a[1].expiresAtMs - b[1].expiresAtMs);
-    for (const [id] of entries.slice(0, entries.length - 1500)) {
-      paymentSessions.delete(id);
-    }
-  }
+  purgeExpiredPaymentSessionsSqlite();
 }
 
 interface DecryptedPaymentAssertion {
@@ -2268,42 +1514,19 @@ interface DecryptedPaymentAssertion {
   clientIssuedAt?: string;
 }
 
-interface PendingMonobankProseInvoice {
-  invoiceId: string;
-  proseId: string;
-  orderCode: string;
-  amountUah: number;
-  buyerName: string;
-  buyerEmail: string;
-  status: 'created' | 'processing' | 'hold' | 'success' | 'failure' | 'reversed' | 'expired';
-  failureReason?: string;
-  finalizedOrderCode?: string;
-  createdAtMs: number;
-  expiresAtMs: number;
-}
+type MonobankInvoiceStatus =
+  | 'created'
+  | 'processing'
+  | 'hold'
+  | 'success'
+  | 'failure'
+  | 'reversed'
+  | 'expired';
 
-const pendingMonobankProseInvoices = new Map<string, PendingMonobankProseInvoice>();
 let cachedMonobankPubKey: { pem: string; fetchedAtMs: number } | null = null;
 
-function getMonobankToken(): string {
-  return (process.env.MONOBANK_TOKEN || '').trim();
-}
-
 function purgeExpiredMonobankInvoices(): void {
-  const now = Date.now();
-  for (const [id, entry] of pendingMonobankProseInvoices.entries()) {
-    if (entry.expiresAtMs <= now && !entry.finalizedOrderCode) {
-      pendingMonobankProseInvoices.delete(id);
-    }
-  }
-  if (pendingMonobankProseInvoices.size > 1500) {
-    const entries = Array.from(pendingMonobankProseInvoices.entries()).sort(
-      (a, b) => a[1].createdAtMs - b[1].createdAtMs
-    );
-    for (const [id] of entries.slice(0, entries.length - 1000)) {
-      pendingMonobankProseInvoices.delete(id);
-    }
-  }
+  purgeExpiredMonobankInvoicesSqlite();
 }
 
 function getServerPublicBaseUrl(req: Request): string {
@@ -2350,7 +1573,58 @@ async function verifyMonobankWebhookSignature(
   }
 }
 
-function createProsePaidOrder(
+function createPendingProseOrder(
+  db: SiteDatabase,
+  work: RawProseWork,
+  options: {
+    orderCode: string;
+    invoiceId: string;
+    cleanName: string;
+    cleanEmail: string;
+    effectivePriceUah: number;
+    guestUid?: string;
+  }
+): OrderRecord {
+  const createdAt = new Date().toISOString();
+  const paymentSummary: PaymentSummary = {
+    status: 'pending',
+    providerLabel: 'monobank Acquiring',
+    method: 'monobank',
+    encryptionProtocol: 'monobank Acquiring · ECDH P-256 + AES-256-GCM',
+    transactionId: options.invoiceId,
+    paidAt: '',
+  };
+
+  const encryptedPii = encryptOrderPii(
+    {
+      buyerName: options.cleanName,
+      buyerEmail: options.cleanEmail,
+    },
+    options.orderCode
+  );
+
+  const pendingOrder: OrderRecord = {
+    orderCode: options.orderCode,
+    ...(options.guestUid ? { guestUid: options.guestUid } : {}),
+    buyerName: maskPersonName(options.cleanName),
+    buyerEmail: maskEmailAddress(options.cleanEmail),
+    buyerNameMasked: maskPersonName(options.cleanName),
+    buyerEmailMasked: maskEmailAddress(options.cleanEmail),
+    buyerEmailHash: hashBuyerEmailLookup(options.cleanEmail),
+    encryptedPii,
+    createdAt,
+    totalUah: options.effectivePriceUah,
+    payment: paymentSummary,
+    items: [],
+    pendingProseId: work.id,
+  };
+
+  db.orders.unshift(pendingOrder);
+  saveDatabase(db);
+  return pendingOrder;
+}
+
+function finalizeProsePaidOrder(
   db: SiteDatabase,
   work: RawProseWork,
   options: {
@@ -2359,13 +1633,22 @@ function createProsePaidOrder(
     effectivePriceUah: number;
     providerLabel: string;
     transactionId: string;
-    orderCode?: string;
+    orderCode: string;
     encryptionProtocol?: string;
     guestUid?: string;
   }
-): { orderCode: string; unlockedAccess: PurchasedAccess } {
+): { orderCode: string; unlockedAccess: PurchasedAccess; orderRecord: OrderRecord } {
+  const existing = db.orders.find((o) => o.orderCode === options.orderCode);
+  if (existing && existing.payment?.status === 'paid' && existing.items.length > 0) {
+    return {
+      orderCode: existing.orderCode,
+      unlockedAccess: existing.items[0],
+      orderRecord: existing,
+    };
+  }
+
   const paidAt = new Date().toISOString();
-  const orderCode = options.orderCode || generateHighEntropyOrderCode(db);
+  const orderCode = options.orderCode;
   const receiptSignature = signOrderReceipt({
     orderCode,
     transactionId: options.transactionId,
@@ -2377,7 +1660,7 @@ function createProsePaidOrder(
     status: 'paid',
     providerLabel: options.providerLabel,
     method: 'monobank',
-    encryptionProtocol: options.encryptionProtocol || 'ECDH P-256 · HKDF-SHA256 · AES-256-GCM',
+    encryptionProtocol: options.encryptionProtocol || 'monobank Acquiring · ECDH P-256 + AES-256-GCM',
     receiptSignature,
     transactionId: options.transactionId,
     paidAt,
@@ -2396,33 +1679,134 @@ function createProsePaidOrder(
     pdfFileSize: work.pdfFileSize,
   };
 
-  const encryptedPii = encryptOrderPii(
-    {
-      buyerName: options.cleanName,
-      buyerEmail: options.cleanEmail,
-    },
-    orderCode
+  let targetOrder: OrderRecord;
+  if (existing) {
+    existing.payment = paymentSummary;
+    existing.items = [unlockedAccess];
+    delete existing.pendingProseId;
+    targetOrder = existing;
+  } else {
+    const encryptedPii = encryptOrderPii(
+      {
+        buyerName: options.cleanName,
+        buyerEmail: options.cleanEmail,
+      },
+      orderCode
+    );
+    targetOrder = {
+      orderCode,
+      ...(options.guestUid ? { guestUid: options.guestUid } : {}),
+      buyerName: maskPersonName(options.cleanName),
+      buyerEmail: maskEmailAddress(options.cleanEmail),
+      buyerNameMasked: maskPersonName(options.cleanName),
+      buyerEmailMasked: maskEmailAddress(options.cleanEmail),
+      buyerEmailHash: hashBuyerEmailLookup(options.cleanEmail),
+      encryptedPii,
+      createdAt: paidAt,
+      totalUah: options.effectivePriceUah,
+      payment: paymentSummary,
+      items: [unlockedAccess],
+    };
+    db.orders.unshift(targetOrder);
+  }
+
+  const effectiveGuestUid = targetOrder.guestUid || options.guestUid;
+  if (effectiveGuestUid) {
+    const acc = db.guestAccounts.find((g) => g.uid === effectiveGuestUid);
+    if (acc) {
+      acc.purchasesCount = Math.round(Number(acc.purchasesCount) || 0) + 1;
+      acc.updatedAt = paidAt;
+    }
+  }
+
+  saveDatabase(db);
+  return { orderCode, unlockedAccess, orderRecord: targetOrder };
+}
+
+function finalizePendingStoreOrder(
+  db: SiteDatabase,
+  pending: PendingMonobankStoreInvoice
+): { orderRecord: OrderRecord; unlockedItems: PurchasedAccess[] } {
+  const existing = db.orders.find((o) => o.orderCode === pending.orderCode);
+  if (existing && existing.payment?.status === 'paid' && existing.items.length > 0) {
+    return { orderRecord: existing, unlockedItems: existing.items };
+  }
+
+  const paidAt = new Date().toISOString();
+  const matchedProducts = pending.productIds
+    .map((id: string) => db.products.find((p: RawStoreProduct) => p.id === id))
+    .filter((p: RawStoreProduct | undefined): p is RawStoreProduct => Boolean(p));
+
+  const shippingFromEncrypted =
+    existing?.encryptedPii
+      ? decryptOrderPii(existing.encryptedPii, pending.orderCode)?.shipping
+      : undefined;
+  const resolvedShipping = pending.shipping || shippingFromEncrypted;
+
+  const unlockedItems = matchedProducts.map((p: RawStoreProduct) =>
+    buildPurchasedAccess(p, pending.orderCode, paidAt, resolvedShipping, pending.invoiceId)
   );
 
-  const storedOrderRecord: OrderRecord = {
-    orderCode,
-    ...(options.guestUid ? { guestUid: options.guestUid } : {}),
-    buyerName: maskPersonName(options.cleanName),
-    buyerEmail: maskEmailAddress(options.cleanEmail),
-    buyerNameMasked: maskPersonName(options.cleanName),
-    buyerEmailMasked: maskEmailAddress(options.cleanEmail),
-    buyerEmailHash: hashBuyerEmailLookup(options.cleanEmail),
-    encryptedPii,
-    createdAt: paidAt,
-    totalUah: options.effectivePriceUah,
-    payment: paymentSummary,
-    items: [unlockedAccess],
+  const receiptSignature = signOrderReceipt({
+    orderCode: pending.orderCode,
+    transactionId: pending.invoiceId,
+    totalUah: pending.amountUah,
+    paidAt,
+  });
+
+  const paymentSummary: PaymentSummary = {
+    status: 'paid',
+    providerLabel: 'monobank Acquiring',
+    method: 'monobank',
+    encryptionProtocol: 'monobank Acquiring · ECDH P-256 + AES-256-GCM',
+    receiptSignature,
+    transactionId: pending.invoiceId,
+    paidAt,
   };
 
-  db.orders.unshift(storedOrderRecord);
-  saveDatabase(db);
+  let targetOrder: OrderRecord;
+  if (existing) {
+    existing.payment = paymentSummary;
+    existing.items = unlockedItems;
+    delete existing.pendingProductIds;
+    targetOrder = existing;
+  } else {
+    const encryptedPii = encryptOrderPii(
+      {
+        buyerName: pending.buyerName,
+        buyerEmail: pending.buyerEmail,
+        shipping: resolvedShipping,
+      },
+      pending.orderCode
+    );
+    targetOrder = {
+      orderCode: pending.orderCode,
+      ...(pending.guestUid ? { guestUid: pending.guestUid } : {}),
+      buyerName: maskPersonName(pending.buyerName),
+      buyerEmail: maskEmailAddress(pending.buyerEmail),
+      buyerNameMasked: maskPersonName(pending.buyerName),
+      buyerEmailMasked: maskEmailAddress(pending.buyerEmail),
+      buyerEmailHash: hashBuyerEmailLookup(pending.buyerEmail),
+      encryptedPii,
+      createdAt: paidAt,
+      totalUah: pending.amountUah,
+      payment: paymentSummary,
+      items: unlockedItems,
+    };
+    db.orders.unshift(targetOrder);
+  }
 
-  return { orderCode, unlockedAccess, orderRecord: storedOrderRecord };
+  const effectiveGuestUid = targetOrder.guestUid || pending.guestUid;
+  if (effectiveGuestUid) {
+    const acc = db.guestAccounts.find((g) => g.uid === effectiveGuestUid);
+    if (acc) {
+      acc.purchasesCount = Math.round(Number(acc.purchasesCount) || 0) + Math.max(1, unlockedItems.length);
+      acc.updatedAt = paidAt;
+    }
+  }
+
+  saveDatabase(db);
+  return { orderRecord: targetOrder, unlockedItems };
 }
 
 function decryptPaymentEnvelope(
@@ -4213,7 +3597,8 @@ function enrichRadioTrackForPublic(
   track: RadioTrack,
   isAuthorized: boolean,
   db?: SiteDatabase,
-  guestAccount?: GuestAccountRecord | null
+  guestAccount?: GuestAccountRecord | null,
+  repertoireBucket?: RadioRepertoireBucket | null
 ): RadioTrack {
   const normalizedStation: RadioStationId =
     track.station === 'electronic' ? 'electronic' : 'indie';
@@ -4224,6 +3609,12 @@ function enrichRadioTrackForPublic(
       Array.isArray(guestAccount.likedRadioTrackIds) &&
       guestAccount.likedRadioTrackIds.includes(track.id)
   );
+  const resolvedBucket = repertoireBucket ?? track.repertoireBucket ?? null;
+  const resolvedInRepertoire =
+    repertoireBucket !== undefined
+      ? repertoireBucket !== null
+      : track.inRepertoire ?? true;
+
   if (isAuthorized) {
     return {
       ...track,
@@ -4231,6 +3622,8 @@ function enrichRadioTrackForPublic(
       embedTargetUrl: track.embedTargetUrl || track.soundcloudUrl,
       likesCount,
       isLiked,
+      inRepertoire: resolvedInRepertoire,
+      repertoireBucket: resolvedBucket,
     };
   }
   const { embedTargetUrl: _hiddenEmbed, ...publicTrack } = track;
@@ -4239,7 +3632,30 @@ function enrichRadioTrackForPublic(
     station: normalizedStation,
     likesCount,
     isLiked: false,
+    inRepertoire: resolvedInRepertoire,
+    repertoireBucket: resolvedBucket,
   };
+}
+
+function buildRadioTracksWithRepertoire(
+  db: SiteDatabase,
+  isAuthorized: boolean,
+  guestAccount?: GuestAccountRecord | null
+): RadioTrack[] {
+  const baseEnriched = db.radioTracks.map((track) =>
+    enrichRadioTrackForPublic(track, isAuthorized, db, guestAccount)
+  );
+  const indieRep = selectRadioStationRepertoire(baseEnriched, 'indie');
+  const electronicRep = selectRadioStationRepertoire(baseEnriched, 'electronic');
+  return baseEnriched.map((track) => {
+    const rep = track.station === 'electronic' ? electronicRep : indieRep;
+    const bucket = rep.bucketById.get(track.id) ?? null;
+    return {
+      ...track,
+      inRepertoire: bucket !== null,
+      repertoireBucket: bucket,
+    };
+  });
 }
 
 function buildPurchasedAccess(
@@ -4325,9 +3741,106 @@ async function startServer() {
   void ensureCloudPoemLikesHydrated().catch((err) => {
     console.error('Initial poem likes hydration error:', err);
   });
-  app.set('trust proxy', true);
+  app.set('trust proxy', 1);
   app.disable('x-powered-by');
   app.use(compression({ threshold: 512 }));
+
+  const createEndpointRateLimiter = (
+    prefix: string,
+    limit: number,
+    windowMs: number,
+    errorMessage: string
+  ) =>
+    rateLimit({
+      windowMs,
+      limit,
+      standardHeaders: 'draft-7',
+      legacyHeaders: false,
+      store: createPersistentRateLimitStore(prefix),
+      keyGenerator: (req) => {
+        const normalized = ipKeyGenerator(getNormalizedClientIp(req));
+        return crypto.createHash('sha256').update(normalized).digest('hex');
+      },
+      validate: {
+        keyGeneratorIpFallback: false,
+      },
+      handler: (_req, res) => {
+        res.status(429).json({ error: errorMessage });
+      },
+    });
+
+  const paySessionLimiter = createEndpointRateLimiter(
+    'erl:pay-session',
+    25,
+    5 * 60 * 1000,
+    'Забагато запитів на оплату. Зачекайте кілька секунд.'
+  );
+  const ordersCreateLimiter = createEndpointRateLimiter(
+    'erl:orders-create',
+    12,
+    10 * 60 * 1000,
+    'Перевищено ліміт спроб оплати. Спробуйте через кілька хвилин.'
+  );
+  const ordersStatusLimiter = createEndpointRateLimiter(
+    'erl:orders-status',
+    120,
+    5 * 60 * 1000,
+    'Забагато перевірок статусу оплати. Зачекайте кілька секунд.'
+  );
+  const ordersRestoreLimiter = createEndpointRateLimiter(
+    'erl:orders-restore',
+    10,
+    10 * 60 * 1000,
+    'Забагато спроб відновлення. Зачекайте кілька хвилин.'
+  );
+  const prosePurchaseLimiter = createEndpointRateLimiter(
+    'erl:prose-purchase',
+    12,
+    10 * 60 * 1000,
+    'Забагато спроб оплати. Спробуйте трохи пізніше.'
+  );
+  const proseStatusLimiter = createEndpointRateLimiter(
+    'erl:prose-status',
+    120,
+    5 * 60 * 1000,
+    'Забагато перевірок статусу оплати. Зачекайте кілька секунд.'
+  );
+  const pinSetLimiter = createEndpointRateLimiter(
+    'erl:pin-set',
+    15,
+    10 * 60 * 1000,
+    'Забагато спроб зміни ПІН-коду. Спробуйте трохи пізніше.'
+  );
+  const pinLoginLimiter = createEndpointRateLimiter(
+    'erl:pin-login',
+    20,
+    10 * 60 * 1000,
+    'Забагато спроб входу за ПІН-кодом. Зачекайте кілька хвилин або увійдіть через Google.'
+  );
+  const uploadsLimiter = createEndpointRateLimiter(
+    'erl:uploads',
+    20,
+    10 * 60 * 1000,
+    'Забагато завантажень фото. Зачекайте кілька хвилин.'
+  );
+  const reviewsPostLimiter = createEndpointRateLimiter(
+    'erl:reviews-post',
+    25,
+    10 * 60 * 1000,
+    'Забагато відгуків поспіль. Спробуйте через кілька хвилин.'
+  );
+  const feedbackPostLimiter = createEndpointRateLimiter(
+    'erl:feedback-post',
+    15,
+    10 * 60 * 1000,
+    'Забагато звернень поспіль. Спробуйте через кілька хвилин.'
+  );
+  const ebookDownloadLimiter = createEndpointRateLimiter(
+    'erl:ebook-download',
+    40,
+    10 * 60 * 1000,
+    'Забагато спроб завантаження. Зачекайте кілька хвилин.'
+  );
 
   // Strict security headers & no-store caching for payment, auth, and protected routes
   app.use((req, res, next) => {
@@ -4877,9 +4390,7 @@ async function startServer() {
       products: db.products.map((product) =>
         enrichProductForPublic(product, db, ipHash, badgeLookup, photoLookup, optionalAuth?.account)
       ),
-      radioTracks: db.radioTracks.map((track) =>
-        enrichRadioTrackForPublic(track, isAuthorized, db, optionalAuth?.account)
-      ),
+      radioTracks: buildRadioTracksWithRepertoire(db, isAuthorized, optionalAuth?.account),
       monthlySelections: [...(db.monthlySelections || [])].sort((a, b) =>
         a.monthKey !== b.monthKey ? b.monthKey.localeCompare(a.monthKey) : a.order - b.order
       ),
@@ -4928,9 +4439,7 @@ async function startServer() {
     }
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
     res.json({
-      tracks: db.radioTracks.map((track) =>
-        enrichRadioTrackForPublic(track, true, db, authResult.account)
-      ),
+      tracks: buildRadioTracksWithRepertoire(db, true, authResult.account),
     });
   });
 
@@ -5673,7 +5182,7 @@ async function startServer() {
   });
 
   // Set or update 4-digit PIN (Monobank-style quick unlock)
-  app.post('/api/guest/pin/set', async (req, res) => {
+  app.post('/api/guest/pin/set', pinSetLimiter, async (req, res) => {
     if (!verifySameOrigin(req)) {
       res.status(403).json({ error: 'Запит із стороннього джерела заблоковано.' });
       return;
@@ -5760,19 +5269,9 @@ async function startServer() {
   });
 
   // Quick 4-digit PIN sign-in for remembered returning users (Monobank-style)
-  app.post('/api/guest/pin-login', async (req, res) => {
+  app.post('/api/guest/pin-login', pinLoginLimiter, async (req, res) => {
     if (!verifySameOrigin(req)) {
       res.status(403).json({ error: 'Запит із стороннього джерела заблоковано.' });
-      return;
-    }
-    const ipHash = getClientIpHash(req);
-    const ipRate = checkRateLimit(`pin-login-ip:${ipHash}`, 20, 10 * 60 * 1000);
-    if (!ipRate.allowed) {
-      res.setHeader('Retry-After', String(ipRate.retryAfterSec));
-      res.status(429).json({
-        error: 'Забагато спроб входу за ПІН-кодом. Зачекайте кілька хвилин або увійдіть через Google.',
-        retryAfterSec: ipRate.retryAfterSec,
-      });
       return;
     }
 
@@ -6097,16 +5596,9 @@ async function startServer() {
   });
 
   // Upload a photo for a reader's submitted poem (authenticated users)
-  app.post('/api/poems/upload-image', async (req, res) => {
+  app.post('/api/poems/upload-image', uploadsLimiter, async (req, res) => {
     if (!verifySameOrigin(req)) {
       res.status(403).json({ error: 'Запит з іншого домену відхилено.' });
-      return;
-    }
-    const ipHash = getClientIpHash(req);
-    const rate = checkRateLimit(`poem-img-upload:${ipHash}`, 20, 10 * 60 * 1000);
-    if (!rate.allowed) {
-      res.setHeader('Retry-After', String(rate.retryAfterSec));
-      res.status(429).json({ error: 'Забагато завантажень фото. Зачекайте кілька хвилин.' });
       return;
     }
 
@@ -6205,7 +5697,7 @@ async function startServer() {
     }
 
     try {
-      let response: Response | null = null;
+      let response: globalThis.Response | null = null;
       for (let hop = 0; hop < 4; hop += 1) {
         const resHop = await fetch(currentUrl.toString(), {
           method: 'GET',
@@ -6543,16 +6035,9 @@ async function startServer() {
   });
 
   // Upload an optional moodboard/cover photo for a reader's submitted prose work (authenticated users)
-  app.post('/api/prose/upload-image', async (req, res) => {
+  app.post('/api/prose/upload-image', uploadsLimiter, async (req, res) => {
     if (!verifySameOrigin(req)) {
       res.status(403).json({ error: 'Запит з іншого домену відхилено.' });
-      return;
-    }
-    const ipHash = getClientIpHash(req);
-    const rate = checkRateLimit(`prose-img-upload:${ipHash}`, 20, 10 * 60 * 1000);
-    if (!rate.allowed) {
-      res.setHeader('Retry-After', String(rate.retryAfterSec));
-      res.status(429).json({ error: 'Забагато завантажень фото. Зачекайте кілька хвилин.' });
       return;
     }
 
@@ -6920,7 +6405,7 @@ async function startServer() {
   });
 
   // Submit guest review + optional rating (0.1..5.0) for Poem, Prose, or Book/Product
-  app.post('/api/reviews', async (req, res) => {
+  app.post('/api/reviews', reviewsPostLimiter, async (req, res) => {
     const db = ensureDatabase();
     await ensureAllPublicStateHydrated(db);
     const optionalAuth = await tryAuthenticateOptionalGuest(req, db);
@@ -7282,11 +6767,14 @@ async function startServer() {
     const db = ensureDatabase();
     await ensureAllPublicStateHydrated(db);
 
-    const authResult = await authenticateAdminRequest(req);
-    let isAuthorized = authResult.ok;
-    let optionalAuth: Awaited<ReturnType<typeof tryAuthenticateOptionalGuest>> = null;
-    if (!isAuthorized) {
-      optionalAuth = await tryAuthenticateOptionalGuest(req, db);
+    const adminAuth = await authenticateAdminRequest(req);
+    const guestAuth = await authenticateGuestRequest(req, db);
+    const isAdminActor = adminAuth.ok || (guestAuth.ok && guestAuth.isAdmin);
+    const guestAccount = guestAuth.ok ? guestAuth.account : null;
+
+    if (!isAdminActor && !guestAuth.ok) {
+      res.status(401).json({ error: 'Потрібно увійти в акаунт, щоб редагувати коментарі.' });
+      return;
     }
 
     const reviewId = req.params.id;
@@ -7296,12 +6784,12 @@ async function startServer() {
       return;
     }
 
-    if (!isAuthorized) {
+    if (!isAdminActor) {
       const isOwner = Boolean(
-        optionalAuth &&
-          (optionalAuth.account.uid === review.authorUid ||
-            optionalAuth.account.googleUid === review.authorUid ||
-            optionalAuth.firebaseClaims?.uid === review.authorUid)
+        guestAuth.ok &&
+          (guestAuth.account.uid === review.authorUid ||
+            guestAuth.account.googleUid === review.authorUid ||
+            guestAuth.firebaseClaims?.uid === review.authorUid)
       );
       if (!isOwner) {
         res.status(403).json({ error: 'Редагування дозволено лише автору коментаря або адміністратору.' });
@@ -7320,8 +6808,11 @@ async function startServer() {
     saveDatabase(db);
 
     const bearerToken = extractBearerToken(req);
-    if (bearerToken) {
-      void updateSingleReviewInFirestore(reviewId, cleanComment, bearerToken);
+    const firebaseToken =
+      (guestAuth.ok ? guestAuth.firebaseIdToken : undefined) ||
+      (bearerToken && !bearerToken.startsWith('guest_v1.') ? bearerToken : undefined);
+    if (firebaseToken) {
+      void updateSingleReviewInFirestore(reviewId, cleanComment, firebaseToken);
     }
 
     const ipHash = getClientIpHash(req);
@@ -7336,17 +6827,33 @@ async function startServer() {
     if (review.targetType === 'poem') {
       const poem = db.poems.find((p) => p.id === review.targetId);
       if (poem) {
-        updatedPoem = enrichPoem(poem, db, ipHash, optionalAuth?.account, badgeLookup, photoLookup);
+        updatedPoem = enrichPoem(poem, db, ipHash, guestAccount ?? undefined, badgeLookup, photoLookup);
       }
     } else if (review.targetType === 'prose') {
       const prose = db.prose.find((p) => p.id === review.targetId);
       if (prose) {
-        updatedProse = enrichProseForPublic(prose, db, ipHash, Boolean(optionalAuth), false, badgeLookup, optionalAuth?.account, photoLookup);
+        updatedProse = enrichProseForPublic(
+          prose,
+          db,
+          ipHash,
+          Boolean(guestAccount || isAdminActor),
+          false,
+          badgeLookup,
+          guestAccount ?? undefined,
+          photoLookup
+        );
       }
     } else if (review.targetType === 'product') {
       const product = db.products.find((p) => p.id === review.targetId);
       if (product) {
-        updatedProduct = enrichProductForPublic(product, db, ipHash, badgeLookup, photoLookup, optionalAuth?.account);
+        updatedProduct = enrichProductForPublic(
+          product,
+          db,
+          ipHash,
+          badgeLookup,
+          photoLookup,
+          guestAccount ?? undefined
+        );
       }
     }
 
@@ -7364,11 +6871,14 @@ async function startServer() {
     const db = ensureDatabase();
     await ensureAllPublicStateHydrated(db);
 
-    const authResult = await authenticateAdminRequest(req);
-    let isAuthorized = authResult.ok;
-    let optionalAuth: Awaited<ReturnType<typeof tryAuthenticateOptionalGuest>> = null;
-    if (!isAuthorized) {
-      optionalAuth = await tryAuthenticateOptionalGuest(req, db);
+    const adminAuth = await authenticateAdminRequest(req);
+    const guestAuth = await authenticateGuestRequest(req, db);
+    const isAdminActor = adminAuth.ok || (guestAuth.ok && guestAuth.isAdmin);
+    const guestAccount = guestAuth.ok ? guestAuth.account : null;
+
+    if (!isAdminActor && !guestAuth.ok) {
+      res.status(401).json({ error: 'Потрібно увійти в акаунт, щоб видаляти коментарі.' });
+      return;
     }
 
     const reviewId = req.params.id;
@@ -7379,12 +6889,12 @@ async function startServer() {
     }
     const review = db.reviews[reviewIndex];
 
-    if (!isAuthorized) {
+    if (!isAdminActor) {
       const isOwner = Boolean(
-        optionalAuth &&
-          (optionalAuth.account.uid === review.authorUid ||
-            optionalAuth.account.googleUid === review.authorUid ||
-            optionalAuth.firebaseClaims?.uid === review.authorUid)
+        guestAuth.ok &&
+          (guestAuth.account.uid === review.authorUid ||
+            guestAuth.account.googleUid === review.authorUid ||
+            guestAuth.firebaseClaims?.uid === review.authorUid)
       );
       if (!isOwner) {
         res.status(403).json({ error: 'Видалення дозволено лише автору коментаря або адміністратору.' });
@@ -7396,8 +6906,11 @@ async function startServer() {
     saveDatabase(db);
 
     const bearerToken = extractBearerToken(req);
-    if (bearerToken) {
-      void deleteSingleReviewInFirestore(reviewId, bearerToken);
+    const firebaseToken =
+      (guestAuth.ok ? guestAuth.firebaseIdToken : undefined) ||
+      (bearerToken && !bearerToken.startsWith('guest_v1.') ? bearerToken : undefined);
+    if (firebaseToken) {
+      void deleteSingleReviewInFirestore(reviewId, firebaseToken);
     }
 
     const ipHash = getClientIpHash(req);
@@ -7411,17 +6924,33 @@ async function startServer() {
     if (removedReview.targetType === 'poem') {
       const poem = db.poems.find((p) => p.id === removedReview.targetId);
       if (poem) {
-        updatedPoem = enrichPoem(poem, db, ipHash, optionalAuth?.account, badgeLookup, photoLookup);
+        updatedPoem = enrichPoem(poem, db, ipHash, guestAccount ?? undefined, badgeLookup, photoLookup);
       }
     } else if (removedReview.targetType === 'prose') {
       const prose = db.prose.find((p) => p.id === removedReview.targetId);
       if (prose) {
-        updatedProse = enrichProseForPublic(prose, db, ipHash, Boolean(optionalAuth), false, badgeLookup, optionalAuth?.account, photoLookup);
+        updatedProse = enrichProseForPublic(
+          prose,
+          db,
+          ipHash,
+          Boolean(guestAccount || isAdminActor),
+          false,
+          badgeLookup,
+          guestAccount ?? undefined,
+          photoLookup
+        );
       }
     } else if (removedReview.targetType === 'product') {
       const product = db.products.find((p) => p.id === removedReview.targetId);
       if (product) {
-        updatedProduct = enrichProductForPublic(product, db, ipHash, badgeLookup, photoLookup, optionalAuth?.account);
+        updatedProduct = enrichProductForPublic(
+          product,
+          db,
+          ipHash,
+          badgeLookup,
+          photoLookup,
+          guestAccount ?? undefined
+        );
       }
     }
 
@@ -7700,8 +7229,374 @@ async function startServer() {
     res.json({ deletedId: id });
   });
 
+  // ── Monobank Jar Automatic Donation Tracking ─────────────────────────
+  interface LiveMonobankJarSnapshot {
+    jarId: string;
+    extJarId: string;
+    title: string;
+    ownerName: string;
+    amountKopecks: number;
+    goalKopecks: number | null;
+    closed: boolean;
+    fetchedAtMs: number;
+  }
+
+  interface MonobankJarIntent {
+    intentId: string;
+    jarId: string;
+    baselineKopecks: number;
+    guestUid?: string;
+    displayName: string;
+    photoUrl?: string;
+    ipHash: string;
+    createdAtMs: number;
+    expiresAtMs: number;
+    status: 'pending' | 'credited';
+    creditedAmountUah?: number;
+    donationId?: string;
+  }
+
+  const monobankJarIntents = new Map<string, MonobankJarIntent>();
+  let cachedMonobankJarSnapshot: LiveMonobankJarSnapshot | null = null;
+  let inflightMonobankJarFetch: Promise<LiveMonobankJarSnapshot | null> | null = null;
+
+  const extractMonobankJarShortId = (rawUrl: string): string | null => {
+    const trimmed = String(rawUrl || '').trim();
+    if (!trimmed) return null;
+    try {
+      const parsed = new URL(trimmed);
+      if (!parsed.hostname.toLowerCase().endsWith('monobank.ua')) return null;
+      const match = parsed.pathname.match(/\/jar\/([a-zA-Z0-9_-]{3,40})/);
+      return match?.[1] || null;
+    } catch {
+      return null;
+    }
+  };
+
+  const fetchLiveMonobankJarSnapshot = async (
+    jarUrl: string,
+    forceFresh = false
+  ): Promise<LiveMonobankJarSnapshot | null> => {
+    const jarId = extractMonobankJarShortId(jarUrl);
+    if (!jarId) return null;
+
+    const now = Date.now();
+    if (
+      !forceFresh &&
+      cachedMonobankJarSnapshot &&
+      cachedMonobankJarSnapshot.jarId === jarId &&
+      now - cachedMonobankJarSnapshot.fetchedAtMs < 2500
+    ) {
+      return cachedMonobankJarSnapshot;
+    }
+
+    if (inflightMonobankJarFetch) {
+      return inflightMonobankJarFetch;
+    }
+
+    inflightMonobankJarFetch = (async () => {
+      try {
+        const res = await fetch('https://send.monobank.ua/api/handler', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'User-Agent': 'Mozilla/5.0 (compatible; DankivJarSync/1.0)',
+          },
+          body: JSON.stringify({ c: 'hello', clientId: jarId, Pc: '1' }),
+          signal: AbortSignal.timeout(7000),
+        });
+        if (!res.ok) return cachedMonobankJarSnapshot;
+        const data = (await res.json()) as {
+          clientType?: string;
+          name?: string;
+          ownerName?: string;
+          jarAmount?: number;
+          jarGoal?: number;
+          extJarId?: string;
+          jarStatus?: string;
+        };
+        if (typeof data.jarAmount !== 'number' || !Number.isFinite(data.jarAmount)) {
+          return cachedMonobankJarSnapshot;
+        }
+        const snap: LiveMonobankJarSnapshot = {
+          jarId,
+          extJarId: typeof data.extJarId === 'string' ? data.extJarId : '',
+          title: typeof data.name === 'string' && data.name.trim() ? data.name.trim() : 'Банка Монобанку',
+          ownerName: typeof data.ownerName === 'string' ? data.ownerName.trim() : '',
+          amountKopecks: Math.max(0, Math.round(data.jarAmount)),
+          goalKopecks:
+            typeof data.jarGoal === 'number' && Number.isFinite(data.jarGoal) && data.jarGoal > 0
+              ? Math.round(data.jarGoal)
+              : null,
+          closed: data.jarStatus === 'CLOSED',
+          fetchedAtMs: Date.now(),
+        };
+        cachedMonobankJarSnapshot = snap;
+        return snap;
+      } catch {
+        return cachedMonobankJarSnapshot;
+      } finally {
+        inflightMonobankJarFetch = null;
+      }
+    })();
+
+    return inflightMonobankJarFetch;
+  };
+
+  const cleanupExpiredMonobankIntents = () => {
+    const now = Date.now();
+    for (const [id, item] of monobankJarIntents.entries()) {
+      if (now > item.expiresAtMs + 10 * 60 * 1000) {
+        monobankJarIntents.delete(id);
+      }
+    }
+    if (monobankJarIntents.size > 300) {
+      const oldest = Array.from(monobankJarIntents.entries()).sort(
+        (a, b) => a[1].createdAtMs - b[1].createdAtMs
+      );
+      for (const [id] of oldest.slice(0, oldest.length - 200)) {
+        monobankJarIntents.delete(id);
+      }
+    }
+  };
+
+  app.get('/api/monobank/jar/info', async (_req, res) => {
+    const db = ensureDatabase();
+    if (!db.monobankJarUrl) {
+      res.json({ enabled: false });
+      return;
+    }
+    const snap = await fetchLiveMonobankJarSnapshot(db.monobankJarUrl);
+    if (!snap) {
+      res.json({ enabled: false });
+      return;
+    }
+    if (!db.monobankJarWatermark || db.monobankJarWatermark.jarId !== snap.jarId) {
+      db.monobankJarWatermark = {
+        jarId: snap.jarId,
+        ...(snap.extJarId ? { extJarId: snap.extJarId } : {}),
+        lastAmountKopecks: snap.amountKopecks,
+        updatedAt: new Date().toISOString(),
+      };
+      saveDatabase(db, { bumpCatalogRevision: false });
+    }
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    res.json({
+      enabled: true,
+      jarId: snap.jarId,
+      title: snap.title,
+      ownerName: snap.ownerName,
+      amountUah: Math.round(snap.amountKopecks / 100),
+      goalUah: snap.goalKopecks ? Math.round(snap.goalKopecks / 100) : null,
+      closed: snap.closed,
+    });
+  });
+
+  app.post('/api/monobank/jar/intent', async (req, res) => {
+    if (!verifySameOrigin(req)) {
+      res.status(403).json({ error: 'Запит із стороннього джерела заблоковано.' });
+      return;
+    }
+    const ipHash = getClientIpHash(req);
+    const rate = checkRateLimit(`mono-jar-intent:${ipHash}`, 30, 5 * 60 * 1000);
+    if (!rate.allowed) {
+      res.setHeader('Retry-After', String(rate.retryAfterSec));
+      res.status(429).json({ error: 'Забагато запитів. Зачекайте трохи.' });
+      return;
+    }
+
+    const db = ensureDatabase();
+    if (!db.monobankJarUrl) {
+      res.status(400).json({ error: 'Посилання на банку Монобанку ще не налаштовано.' });
+      return;
+    }
+
+    const snap = await fetchLiveMonobankJarSnapshot(db.monobankJarUrl, true);
+    if (!snap) {
+      res.status(503).json({ error: 'Не вдалося з’єднатися з Monobank для перевірки банки.' });
+      return;
+    }
+
+    const optionalAuth = await tryAuthenticateOptionalGuest(req, db);
+    const rawDonorName = (req.body as { donorName?: unknown })?.donorName;
+    const cleanCustomName =
+      typeof rawDonorName === 'string' ? rawDonorName.trim().slice(0, 80) : '';
+    const resolvedName =
+      optionalAuth?.account.displayName || cleanCustomName || 'Добродій';
+
+    const watermarkMatchesJar = db.monobankJarWatermark?.jarId === snap.jarId;
+    const baselineKopecks = watermarkMatchesJar
+      ? Math.max(snap.amountKopecks, db.monobankJarWatermark!.lastAmountKopecks)
+      : snap.amountKopecks;
+
+    if (!watermarkMatchesJar || snap.amountKopecks < db.monobankJarWatermark!.lastAmountKopecks) {
+      db.monobankJarWatermark = {
+        jarId: snap.jarId,
+        ...(snap.extJarId ? { extJarId: snap.extJarId } : {}),
+        lastAmountKopecks: snap.amountKopecks,
+        updatedAt: new Date().toISOString(),
+      };
+      saveDatabase(db, { bumpCatalogRevision: false });
+    }
+
+    cleanupExpiredMonobankIntents();
+    const now = Date.now();
+    const intentId = `mji_${now.toString(36)}_${crypto.randomBytes(5).toString('hex')}`;
+    const intent: MonobankJarIntent = {
+      intentId,
+      jarId: snap.jarId,
+      baselineKopecks,
+      ...(optionalAuth?.account.uid ? { guestUid: optionalAuth.account.uid } : {}),
+      displayName: resolvedName,
+      ...(optionalAuth?.account.photoUrl ? { photoUrl: optionalAuth.account.photoUrl } : {}),
+      ipHash,
+      createdAtMs: now,
+      expiresAtMs: now + 60 * 60 * 1000,
+      status: 'pending',
+    };
+    monobankJarIntents.set(intentId, intent);
+
+    res.status(201).json({
+      intentId,
+      jarTitle: snap.title,
+      amountUah: Math.round(snap.amountKopecks / 100),
+      goalUah: snap.goalKopecks ? Math.round(snap.goalKopecks / 100) : null,
+      donorName: resolvedName,
+    });
+  });
+
+  app.post('/api/monobank/jar/check', async (req, res) => {
+    if (!verifySameOrigin(req)) {
+      res.status(403).json({ error: 'Запит із стороннього джерела заблоковано.' });
+      return;
+    }
+    const ipHash = getClientIpHash(req);
+    const rate = checkRateLimit(`mono-jar-check:${ipHash}`, 120, 5 * 60 * 1000);
+    if (!rate.allowed) {
+      res.setHeader('Retry-After', String(rate.retryAfterSec));
+      res.status(429).json({ error: 'Забагато перевірок. Зачекайте кілька секунд.' });
+      return;
+    }
+
+    const db = ensureDatabase();
+    const { intentId, donorName } = req.body as { intentId?: unknown; donorName?: unknown };
+    const cleanIntentId = typeof intentId === 'string' ? intentId.trim() : '';
+    const intent = cleanIntentId ? monobankJarIntents.get(cleanIntentId) : undefined;
+    if (!intent) {
+      res.status(404).json({ status: 'expired' });
+      return;
+    }
+    if (intent.ipHash !== ipHash) {
+      const optionalAuth = await tryAuthenticateOptionalGuest(req, db);
+      const sameUser = Boolean(
+        optionalAuth && intent.guestUid && optionalAuth.account.uid === intent.guestUid
+      );
+      if (!sameUser) {
+        res.status(403).json({ error: 'Немає доступу до цієї перевірки.' });
+        return;
+      }
+    }
+
+    if (intent.status === 'credited') {
+      res.json({
+        status: 'credited',
+        amountUah: intent.creditedAmountUah,
+        donationId: intent.donationId,
+      });
+      return;
+    }
+
+    if (Date.now() > intent.expiresAtMs) {
+      res.json({ status: 'expired' });
+      return;
+    }
+
+    const optionalAuth = await tryAuthenticateOptionalGuest(req, db);
+    if (optionalAuth?.account) {
+      intent.guestUid = optionalAuth.account.uid;
+      intent.displayName = optionalAuth.account.displayName || intent.displayName;
+      if (optionalAuth.account.photoUrl) {
+        intent.photoUrl = optionalAuth.account.photoUrl;
+      }
+    } else if (typeof donorName === 'string' && donorName.trim()) {
+      intent.displayName = donorName.trim().slice(0, 80);
+    }
+
+    const snap = await fetchLiveMonobankJarSnapshot(db.monobankJarUrl, true);
+    if (!snap || snap.jarId !== intent.jarId) {
+      res.json({ status: 'pending' });
+      return;
+    }
+
+    const watermarkKopecks =
+      db.monobankJarWatermark && db.monobankJarWatermark.jarId === snap.jarId
+        ? db.monobankJarWatermark.lastAmountKopecks
+        : intent.baselineKopecks;
+
+    // Handle case if author withdrew funds from jar since last check
+    if (snap.amountKopecks < watermarkKopecks) {
+      db.monobankJarWatermark = {
+        jarId: snap.jarId,
+        ...(snap.extJarId ? { extJarId: snap.extJarId } : {}),
+        lastAmountKopecks: snap.amountKopecks,
+        updatedAt: new Date().toISOString(),
+      };
+      intent.baselineKopecks = snap.amountKopecks;
+      saveDatabase(db, { bumpCatalogRevision: false });
+      res.json({
+        status: 'pending',
+        currentJarUah: Math.round(snap.amountKopecks / 100),
+      });
+      return;
+    }
+
+    const effectiveFloor = Math.max(intent.baselineKopecks, watermarkKopecks);
+    const deltaKopecks = snap.amountKopecks - effectiveFloor;
+    const amountUah = Math.round(deltaKopecks / 100);
+
+    if (deltaKopecks >= 100 && amountUah >= 1) {
+      const nowIso = new Date().toISOString();
+      const record: DonorRecord = {
+        id: `don_mono_${Date.now().toString(36)}_${crypto.randomBytes(3).toString('hex')}`,
+        ...(intent.guestUid ? { guestUid: intent.guestUid } : {}),
+        displayName: intent.displayName || 'Добродій',
+        ...(intent.photoUrl ? { photoUrl: intent.photoUrl } : {}),
+        amountUah,
+        note: 'Донат у банку Монобанку',
+        donatedAt: nowIso,
+      };
+
+      // Atomically update watermark & intent status before saving
+      db.monobankJarWatermark = {
+        jarId: snap.jarId,
+        ...(snap.extJarId ? { extJarId: snap.extJarId } : {}),
+        lastAmountKopecks: snap.amountKopecks,
+        updatedAt: nowIso,
+      };
+      intent.status = 'credited';
+      intent.creditedAmountUah = amountUah;
+      intent.donationId = record.id;
+
+      db.donations.unshift(record);
+      saveDatabase(db);
+
+      res.json({
+        status: 'credited',
+        amountUah,
+        donation: record,
+        currentJarUah: Math.round(snap.amountKopecks / 100),
+      });
+      return;
+    }
+
+    res.json({
+      status: 'pending',
+      currentJarUah: Math.round(snap.amountKopecks / 100),
+    });
+  });
+
   // Public: Submit site feedback / suggestions
-  app.post('/api/feedback', async (req, res) => {
+  app.post('/api/feedback', feedbackPostLimiter, async (req, res) => {
     const db = ensureDatabase();
     const optionalAuth = await tryAuthenticateOptionalGuest(req, db);
     const { message, displayName, contact } = req.body as {
@@ -7725,6 +7620,30 @@ async function startServer() {
     const resolvedFirebaseUid =
       optionalAuth?.firebaseClaims?.uid || optionalAuth?.account?.googleUid || undefined;
     const nowIso = new Date().toISOString();
+    const nowMs = Date.now();
+
+    if (!Array.isArray(db.feedback)) {
+      db.feedback = [];
+    }
+
+    // Idempotency guard: prevent accidental duplicate submissions within 15 seconds
+    const duplicate = db.feedback.find((existing) => {
+      const sameAuthor =
+        (optionalAuth?.account?.uid && existing.guestUid === optionalAuth.account.uid) ||
+        (resolvedFirebaseUid && existing.firebaseUid === resolvedFirebaseUid) ||
+        existing.displayName.trim().toLowerCase() === cleanName.toLowerCase();
+      const createdMs = Date.parse(existing.createdAt) || 0;
+      return (
+        sameAuthor &&
+        existing.message.trim().toLowerCase() === cleanMessage.toLowerCase() &&
+        nowMs - createdMs >= 0 &&
+        nowMs - createdMs <= 15_000
+      );
+    });
+    if (duplicate) {
+      res.status(200).json({ success: true, record: duplicate, deduplicated: true });
+      return;
+    }
 
     const record: FeedbackRecord = {
       id: `fb_${Date.now().toString(36)}_${crypto.randomBytes(3).toString('hex')}`,
@@ -7740,9 +7659,6 @@ async function startServer() {
       readByUser: true,
     };
 
-    if (!Array.isArray(db.feedback)) {
-      db.feedback = [];
-    }
     db.feedback.unshift(record);
     saveDatabase(db);
 
@@ -9240,7 +9156,7 @@ async function startServer() {
     }
 
     try {
-      let response: Response | null = null;
+      let response: globalThis.Response | null = null;
       for (let hop = 0; hop < 4; hop += 1) {
         const resHop = await fetch(currentUrl.toString(), {
           method: 'GET',
@@ -11553,16 +11469,9 @@ async function startServer() {
   });
 
   // Issue single-use cryptographic payment session (ECDH P-256 + HKDF-SHA-256 + AES-256-GCM)
-  app.post('/api/payments/session', async (req, res) => {
+  app.post('/api/payments/session', paySessionLimiter, async (req, res) => {
     if (!verifySameOrigin(req)) {
       res.status(403).json({ error: 'Запит із стороннього джерела заблоковано.' });
-      return;
-    }
-    const ipHash = getClientIpHash(req);
-    const rate = checkRateLimit(`pay-session:${ipHash}`, 25, 5 * 60 * 1000);
-    if (!rate.allowed) {
-      res.setHeader('Retry-After', String(rate.retryAfterSec));
-      res.status(429).json({ error: 'Забагато запитів на оплату. Зачекайте кілька секунд.' });
       return;
     }
 
@@ -11661,18 +11570,21 @@ async function startServer() {
     });
   });
 
-  app.post('/api/orders', async (req, res) => {
+  app.post('/api/orders', ordersCreateLimiter, async (req, res) => {
     if (!verifySameOrigin(req)) {
       res.status(403).json({ error: 'Запит із стороннього джерела заблоковано.' });
       return;
     }
-    const ipHash = getClientIpHash(req);
-    const rate = checkRateLimit(`orders-create:${ipHash}`, 12, 10 * 60 * 1000);
-    if (!rate.allowed) {
-      res.setHeader('Retry-After', String(rate.retryAfterSec));
-      res.status(429).json({ error: 'Перевищено ліміт спроб оплати. Спробуйте через кілька хвилин.' });
+
+    const monobankToken = getMonobankToken();
+    if (!monobankToken) {
+      res.status(503).json({
+        error: 'Оплата замовлень тимчасово недоступна: платіжний шлюз monobank не налаштовано.',
+      });
       return;
     }
+
+    purgeExpiredMonobankInvoices();
 
     const db = ensureDatabase();
     const optionalAuth = await tryAuthenticateOptionalGuest(req, db);
@@ -11697,6 +11609,10 @@ async function startServer() {
     }
 
     const totalUah = matchedProducts.reduce((sum, p) => sum + getEffectivePriceUah(p), 0);
+    if (!Number.isFinite(totalUah) || totalUah <= 0) {
+      res.status(400).json({ error: 'Сума замовлення має перевищувати 0 грн.' });
+      return;
+    }
 
     const decryptedResult = decryptPaymentEnvelope(
       encryptedPayment,
@@ -11756,105 +11672,237 @@ async function startServer() {
       return;
     }
 
-    const paidAt = new Date().toISOString();
-    const transactionId = `MONO-${Date.now().toString(36).toUpperCase()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
-    const paymentMethod = 'monobank' as const;
-
     const orderCode = generateHighEntropyOrderCode(db);
-    const receiptSignature = signOrderReceipt({
-      orderCode,
-      transactionId,
-      totalUah,
-      paidAt,
-    });
+    const baseUrl = getServerPublicBaseUrl(req);
+    const redirectUrl = `${baseUrl}/#store`;
+    const webHookUrl = `${baseUrl}/api/monobank/webhook`;
 
-    const paymentSummary: PaymentSummary = {
-      status: 'paid',
-      providerLabel: 'Монобанк · E2EE шлюз',
-      method: paymentMethod,
-      encryptionProtocol: 'ECDH P-256 · HKDF-SHA256 · AES-256-GCM',
-      receiptSignature,
-      transactionId,
-      paidAt,
-    };
+    try {
+      const monoRes = await fetch('https://api.monobank.ua/api/merchant/invoice/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Token': monobankToken,
+        },
+        body: JSON.stringify({
+          amount: Math.max(100, Math.round(totalUah * 100)),
+          ccy: 980,
+          merchantPaymInfo: {
+            reference: orderCode,
+            destination: `Замовлення у крамниці #${orderCode} (${matchedProducts.map((p) => p.title).join(', ').slice(0, 100)})`,
+            comment: `Покупець: ${cleanBuyerName}`,
+          },
+          redirectUrl,
+          webHookUrl,
+          validity: 3600,
+        }),
+      });
 
-    const unlockedItems = matchedProducts.map((p) =>
-      buildPurchasedAccess(p, orderCode, paidAt, sanitizedShipping, transactionId)
-    );
+      const monoData = (await monoRes.json().catch(() => ({}))) as {
+        invoiceId?: string;
+        pageUrl?: string;
+        errText?: string;
+      };
 
-    const encryptedPii = encryptOrderPii(
-      {
+      if (!monoRes.ok || !monoData.invoiceId || !monoData.pageUrl) {
+        res.status(502).json({
+          error: monoData.errText || 'Не вдалося створити рахунок monobank. Спробуйте ще раз.',
+        });
+        return;
+      }
+
+      const createdAt = new Date().toISOString();
+      const paymentSummary: PaymentSummary = {
+        status: 'pending',
+        providerLabel: 'monobank Acquiring',
+        method: 'monobank',
+        encryptionProtocol: 'monobank Acquiring · ECDH P-256 + AES-256-GCM',
+        transactionId: monoData.invoiceId,
+        paidAt: '',
+      };
+
+      const encryptedPii = encryptOrderPii(
+        {
+          buyerName: cleanBuyerName,
+          buyerEmail: cleanBuyerEmail,
+          shipping: sanitizedShipping,
+        },
+        orderCode
+      );
+
+      const pendingOrderRecord: OrderRecord = {
+        orderCode,
+        ...(optionalAuth?.account.uid ? { guestUid: optionalAuth.account.uid } : {}),
+        buyerName: maskPersonName(cleanBuyerName),
+        buyerEmail: maskEmailAddress(cleanBuyerEmail),
+        buyerNameMasked: maskPersonName(cleanBuyerName),
+        buyerEmailMasked: maskEmailAddress(cleanBuyerEmail),
+        buyerEmailHash: hashBuyerEmailLookup(cleanBuyerEmail),
+        encryptedPii,
+        createdAt,
+        totalUah,
+        payment: paymentSummary,
+        items: [],
+        pendingProductIds: matchedProducts.map((p) => p.id),
+      };
+
+      db.orders.unshift(pendingOrderRecord);
+      saveDatabase(db);
+
+      const now = Date.now();
+      pendingMonobankStoreInvoices.set(monoData.invoiceId, {
+        invoiceId: monoData.invoiceId,
+        orderCode,
+        productIds: matchedProducts.map((p) => p.id),
+        amountUah: totalUah,
         buyerName: cleanBuyerName,
         buyerEmail: cleanBuyerEmail,
         shipping: sanitizedShipping,
-      },
-      orderCode
-    );
+        ...(optionalAuth?.account.uid ? { guestUid: optionalAuth.account.uid } : {}),
+        status: 'created',
+        createdAtMs: now,
+        expiresAtMs: now + 60 * 60 * 1000,
+      });
+      persistPendingInvoices();
 
-    const storedOrderRecord: OrderRecord = {
-      orderCode,
-      ...(optionalAuth?.account.uid ? { guestUid: optionalAuth.account.uid } : {}),
-      buyerName: maskPersonName(cleanBuyerName),
-      buyerEmail: maskEmailAddress(cleanBuyerEmail),
-      buyerNameMasked: maskPersonName(cleanBuyerName),
-      buyerEmailMasked: maskEmailAddress(cleanBuyerEmail),
-      buyerEmailHash: hashBuyerEmailLookup(cleanBuyerEmail),
-      encryptedPii,
-      createdAt: paidAt,
-      totalUah,
-      payment: paymentSummary,
-      items: unlockedItems,
-    };
-
-    db.orders.unshift(storedOrderRecord);
-    if (optionalAuth?.account) {
-      optionalAuth.account.purchasesCount =
-        Math.round(Number(optionalAuth.account.purchasesCount) || 0) + Math.max(1, unlockedItems.length);
-      optionalAuth.account.updatedAt = paidAt;
-      if (optionalAuth.firebaseClaims && optionalAuth.firebaseIdToken) {
-        void syncPublicUserProfileToFirestore(
-          {
-            firebaseUid: optionalAuth.firebaseClaims.uid,
-            guestUid: optionalAuth.account.uid,
-            displayName: optionalAuth.account.displayName,
-            photoUrl: optionalAuth.account.photoUrl,
-            likedPoemIds: optionalAuth.account.likedPoemIds,
-            likedRadioTrackIds: optionalAuth.account.likedRadioTrackIds,
-            totalTimeSeconds: optionalAuth.account.totalTimeSeconds,
-            purchasesCount: optionalAuth.account.purchasesCount,
-            donorChatText: optionalAuth.account.donorChatText,
-          },
-          optionalAuth.firebaseIdToken
-        );
-      }
-    }
-    saveDatabase(db);
-
-    if (optionalAuth?.firebaseClaims && optionalAuth.firebaseIdToken) {
-      void syncOrderToFirestore(
-        storedOrderRecord,
-        optionalAuth.firebaseClaims.uid,
-        optionalAuth.firebaseIdToken
-      );
-    }
-
-    res.status(201).json({
-      order: {
+      res.status(201).json({
+        mode: 'acquiring',
+        status: 'pending',
         orderCode,
-        createdAt: paidAt,
+        invoiceId: monoData.invoiceId,
+        pageUrl: monoData.pageUrl,
         totalUah,
-        payment: {
-          status: paymentSummary.status,
-          providerLabel: paymentSummary.providerLabel,
-          method: paymentSummary.method,
-          cardBrand: paymentSummary.cardBrand,
-          cardLast4: paymentSummary.cardLast4,
-          encryptionProtocol: paymentSummary.encryptionProtocol,
-          transactionId: paymentSummary.transactionId,
-          paidAt: paymentSummary.paidAt,
-        },
+      });
+    } catch {
+      res.status(502).json({
+        error: 'Тимчасово не вдалося з’єднатися з платіжним сервісом monobank.',
+      });
+    }
+  });
+
+  // Check Monobank Acquiring invoice payment status & finalize store order only after bank confirmation
+  app.get('/api/orders/monobank/status', ordersStatusLimiter, async (req, res) => {
+    purgeExpiredMonobankInvoices();
+    const db = ensureDatabase();
+    const invoiceId = typeof req.query.invoiceId === 'string' ? req.query.invoiceId.trim() : '';
+    const orderCodeQuery = typeof req.query.orderCode === 'string' ? req.query.orderCode.trim() : '';
+    if (!invoiceId || !orderCodeQuery) {
+      res.status(400).json({ error: 'Відсутній ідентифікатор рахунку або номер замовлення.' });
+      return;
+    }
+
+    const pending = pendingMonobankStoreInvoices.get(invoiceId);
+    if (!pending || pending.orderCode.toLowerCase() !== orderCodeQuery.toLowerCase()) {
+      res.status(404).json({ error: 'Рахунок на оплату не знайдено або його термін дії завершився.' });
+      return;
+    }
+
+    const optionalAuth = await tryAuthenticateOptionalGuest(req, db);
+
+    const buildPaidOrderResponse = (orderRecord: OrderRecord, unlockedItems: PurchasedAccess[]) => ({
+      paid: true,
+      status: 'success' as const,
+      order: {
+        orderCode: orderRecord.orderCode,
+        createdAt: orderRecord.createdAt,
+        totalUah: orderRecord.totalUah,
+        payment: orderRecord.payment,
         items: unlockedItems,
       },
+    });
+
+    if (pending.finalizedOrderCode) {
+      const existingOrder = db.orders.find((o) => o.orderCode === pending.finalizedOrderCode);
+      if (existingOrder && existingOrder.payment?.status === 'paid' && existingOrder.items.length > 0) {
+        res.json(buildPaidOrderResponse(existingOrder, existingOrder.items));
+        return;
+      }
+    }
+
+    const monobankToken = getMonobankToken();
+    if (!monobankToken) {
+      res.status(503).json({
+        error: 'Платіжний шлюз monobank не налаштовано.',
+      });
+      return;
+    }
+
+    if (pending.status !== 'success') {
+      try {
+        const statusRes = await fetch(
+          `https://api.monobank.ua/api/merchant/invoice/status?invoiceId=${encodeURIComponent(invoiceId)}`,
+          {
+            headers: { 'X-Token': monobankToken },
+          }
+        );
+        if (statusRes.ok) {
+          const statusData = (await statusRes.json()) as {
+            status?: MonobankInvoiceStatus;
+            amount?: number;
+            failureReason?: string;
+          };
+          const expectedKopecks = Math.max(100, Math.round(pending.amountUah * 100));
+          if (statusData.status === 'success' && typeof statusData.amount === 'number' && statusData.amount < expectedKopecks) {
+            pending.status = 'failure';
+            pending.failureReason = 'Сума платежу не відповідає сумі замовлення.';
+          } else if (statusData.status) {
+            pending.status = statusData.status;
+          }
+          if (statusData.failureReason) {
+            pending.failureReason = statusData.failureReason;
+          }
+          persistPendingInvoices();
+        }
+      } catch {
+        // Keep current status on transient network failure
+      }
+    }
+
+    if (pending.status === 'success') {
+      const { orderRecord, unlockedItems } = finalizePendingStoreOrder(db, pending);
+      pending.finalizedOrderCode = orderRecord.orderCode;
+      persistPendingInvoices();
+
+      if (optionalAuth?.account && optionalAuth.firebaseClaims && optionalAuth.firebaseIdToken) {
+        if (!orderRecord.guestUid || orderRecord.guestUid === optionalAuth.account.uid) {
+          void syncPublicUserProfileToFirestore(
+            {
+              firebaseUid: optionalAuth.firebaseClaims.uid,
+              guestUid: optionalAuth.account.uid,
+              displayName: optionalAuth.account.displayName,
+              photoUrl: optionalAuth.account.photoUrl,
+              likedPoemIds: optionalAuth.account.likedPoemIds,
+              likedRadioTrackIds: optionalAuth.account.likedRadioTrackIds,
+              totalTimeSeconds: optionalAuth.account.totalTimeSeconds,
+              purchasesCount: optionalAuth.account.purchasesCount,
+              donorChatText: optionalAuth.account.donorChatText,
+            },
+            optionalAuth.firebaseIdToken
+          );
+          void syncOrderToFirestore(
+            orderRecord,
+            optionalAuth.firebaseClaims.uid,
+            optionalAuth.firebaseIdToken
+          );
+        }
+      }
+
+      res.json(buildPaidOrderResponse(orderRecord, unlockedItems));
+      return;
+    }
+
+    if (pending.status === 'failure' || pending.status === 'expired' || pending.status === 'reversed') {
+      const existingOrder = db.orders.find((o) => o.orderCode === pending.orderCode);
+      if (existingOrder && existingOrder.payment && existingOrder.payment.status === 'pending') {
+        existingOrder.payment.status = pending.status === 'expired' ? 'expired' : 'failed';
+        saveDatabase(db);
+      }
+    }
+
+    res.json({
+      paid: false,
+      status: pending.status,
+      failureReason: pending.failureReason,
     });
   });
 
@@ -11951,17 +11999,18 @@ async function startServer() {
     });
   });
 
-  // Monobank-only checkout initiation for paid prose (supports live Monobank Acquiring if MONOBANK_TOKEN is set, or E2EE Monobank checkout)
-  app.post('/api/prose/:id/monobank/invoice', async (req, res) => {
+  // Monobank-only checkout initiation for paid prose (requires configured MONOBANK_TOKEN)
+  app.post('/api/prose/:id/monobank/invoice', prosePurchaseLimiter, async (req, res) => {
     if (!verifySameOrigin(req)) {
       res.status(403).json({ error: 'Запит із стороннього джерела заблоковано.' });
       return;
     }
-    const ipHash = getClientIpHash(req);
-    const rate = checkRateLimit(`prose-purchase:${ipHash}`, 12, 10 * 60 * 1000);
-    if (!rate.allowed) {
-      res.setHeader('Retry-After', String(rate.retryAfterSec));
-      res.status(429).json({ error: 'Забагато спроб оплати. Спробуйте трохи пізніше.' });
+
+    const monobankToken = getMonobankToken();
+    if (!monobankToken) {
+      res.status(503).json({
+        error: 'Оплата платної прози тимчасово недоступна: платіжний шлюз monobank не налаштовано.',
+      });
       return;
     }
 
@@ -12050,31 +12099,6 @@ async function startServer() {
       return;
     }
 
-    const monobankToken = getMonobankToken();
-    if (!monobankToken) {
-      const transactionId = `MONO-${Date.now().toString(36).toUpperCase()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
-      const { orderCode, unlockedAccess } = createProsePaidOrder(db, work, {
-        cleanName,
-        cleanEmail,
-        effectivePriceUah,
-        providerLabel: 'monobank · E2EE шлюз',
-        transactionId,
-        guestUid: optionalAuth?.account.uid,
-      });
-
-      res.status(201).json({
-        mode: 'unlocked',
-        orderCode,
-        unlockedAccess,
-        content: work.content,
-        chapters: Array.isArray(work.chapters) ? work.chapters : [],
-        hasPdf: Boolean(work.pdfStorageKey),
-        pdfFileName: work.pdfFileName,
-        pdfFileSize: work.pdfFileSize,
-      });
-      return;
-    }
-
     const orderCode = generateHighEntropyOrderCode(db);
     const baseUrl = getServerPublicBaseUrl(req);
     const redirectUrl = `${baseUrl}/#prose/${encodeURIComponent(work.id)}`;
@@ -12114,6 +12138,15 @@ async function startServer() {
         return;
       }
 
+      createPendingProseOrder(db, work, {
+        orderCode,
+        invoiceId: monoData.invoiceId,
+        cleanName,
+        cleanEmail,
+        effectivePriceUah,
+        guestUid: optionalAuth?.account.uid,
+      });
+
       const now = Date.now();
       pendingMonobankProseInvoices.set(monoData.invoiceId, {
         invoiceId: monoData.invoiceId,
@@ -12122,10 +12155,12 @@ async function startServer() {
         amountUah: effectivePriceUah,
         buyerName: cleanName,
         buyerEmail: cleanEmail,
+        ...(optionalAuth?.account.uid ? { guestUid: optionalAuth.account.uid } : {}),
         status: 'created',
         createdAtMs: now,
         expiresAtMs: now + 60 * 60 * 1000,
       });
+      persistPendingInvoices();
 
       res.status(201).json({
         mode: 'acquiring',
@@ -12142,7 +12177,8 @@ async function startServer() {
   });
 
   // Check Monobank Acquiring invoice payment status & unlock prose when paid
-  app.get('/api/prose/:id/monobank/status', async (req, res) => {
+  app.get('/api/prose/:id/monobank/status', proseStatusLimiter, async (req, res) => {
+    purgeExpiredMonobankInvoices();
     const db = ensureDatabase();
     const { id } = req.params;
     const invoiceId = typeof req.query.invoiceId === 'string' ? req.query.invoiceId.trim() : '';
@@ -12163,38 +12199,47 @@ async function startServer() {
       return;
     }
 
+    const optionalAuth = await tryAuthenticateOptionalGuest(req, db);
+
     if (pending.finalizedOrderCode) {
       const existingOrder = db.orders.find((o) => o.orderCode === pending.finalizedOrderCode);
-      const unlockedItem =
-        existingOrder?.items.find((it) => it.proseId === work.id || it.productId === work.id) || {
-          productId: work.id,
-          proseId: work.id,
+      if (existingOrder && existingOrder.payment?.status === 'paid') {
+        const unlockedItem =
+          existingOrder.items.find((it) => it.proseId === work.id || it.productId === work.id) || {
+            productId: work.id,
+            proseId: work.id,
+            orderCode: pending.finalizedOrderCode,
+            title: work.title,
+            type: 'prose_access' as const,
+            purchasedAt: existingOrder.createdAt || new Date().toISOString(),
+            paymentTransactionId: invoiceId,
+            hasPdf: Boolean(work.pdfStorageKey),
+            pdfFileName: work.pdfFileName,
+            pdfFileSize: work.pdfFileSize,
+          };
+
+        res.json({
+          paid: true,
+          status: 'success',
           orderCode: pending.finalizedOrderCode,
-          title: work.title,
-          type: 'prose_access' as const,
-          purchasedAt: existingOrder?.createdAt || new Date().toISOString(),
-          paymentTransactionId: invoiceId,
+          unlockedAccess: unlockedItem,
+          content: work.content,
+          chapters: Array.isArray(work.chapters) ? work.chapters : [],
           hasPdf: Boolean(work.pdfStorageKey),
           pdfFileName: work.pdfFileName,
           pdfFileSize: work.pdfFileSize,
-        };
-
-      res.json({
-        paid: true,
-        status: 'success',
-        orderCode: pending.finalizedOrderCode,
-        unlockedAccess: unlockedItem,
-        content: work.content,
-        chapters: Array.isArray(work.chapters) ? work.chapters : [],
-        hasPdf: Boolean(work.pdfStorageKey),
-        pdfFileName: work.pdfFileName,
-        pdfFileSize: work.pdfFileSize,
-      });
-      return;
+        });
+        return;
+      }
     }
 
     const monobankToken = getMonobankToken();
-    if (monobankToken && pending.status !== 'success') {
+    if (!monobankToken) {
+      res.status(503).json({ error: 'Платіжний шлюз monobank не налаштовано.' });
+      return;
+    }
+
+    if (pending.status !== 'success') {
       try {
         const statusRes = await fetch(
           `https://api.monobank.ua/api/merchant/invoice/status?invoiceId=${encodeURIComponent(invoiceId)}`,
@@ -12204,15 +12249,21 @@ async function startServer() {
         );
         if (statusRes.ok) {
           const statusData = (await statusRes.json()) as {
-            status?: PendingMonobankProseInvoice['status'];
+            status?: MonobankInvoiceStatus;
+            amount?: number;
             failureReason?: string;
           };
-          if (statusData.status) {
+          const expectedKopecks = Math.max(100, Math.round(pending.amountUah * 100));
+          if (statusData.status === 'success' && typeof statusData.amount === 'number' && statusData.amount < expectedKopecks) {
+            pending.status = 'failure';
+            pending.failureReason = 'Сума платежу не відповідає вартості твору.';
+          } else if (statusData.status) {
             pending.status = statusData.status;
           }
           if (statusData.failureReason) {
             pending.failureReason = statusData.failureReason;
           }
+          persistPendingInvoices();
         }
       } catch {
         // Keep current cached status if transient network error occurs during polling
@@ -12220,7 +12271,7 @@ async function startServer() {
     }
 
     if (pending.status === 'success') {
-      const { orderCode, unlockedAccess } = createProsePaidOrder(db, work, {
+      const { orderCode, unlockedAccess, orderRecord } = finalizeProsePaidOrder(db, work, {
         cleanName: pending.buyerName,
         cleanEmail: pending.buyerEmail,
         effectivePriceUah: pending.amountUah,
@@ -12228,8 +12279,34 @@ async function startServer() {
         transactionId: pending.invoiceId,
         orderCode: pending.orderCode,
         encryptionProtocol: 'monobank Acquiring · ECDH P-256 + AES-256-GCM',
+        guestUid: pending.guestUid,
       });
       pending.finalizedOrderCode = orderCode;
+      persistPendingInvoices();
+
+      if (optionalAuth?.account && optionalAuth.firebaseClaims && optionalAuth.firebaseIdToken) {
+        if (!orderRecord.guestUid || orderRecord.guestUid === optionalAuth.account.uid) {
+          void syncPublicUserProfileToFirestore(
+            {
+              firebaseUid: optionalAuth.firebaseClaims.uid,
+              guestUid: optionalAuth.account.uid,
+              displayName: optionalAuth.account.displayName,
+              photoUrl: optionalAuth.account.photoUrl,
+              likedPoemIds: optionalAuth.account.likedPoemIds,
+              likedRadioTrackIds: optionalAuth.account.likedRadioTrackIds,
+              totalTimeSeconds: optionalAuth.account.totalTimeSeconds,
+              purchasesCount: optionalAuth.account.purchasesCount,
+              donorChatText: optionalAuth.account.donorChatText,
+            },
+            optionalAuth.firebaseIdToken
+          );
+          void syncOrderToFirestore(
+            orderRecord,
+            optionalAuth.firebaseClaims.uid,
+            optionalAuth.firebaseIdToken
+          );
+        }
+      }
 
       res.json({
         paid: true,
@@ -12245,6 +12322,14 @@ async function startServer() {
       return;
     }
 
+    if (pending.status === 'failure' || pending.status === 'expired' || pending.status === 'reversed') {
+      const existingOrder = db.orders.find((o) => o.orderCode === pending.orderCode);
+      if (existingOrder && existingOrder.payment && existingOrder.payment.status === 'pending') {
+        existingOrder.payment.status = pending.status === 'expired' ? 'expired' : 'failed';
+        saveDatabase(db);
+      }
+    }
+
     res.json({
       paid: false,
       status: pending.status,
@@ -12252,7 +12337,7 @@ async function startServer() {
     });
   });
 
-  // Monobank Acquiring webhook callback
+  // Monobank Acquiring webhook callback (handles both prose and store invoices)
   app.post('/api/monobank/webhook', async (req, res) => {
     const monobankToken = getMonobankToken();
     if (!monobankToken) {
@@ -12268,191 +12353,99 @@ async function startServer() {
       return;
     }
 
+    ensurePendingInvoicesLoaded();
+
     const payload = req.body as {
       invoiceId?: string;
-      status?: PendingMonobankProseInvoice['status'];
+      status?: MonobankInvoiceStatus;
+      amount?: number;
       failureReason?: string;
     };
 
     if (payload.invoiceId) {
-      const pending = pendingMonobankProseInvoices.get(payload.invoiceId);
-      if (pending) {
-        if (payload.status) {
-          pending.status = payload.status;
+      const pendingProse = pendingMonobankProseInvoices.get(payload.invoiceId);
+      if (pendingProse) {
+        const expectedKopecks = Math.max(100, Math.round(pendingProse.amountUah * 100));
+        if (payload.status === 'success' && typeof payload.amount === 'number' && payload.amount < expectedKopecks) {
+          pendingProse.status = 'failure';
+          pendingProse.failureReason = 'Сума платежу не відповідає вартості твору.';
+        } else if (payload.status) {
+          pendingProse.status = payload.status;
         }
         if (payload.failureReason) {
-          pending.failureReason = payload.failureReason;
+          pendingProse.failureReason = payload.failureReason;
         }
-        if (pending.status === 'success' && !pending.finalizedOrderCode) {
+        if (pendingProse.status === 'success' && !pendingProse.finalizedOrderCode) {
           const db = ensureDatabase();
-          const work = db.prose.find((p) => p.id === pending.proseId);
+          const work = db.prose.find((p) => p.id === pendingProse.proseId);
           if (work) {
-            const { orderCode } = createProsePaidOrder(db, work, {
-              cleanName: pending.buyerName,
-              cleanEmail: pending.buyerEmail,
-              effectivePriceUah: pending.amountUah,
+            const { orderCode } = finalizeProsePaidOrder(db, work, {
+              cleanName: pendingProse.buyerName,
+              cleanEmail: pendingProse.buyerEmail,
+              effectivePriceUah: pendingProse.amountUah,
               providerLabel: 'monobank Acquiring',
-              transactionId: pending.invoiceId,
-              orderCode: pending.orderCode,
+              transactionId: pendingProse.invoiceId,
+              orderCode: pendingProse.orderCode,
               encryptionProtocol: 'monobank Acquiring · ECDH P-256 + AES-256-GCM',
+              guestUid: pendingProse.guestUid,
             });
-            pending.finalizedOrderCode = orderCode;
+            pendingProse.finalizedOrderCode = orderCode;
+          }
+        } else if (pendingProse.status === 'failure' || pendingProse.status === 'expired' || pendingProse.status === 'reversed') {
+          const db = ensureDatabase();
+          const existingOrder = db.orders.find((o) => o.orderCode === pendingProse.orderCode);
+          if (existingOrder && existingOrder.payment && existingOrder.payment.status === 'pending') {
+            existingOrder.payment.status = pendingProse.status === 'expired' ? 'expired' : 'failed';
+            saveDatabase(db);
           }
         }
+        persistPendingInvoices();
+      }
+
+      const pendingStore = pendingMonobankStoreInvoices.get(payload.invoiceId);
+      if (pendingStore) {
+        const expectedKopecks = Math.max(100, Math.round(pendingStore.amountUah * 100));
+        if (payload.status === 'success' && typeof payload.amount === 'number' && payload.amount < expectedKopecks) {
+          pendingStore.status = 'failure';
+          pendingStore.failureReason = 'Сума платежу не відповідає сумі замовлення.';
+        } else if (payload.status) {
+          pendingStore.status = payload.status;
+        }
+        if (payload.failureReason) {
+          pendingStore.failureReason = payload.failureReason;
+        }
+        if (pendingStore.status === 'success' && !pendingStore.finalizedOrderCode) {
+          const db = ensureDatabase();
+          const { orderRecord } = finalizePendingStoreOrder(db, pendingStore);
+          pendingStore.finalizedOrderCode = orderRecord.orderCode;
+        } else if (pendingStore.status === 'failure' || pendingStore.status === 'expired' || pendingStore.status === 'reversed') {
+          const db = ensureDatabase();
+          const existingOrder = db.orders.find((o) => o.orderCode === pendingStore.orderCode);
+          if (existingOrder && existingOrder.payment && existingOrder.payment.status === 'pending') {
+            existingOrder.payment.status = pendingStore.status === 'expired' ? 'expired' : 'failed';
+            saveDatabase(db);
+          }
+        }
+        persistPendingInvoices();
       }
     }
 
     res.status(200).json({ ok: true });
   });
 
-  // Direct Monobank purchase of full reading access to a paid prose work (when Acquiring token is unset)
-  app.post('/api/prose/:id/purchase', async (req, res) => {
+  // Disabled unverified direct-purchase endpoint: fail closed when MONOBANK_TOKEN is unset, otherwise require Acquiring invoice flow
+  app.post('/api/prose/:id/purchase', prosePurchaseLimiter, async (req, res) => {
     if (!verifySameOrigin(req)) {
       res.status(403).json({ error: 'Запит із стороннього джерела заблоковано.' });
       return;
     }
-    if (getMonobankToken()) {
-      res.status(400).json({ error: 'Для оплати використовуйте рахунок monobank.' });
-      return;
-    }
-    const ipHash = getClientIpHash(req);
-    const rate = checkRateLimit(`prose-purchase:${ipHash}`, 12, 10 * 60 * 1000);
-    if (!rate.allowed) {
-      res.setHeader('Retry-After', String(rate.retryAfterSec));
-      res.status(429).json({ error: 'Забагато спроб оплати. Спробуйте трохи пізніше.' });
-      return;
-    }
-
-    const db = ensureDatabase();
-    const optionalAuth = await tryAuthenticateOptionalGuest(req, db);
-    const { id } = req.params;
-    const work = db.prose.find((p) => p.id === id);
-    if (!work) {
-      res.status(404).json({ error: 'Твір не знайдено.' });
-      return;
-    }
-
-    const basePriceUah = Number(work.priceUah || 0);
-    if (resolveProseAccessMode(work) !== 'paid' || basePriceUah <= 0) {
-      res.status(400).json({ error: 'Цей твір не потребує оплати.' });
-      return;
-    }
-
-    const tgSub = await verifyTelegramSubscriberForRequest(req, db, { forceFresh: true });
-    if (tgSub.tokenValid && !tgSub.subscribed) {
-      res.status(403).json({
-        error:
-          tgSub.error ||
-          'Підписку на Telegram-канал не підтверджено. Оновіть перевірку підписки для оплати зі знижкою.',
+    if (!getMonobankToken()) {
+      res.status(503).json({
+        error: 'Оплата платної прози тимчасово недоступна: платіжний шлюз monobank не налаштовано.',
       });
       return;
     }
-
-    const pricing = getProseDiscountCalculation(basePriceUah, {
-      authDiscountPercent: db.proseAuthDiscountPercent,
-      isAuthorized: Boolean(optionalAuth),
-      telegramDiscountPercent: db.proseTelegramDiscountPercent ?? 50,
-      isTelegramSubscribed: tgSub.subscribed,
-    });
-    const effectivePriceUah = pricing.finalPriceUah;
-
-    const { encryptedPayment } = req.body as {
-      encryptedPayment?: EncryptedPaymentEnvelope;
-    };
-
-    if (encryptedPayment?.sessionId) {
-      const pendingSession = paymentSessions.get(encryptedPayment.sessionId);
-      if (
-        pendingSession?.authorizedDiscountUid &&
-        optionalAuth?.account.uid !== pendingSession.authorizedDiscountUid
-      ) {
-        res.status(403).json({
-          error: 'Для оплати зі знижкою авторизованого читача підтвердіть активну сесію входу.',
-        });
-        return;
-      }
-      if (
-        pendingSession?.telegramDiscountTgId &&
-        (!tgSub.subscribed || tgSub.tgId !== pendingSession.telegramDiscountTgId)
-      ) {
-        res.status(403).json({
-          error: 'Для оплати зі знижкою підписника Telegram-каналу підтвердіть активну підписку.',
-        });
-        return;
-      }
-    }
-
-    const decryptedResult = decryptPaymentEnvelope(
-      encryptedPayment,
-      'prose',
-      [work.id],
-      effectivePriceUah
-    );
-    if (!decryptedResult.ok) {
-      res.status(decryptedResult.status).json({ error: decryptedResult.error });
-      return;
-    }
-
-    const assertion = decryptedResult.payload;
-    if (assertion.method !== 'monobank') {
-      res.status(400).json({ error: 'Оплата прози доступна лише через monobank.' });
-      return;
-    }
-
-    const cleanName = assertion.buyerName?.trim() || '';
-    const cleanEmail = assertion.buyerEmail?.trim().toLowerCase() || '';
-    if (cleanName.length < 2 || !cleanEmail.includes('@')) {
-      res.status(400).json({ error: 'Будь ласка, вкажіть коректне ім’я та email.' });
-      return;
-    }
-
-    const transactionId = `MONO-${Date.now().toString(36).toUpperCase()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
-    const { orderCode, unlockedAccess, orderRecord } = createProsePaidOrder(db, work, {
-      cleanName,
-      cleanEmail,
-      effectivePriceUah,
-      providerLabel: 'monobank · E2EE шлюз',
-      transactionId,
-      guestUid: optionalAuth?.account.uid,
-    });
-
-    if (optionalAuth?.account) {
-      optionalAuth.account.purchasesCount =
-        Math.round(Number(optionalAuth.account.purchasesCount) || 0) + 1;
-      optionalAuth.account.updatedAt = new Date().toISOString();
-      saveDatabase(db);
-      if (optionalAuth.firebaseClaims && optionalAuth.firebaseIdToken) {
-        void syncPublicUserProfileToFirestore(
-          {
-            firebaseUid: optionalAuth.firebaseClaims.uid,
-            guestUid: optionalAuth.account.uid,
-            displayName: optionalAuth.account.displayName,
-            photoUrl: optionalAuth.account.photoUrl,
-            likedPoemIds: optionalAuth.account.likedPoemIds,
-            likedRadioTrackIds: optionalAuth.account.likedRadioTrackIds,
-            totalTimeSeconds: optionalAuth.account.totalTimeSeconds,
-            purchasesCount: optionalAuth.account.purchasesCount,
-            donorChatText: optionalAuth.account.donorChatText,
-          },
-          optionalAuth.firebaseIdToken
-        );
-        void syncOrderToFirestore(
-          orderRecord,
-          optionalAuth.firebaseClaims.uid,
-          optionalAuth.firebaseIdToken
-        );
-      }
-    }
-
-    res.status(201).json({
-      orderCode,
-      unlockedAccess,
-      content: work.content,
-      chapters: Array.isArray(work.chapters) ? work.chapters : [],
-      hasPdf: Boolean(work.pdfStorageKey),
-      pdfFileName: work.pdfFileName,
-      pdfFileSize: work.pdfFileSize,
-    });
+    res.status(400).json({ error: 'Для оплати використовуйте рахунок monobank.' });
   });
 
   // Protected PDF document streaming/download for authorized-only & paid prose works
@@ -12531,16 +12524,9 @@ async function startServer() {
     await handleProsePdfRequest(req, res, orderCode);
   });
 
-  app.post('/api/orders/restore', (req, res) => {
+  app.post('/api/orders/restore', ordersRestoreLimiter, (req, res) => {
     if (!verifySameOrigin(req)) {
       res.status(403).json({ error: 'Запит із стороннього джерела заблоковано.' });
-      return;
-    }
-    const ipHash = getClientIpHash(req);
-    const rate = checkRateLimit(`orders-restore:${ipHash}`, 10, 10 * 60 * 1000);
-    if (!rate.allowed) {
-      res.setHeader('Retry-After', String(rate.retryAfterSec));
-      res.status(429).json({ error: 'Забагато спроб відновлення. Зачекайте кілька хвилин.' });
       return;
     }
 
@@ -12554,6 +12540,9 @@ async function startServer() {
 
     const lookupHash = normalized.includes('@') ? hashBuyerEmailLookup(normalized) : null;
     const matchedOrders = db.orders.filter((o) => {
+      if (o.payment?.status !== 'paid' || !Array.isArray(o.items) || o.items.length === 0) {
+        return false;
+      }
       if (o.orderCode.toLowerCase() === normalized) return true;
       if (lookupHash && o.buyerEmailHash === lookupHash) return true;
       if (!o.encryptedPii && o.buyerEmail.toLowerCase() === normalized) return true;
@@ -12572,7 +12561,7 @@ async function startServer() {
     res.json({ items, ordersCount: matchedOrders.length });
   });
 
-  app.get('/api/ebooks/:id/download', async (req, res) => {
+  app.get('/api/ebooks/:id/download', ebookDownloadLimiter, async (req, res) => {
     const db = ensureDatabase();
     const { id } = req.params;
     const { order, preview } = req.query as { order?: string; preview?: string };
@@ -12595,10 +12584,11 @@ async function startServer() {
         db.orders.some(
           (o) =>
             o.orderCode.toLowerCase() === normalizedOrder &&
+            o.payment?.status === 'paid' &&
             o.items.some((item) => item.productId === id)
         );
       if (!isPurchased) {
-        res.status(403).send('Файл доступний для завантаження лише після придбання електронної книги.');
+        res.status(403).send('Файл доступний для завантаження лише після оплати електронної книги.');
         return;
       }
     }
@@ -12990,10 +12980,7 @@ async function startServer() {
   });
 
   chatWss.on('connection', (ws, request) => {
-    const rawIp =
-      (request.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim() ||
-      request.socket.remoteAddress ||
-      'unknown';
+    const rawIp = getTrustedWsIp(request);
     const ipHash = crypto.createHash('sha256').update(rawIp).digest('hex');
 
     const meta: {

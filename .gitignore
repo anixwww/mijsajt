@@ -8,3 +8,6 @@ coverage/
 .env*
 !.env.example
 public/assets/aistudio/
+data/
+data/store.json
+data/uploads/

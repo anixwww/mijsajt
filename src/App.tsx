@@ -96,6 +96,11 @@ import {
   syncLegacyServerTracksToFirestore,
 } from './utils/radioFirestore.ts';
 import {
+  annotateAllRadioTracksWithRepertoire,
+  getSavedRadioTracks,
+  selectRadioStationRepertoire,
+} from './utils/radioRepertoire.ts';
+import {
   sortWeeklyMusicSelections,
   subscribeWeeklyMusicSelections,
 } from './utils/weeklyMusicFirestore.ts';
@@ -1723,7 +1728,7 @@ export default function App() {
         ? firestoreRadioTracks
         : serverTracks;
 
-    return baseTracks.map((track) => {
+    const annotatedInput = baseTracks.map((track) => {
       const serverTrack = serverById.get(track.id);
       const likesCount =
         typeof track.likesCount === 'number'
@@ -1740,13 +1745,21 @@ export default function App() {
         isLiked,
       };
     });
+
+    return annotateAllRadioTracksWithRepertoire(annotatedInput);
   }, [firestoreRadioTracks, catalog?.radioTracks, guestUser]);
 
   const radioTracks = useMemo(
-    () => allRadioTracks.filter((t) => (t.station || 'indie') === activeRadioStation),
+    () => selectRadioStationRepertoire(allRadioTracks, activeRadioStation).repertoireTracks,
     [allRadioTracks, activeRadioStation]
   );
 
+  const savedRadioTracks = useMemo(
+    () => getSavedRadioTracks(allRadioTracks, guestUser?.likedRadioTrackIds),
+    [allRadioTracks, guestUser?.likedRadioTrackIds]
+  );
+
+  const [radioPlaybackScope, setRadioPlaybackScope] = useState<'repertoire' | 'saved'>('repertoire');
   const [radioCurrentTrackId, setRadioCurrentTrackId] = useState<string | null>(null);
   const [radioIsPlaying, setRadioIsPlaying] = useState(false);
   const [radioIsLoadingTrack, setRadioIsLoadingTrack] = useState(false);
@@ -1787,6 +1800,10 @@ export default function App() {
   allRadioTracksRef.current = allRadioTracks;
   const radioTracksRef = useRef<RadioTrack[]>(radioTracks);
   radioTracksRef.current = radioTracks;
+  const savedRadioTracksRef = useRef<RadioTrack[]>(savedRadioTracks);
+  savedRadioTracksRef.current = savedRadioTracks;
+  const radioPlaybackScopeRef = useRef<'repertoire' | 'saved'>(radioPlaybackScope);
+  radioPlaybackScopeRef.current = radioPlaybackScope;
   const radioIsPlayingRef = useRef(radioIsPlaying);
   radioIsPlayingRef.current = radioIsPlaying;
   const radioCurrentTrackIdRef = useRef<string | null>(radioCurrentTrackId);
@@ -1808,9 +1825,32 @@ export default function App() {
   }, []);
 
   const activeRadioTrack = useMemo(() => {
-    if (!guestUser || radioTracks.length === 0) return null;
-    return radioTracks.find((t) => t.id === radioCurrentTrackId) ?? radioTracks[0];
-  }, [guestUser, radioTracks, radioCurrentTrackId]);
+    if (!guestUser) return null;
+    const preferredList =
+      radioPlaybackScope === 'saved' && savedRadioTracks.length > 0
+        ? savedRadioTracks
+        : radioTracks;
+    if (radioCurrentTrackId) {
+      const inPreferred = preferredList.find((t) => t.id === radioCurrentTrackId);
+      if (inPreferred) return inPreferred;
+      const inAll = allRadioTracks.find((t) => t.id === radioCurrentTrackId);
+      if (
+        inAll &&
+        (radioPlaybackScope === 'saved' || (inAll.station || 'indie') === activeRadioStation)
+      ) {
+        return inAll;
+      }
+    }
+    return preferredList[0] ?? radioTracks[0] ?? null;
+  }, [
+    guestUser,
+    radioPlaybackScope,
+    savedRadioTracks,
+    radioTracks,
+    allRadioTracks,
+    radioCurrentTrackId,
+    activeRadioStation,
+  ]);
 
   const radioIframeId = 'dankiv-sc-radio-widget';
 
@@ -1984,9 +2024,15 @@ export default function App() {
   );
 
   const handleRadioSelectTrack = useCallback(
-    (trackId: string, autoPlay = true) => {
+    (trackId: string, autoPlay = true, scope?: 'repertoire' | 'saved') => {
       if (!isGuestAuthenticated) return;
-      const target = radioTracksRef.current.find((t) => t.id === trackId);
+      if (scope) {
+        setRadioPlaybackScope(scope);
+        radioPlaybackScopeRef.current = scope;
+      }
+      const target =
+        allRadioTracksRef.current.find((t) => t.id === trackId) ??
+        radioTracksRef.current.find((t) => t.id === trackId);
       if (!target) return;
       setRadioCurrentTrackId(target.id);
       setRadioPlayerError(null);
@@ -2004,7 +2050,10 @@ export default function App() {
 
   const handleRadioNextTrack = useCallback(() => {
     if (!isGuestAuthenticated) return;
-    const list = radioTracksRef.current;
+    const list =
+      radioPlaybackScopeRef.current === 'saved' && savedRadioTracksRef.current.length > 0
+        ? savedRadioTracksRef.current
+        : radioTracksRef.current;
     if (list.length === 0) return;
     radioFinishingTransitionUntilRef.current = Date.now() + 2000;
     if (list.length === 1) {
@@ -2047,7 +2096,10 @@ export default function App() {
 
   const handleRadioPrevTrack = useCallback(() => {
     if (!isGuestAuthenticated) return;
-    const list = radioTracksRef.current;
+    const list =
+      radioPlaybackScopeRef.current === 'saved' && savedRadioTracksRef.current.length > 0
+        ? savedRadioTracksRef.current
+        : radioTracksRef.current;
     if (list.length === 0) return;
     const curIdx = list.findIndex((t) => t.id === radioCurrentTrackIdRef.current);
     const prevIdx = curIdx >= 0 ? (curIdx - 1 + list.length) % list.length : list.length - 1;
@@ -2147,12 +2199,15 @@ export default function App() {
 
   const handleRadioStationChange = useCallback(
     (nextStation: RadioStationId) => {
+      setRadioPlaybackScope('repertoire');
+      radioPlaybackScopeRef.current = 'repertoire';
       if (nextStation === activeRadioStation) return;
       setActiveRadioStation(nextStation);
       setRadioPlayerError(null);
-      const nextList = allRadioTracksRef.current.filter(
-        (t) => (t.station || 'indie') === nextStation
-      );
+      const nextList = selectRadioStationRepertoire(
+        allRadioTracksRef.current,
+        nextStation
+      ).repertoireTracks;
       if (nextList.length === 0) {
         if (radioWidgetRef.current && radioWidgetReadyRef.current) {
           userInitiatedPauseRef.current = true;
@@ -2197,22 +2252,26 @@ export default function App() {
       if (targetStation) {
         setActiveRadioStation(targetStation);
       }
+      const annotated = annotateAllRadioTracksWithRepertoire(nextAllTracks);
       legacyRadioSeededRef.current = true;
       hadFirestoreRadioTracksRef.current = true;
       radioCloudMutationUntilRef.current = Date.now() + 5000;
-      serverRadioSyncedRef.current = nextAllTracks
+      serverRadioSyncedRef.current = annotated
         .map((t) => `${t.id}:${t.station || 'indie'}:${t.order ?? 0}`)
         .join('|');
-      setFirestoreRadioTracks((prev) => (prev !== null ? nextAllTracks : prev));
-      setCatalog((prev) => (prev ? { ...prev, radioTracks: nextAllTracks } : prev));
-      allRadioTracksRef.current = nextAllTracks;
+      setFirestoreRadioTracks((prev) => (prev !== null ? annotated : prev));
+      setCatalog((prev) => (prev ? { ...prev, radioTracks: annotated } : prev));
+      allRadioTracksRef.current = annotated;
       const effectiveStation = targetStation ?? activeRadioStation;
-      radioTracksRef.current = nextAllTracks.filter(
-        (t) => (t.station || 'indie') === effectiveStation
-      );
+      radioTracksRef.current = selectRadioStationRepertoire(
+        annotated,
+        effectiveStation
+      ).repertoireTracks;
       if (activateTrackId && isGuestAuthenticated) {
-        const target = nextAllTracks.find((t) => t.id === activateTrackId);
+        const target = annotated.find((t) => t.id === activateTrackId);
         if (target) {
+          setRadioPlaybackScope('repertoire');
+          radioPlaybackScopeRef.current = 'repertoire';
           setRadioCurrentTrackId(target.id);
           setRadioPlayerError(null);
           const targetUrl = getTrackEmbedTarget(target);
@@ -2421,17 +2480,21 @@ export default function App() {
       setRadioPlayerError(null);
       return;
     }
-    if (radioTracks.length === 0) {
+    const activeScopeList =
+      radioPlaybackScope === 'saved' && savedRadioTracks.length > 0
+        ? savedRadioTracks
+        : radioTracks;
+    if (activeScopeList.length === 0) {
       setRadioCurrentTrackId(null);
       setRadioIsPlaying(false);
       setRadioPositionMs(0);
       setRadioDurationMs(0);
       return;
     }
-    if (!radioCurrentTrackId || !radioTracks.some((t) => t.id === radioCurrentTrackId)) {
-      setRadioCurrentTrackId(radioTracks[0].id);
+    if (!radioCurrentTrackId || !activeScopeList.some((t) => t.id === radioCurrentTrackId)) {
+      setRadioCurrentTrackId(activeScopeList[0].id);
     }
-  }, [isGuestAuthenticated, radioTracks, radioCurrentTrackId]);
+  }, [isGuestAuthenticated, radioTracks, savedRadioTracks, radioPlaybackScope, radioCurrentTrackId]);
 
   // Watchdog: prevent infinite spinner if SoundCloud iframe fails to start playback
   useEffect(() => {
@@ -2494,8 +2557,13 @@ export default function App() {
             }
           });
 
-          const list = radioTracksRef.current;
-          const desired = list.find((t) => t.id === radioCurrentTrackIdRef.current) ?? list[0];
+          const list =
+            radioPlaybackScopeRef.current === 'saved' && savedRadioTracksRef.current.length > 0
+              ? savedRadioTracksRef.current
+              : radioTracksRef.current;
+          const desired =
+            allRadioTracksRef.current.find((t) => t.id === radioCurrentTrackIdRef.current) ??
+            list[0];
           if (desired?.id) {
             void hydrateTrackWaveformRef.current(desired.id, widget);
           }
@@ -2827,6 +2895,8 @@ export default function App() {
                           allTracks={allRadioTracks}
                           activeStation={activeRadioStation}
                           onSelectStation={handleRadioStationChange}
+                          playbackScope={radioPlaybackScope}
+                          onChangePlaybackScope={setRadioPlaybackScope}
                           guestUser={guestUser}
                           getGuestToken={getGuestToken}
                           isAdmin={isAdmin}
