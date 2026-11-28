@@ -7,7 +7,14 @@ import type { TelegramSubscriptionState } from '../types.ts';
 
 export interface TelegramBotRouteDeps {
   ensureDatabase: () => SiteDatabase;
-  saveDatabase?: (db: SiteDatabase) => void;
+  saveDatabase?: (
+    db: SiteDatabase,
+    options?: {
+      bumpCatalogRevision?: boolean;
+      flushDelayMs?: number;
+      slices?: Array<'meta' | 'poems' | 'prose' | 'blog' | 'products' | 'radio' | 'community' | 'analytics'>;
+    }
+  ) => void;
   dataDir?: string;
   extractBearerToken?: (req: Request) => string | null;
   onSyncTelegramBotTokenToCloud?: (botToken: string, adminBearerToken: string) => Promise<boolean>;
@@ -1306,7 +1313,7 @@ export function registerTelegramBotRoutes(app: Express, deps: TelegramBotRouteDe
     }
 
     if (dbChanged && saveDatabase) {
-      saveDatabase(db);
+      saveDatabase(db, { slices: ['meta'] });
     }
 
     const health = await buildTelegramHealthPayload(db);

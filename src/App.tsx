@@ -119,6 +119,7 @@ export default function App() {
   const drawerOpen = useUiStore((s) => s.drawerOpen);
   const authorStudioOpen = useUiStore((s) => s.authorStudioOpen);
   const authModalOpen = useUiStore((s) => s.authModalOpen);
+  const chatOpen = useUiStore((s) => s.chatOpen);
   const poetryBackdropStyle = useUiStore((s) => s.poetryBackdropStyle);
   const proseHomeBackdrop = useUiStore((s) => s.proseHomeBackdrop);
   const poetryImmersionMode = useUiStore((s) => s.poetryImmersionMode);
@@ -203,10 +204,10 @@ export default function App() {
     if (authModalOpen) {
       void getFirebaseAuth().catch(() => {});
     }
-    if ((authModalOpen || drawerOpen || authorStudioOpen) && !catalog) {
+    if ((authModalOpen || drawerOpen || authorStudioOpen || chatOpen) && !catalog) {
       void fetchCatalog();
     }
-  }, [authModalOpen, drawerOpen, authorStudioOpen, catalog, fetchCatalog]);
+  }, [authModalOpen, drawerOpen, authorStudioOpen, chatOpen, catalog, fetchCatalog]);
 
   useEffect(() => {
     const onHashChange = () => {

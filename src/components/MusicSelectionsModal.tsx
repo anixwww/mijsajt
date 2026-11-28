@@ -1,8 +1,9 @@
-import { Headphones, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { AnimatePresence, m } from 'motion/react';
 import { memo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { WeeklyMusicSelection, WeeklyPeriodInfo } from '../types.ts';
+import { CosmicHeadphonesIcon } from './CosmicHeadphonesIcon.tsx';
 import { WeeklyMusicBox } from './WeeklyMusicBox.tsx';
 
 interface MusicSelectionsModalProps {
@@ -76,9 +77,9 @@ export const MusicSelectionsModal = memo(function MusicSelectionsModal({
               <div className="flex items-center gap-2 min-w-0">
                 <span
                   aria-hidden="true"
-                  className="w-8 h-8 rounded-xl bg-[#F7F0EE] dark:bg-[#2D1B1D] text-[#8B1E1E] dark:text-[#D13B3B] inline-flex items-center justify-center shrink-0 shadow-xs"
+                  className="relative overflow-hidden w-8 h-8 rounded-xl bg-[linear-gradient(135deg,#180812_0%,#2A0E22_50%,#351326_100%)] text-[#FBCFE8] inline-flex items-center justify-center shrink-0 shadow-[0_4px_12px_-4px_rgba(24,8,18,0.75),0_0_10px_-3px_rgba(244,63,94,0.35),inset_0_1px_0_rgba(255,255,255,0.18)]"
                 >
-                  <Headphones className="w-4 h-4" strokeWidth={2} />
+                  <CosmicHeadphonesIcon className="relative z-10 w-[17px] h-[17px]" />
                 </span>
                 <div className="min-w-0">
                   <h3

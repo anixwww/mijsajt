@@ -23,6 +23,7 @@ import {
   type RadioTrack,
 } from '../types.ts';
 import { trackClick } from '../utils/analytics.ts';
+import { triggerLikeHapticFeedback } from '../utils/haptics.ts';
 import { deleteRadioTrackFromFirestore, saveRadioTracksToFirestore } from '../utils/radioFirestore.ts';
 import {
   getSavedRadioTracks,
@@ -30,6 +31,7 @@ import {
 } from '../utils/radioRepertoire.ts';
 import { formatDurationMs } from '../utils/soundcloudWidget.ts';
 import { EmptySectionState } from './EmptySectionState.tsx';
+import { HeartBloomIcon } from './HeartBloomIcon.tsx';
 import { LiveRadioEqualizer } from './LiveRadioEqualizer.tsx';
 
 interface RadioSectionProps {
@@ -181,6 +183,11 @@ export const RadioSection = memo(function RadioSection({
   const [urlInput, setUrlInput] = useState('');
   const [importing, setImporting] = useState(false);
   const [likingTrackId, setLikingTrackId] = useState<string | null>(null);
+  const [likeAnimState, setLikeAnimState] = useState<{
+    trackId: string;
+    key: number;
+    phase: 'like' | 'unlike';
+  } | null>(null);
   const [localViewMode, setLocalViewMode] = useState<'stream' | 'saved'>(
     playbackScope === 'saved' ? 'saved' : 'stream'
   );
@@ -371,6 +378,31 @@ export const RadioSection = memo(function RadioSection({
     }
     if (likingTrackId === track.id) return;
     trackClick(`like_radio:${track.id}`, `Вподобайка треку: «${track.title}»`, 'action');
+
+    const prevLiked = Boolean(track.isLiked);
+    const nextLiked = !prevLiked;
+    const prevCount = track.likesCount ?? 0;
+    const prevLikedIds = Array.isArray(guestUser.likedRadioTrackIds)
+      ? guestUser.likedRadioTrackIds
+      : [];
+    const optimisticLikedIds = nextLiked
+      ? Array.from(new Set([track.id, ...prevLikedIds]))
+      : prevLikedIds.filter((id) => id !== track.id);
+    const optimisticCount = Math.max(0, prevCount + (nextLiked ? 1 : -1));
+
+    // Instant haptic, visual bloom & optimistic UI state
+    triggerLikeHapticFeedback(nextLiked);
+    setLikeAnimState((prev) => ({
+      trackId: track.id,
+      key: (prev?.key ?? 0) + 1,
+      phase: nextLiked ? 'like' : 'unlike',
+    }));
+    onTrackLiked?.(track.id, optimisticCount, nextLiked, optimisticLikedIds);
+
+    const rollbackTrackLike = () => {
+      onTrackLiked?.(track.id, prevCount, prevLiked, prevLikedIds);
+    };
+
     setLikingTrackId(track.id);
     try {
       let token = await getGuestToken?.();
@@ -379,6 +411,7 @@ export const RadioSection = memo(function RadioSection({
         if (refreshed) token = refreshed;
       }
       if (!token) {
+        rollbackTrackLike();
         onOpenAuthModal();
         return;
       }
@@ -403,6 +436,7 @@ export const RadioSection = memo(function RadioSection({
         }
       }
       if (res.status === 401) {
+        rollbackTrackLike();
         onOpenAuthModal();
         return;
       }
@@ -411,15 +445,18 @@ export const RadioSection = memo(function RadioSection({
         likedRadioTrackIds?: string[];
         likesCount?: number;
       };
-      if (!res.ok) return;
+      if (!res.ok) {
+        rollbackTrackLike();
+        return;
+      }
       onTrackLiked?.(
         track.id,
-        typeof data.likesCount === 'number' ? data.likesCount : (track.likesCount ?? 0),
+        typeof data.likesCount === 'number' ? data.likesCount : optimisticCount,
         Boolean(data.liked),
-        Array.isArray(data.likedRadioTrackIds) ? data.likedRadioTrackIds : []
+        Array.isArray(data.likedRadioTrackIds) ? data.likedRadioTrackIds : optimisticLikedIds
       );
     } catch {
-      // Ignore transient network errors
+      rollbackTrackLike();
     } finally {
       setLikingTrackId(null);
     }
@@ -813,7 +850,8 @@ export const RadioSection = memo(function RadioSection({
                     {activeTrack && (
                       <button
                         type="button"
-                        disabled={likingTrackId === activeTrack.id}
+                        data-haptic-like="true"
+                        aria-busy={likingTrackId === activeTrack.id}
                         onClick={() => void handleToggleTrackLike(activeTrack)}
                         aria-pressed={Boolean(activeTrack.isLiked)}
                         aria-label={
@@ -821,17 +859,19 @@ export const RadioSection = memo(function RadioSection({
                             ? `Прибрати вподобайку з «${activeTrack.title}»`
                             : `Вподобати «${activeTrack.title}»`
                         }
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono tabular-nums transition-colors cursor-pointer disabled:opacity-60 ${
+                        className={`relative overflow-visible inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono tabular-nums transition-colors cursor-pointer ${
                           activeTrack.isLiked
                             ? 'bg-rose-500/20 text-rose-400 hover:bg-rose-500/30'
                             : 'bg-white/8 text-paper-stone hover:bg-white/15 hover:text-white'
                         }`}
                       >
-                        <Heart
-                          className={`w-3.5 h-3.5 transition-transform ${
-                            activeTrack.isLiked ? 'fill-rose-400 text-rose-400 scale-110' : ''
-                          }`}
+                        <HeartBloomIcon
+                          liked={Boolean(activeTrack.isLiked)}
+                          bloomKey={likeAnimState?.trackId === activeTrack.id ? likeAnimState.key : 0}
+                          phase={likeAnimState?.trackId === activeTrack.id ? likeAnimState.phase : 'idle'}
+                          className="w-3.5 h-3.5"
                           strokeWidth={1.85}
+                          activeColorClass="fill-rose-400 text-rose-400"
                         />
                         <span>{activeTrack.likesCount ?? 0}</span>
                       </button>
@@ -1060,14 +1100,22 @@ export const RadioSection = memo(function RadioSection({
                         </button>
                         <button
                           type="button"
-                          disabled={likingTrackId === track.id}
+                          data-haptic-like="true"
+                          aria-busy={likingTrackId === track.id}
                           onClick={() => void handleToggleTrackLike(track)}
                           aria-pressed={Boolean(track.isLiked)}
                           aria-label={`Прибрати вподобайку з «${track.title}»`}
                           title="Прибрати зі списку"
-                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg font-mono text-xs tabular-nums transition-colors cursor-pointer shrink-0 disabled:opacity-60 text-rose-600 dark:text-rose-400 bg-rose-500/12 hover:bg-rose-500/20"
+                          className="relative overflow-visible inline-flex items-center gap-1 px-2 py-1 rounded-lg font-mono text-xs tabular-nums transition-colors cursor-pointer shrink-0 text-rose-600 dark:text-rose-400 bg-rose-500/12 hover:bg-rose-500/20"
                         >
-                          <Heart className="w-3.5 h-3.5 fill-rose-600 dark:fill-rose-400" strokeWidth={1.8} />
+                          <HeartBloomIcon
+                            liked={Boolean(track.isLiked)}
+                            bloomKey={likeAnimState?.trackId === track.id ? likeAnimState.key : 0}
+                            phase={likeAnimState?.trackId === track.id ? likeAnimState.phase : 'idle'}
+                            className="w-3.5 h-3.5"
+                            strokeWidth={1.8}
+                            activeColorClass="fill-rose-600 text-rose-600 dark:fill-rose-400 dark:text-rose-400"
+                          />
                           {(track.likesCount ?? 0) > 0 && <span>{track.likesCount}</span>}
                         </button>
                         {href && (

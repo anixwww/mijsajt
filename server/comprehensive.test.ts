@@ -32,7 +32,7 @@ test('Order pending to paid transition logic updates order and payment status', 
   };
 
   db.orders.push(order);
-  saveDatabase(db);
+  saveDatabase(db, { slices: [], ordersDirty: [testOrderCode] });
 
   // Transition pending -> paid
   const found = db.orders.find((o) => o.orderCode === testOrderCode);
@@ -43,7 +43,7 @@ test('Order pending to paid transition logic updates order and payment status', 
     found.payment.status = 'paid';
     found.payment.paidAt = new Date().toISOString();
   }
-  saveDatabase(db);
+  saveDatabase(db, { slices: [], ordersDirty: [testOrderCode] });
 
   const updated = db.orders.find((o) => o.orderCode === testOrderCode);
   assert.strictEqual(updated?.payment?.status, 'paid');
@@ -51,13 +51,13 @@ test('Order pending to paid transition logic updates order and payment status', 
 
   // Cleanup
   db.orders = db.orders.filter((o) => o.orderCode !== testOrderCode);
-  saveDatabase(db);
+  saveDatabase(db, { slices: [], ordersDirty: [testOrderCode] });
 });
 
 test('saveDatabase flushes writes correctly and handles slices', () => {
   const db = ensureDatabase();
   db.heroLeadText = 'Updated Hero Lead Test';
-  saveDatabase(db, { bumpCatalogRevision: false, flushDelayMs: 10 });
+  saveDatabase(db, { bumpCatalogRevision: false, flushDelayMs: 10, slices: ['meta'] });
   assert.strictEqual(db.heroLeadText, 'Updated Hero Lead Test');
 });
 

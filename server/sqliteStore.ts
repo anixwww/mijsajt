@@ -4,6 +4,7 @@ import path from 'path';
 import crypto from 'crypto';
 import { INITIAL_DATABASE, type SiteDatabase } from './seedData.ts';
 import type { OrderRecord } from '../src/types.ts';
+import { emitProductionAlert } from './monitoring.ts';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 const DB_PATH = path.join(DATA_DIR, 'app.db');
@@ -215,6 +216,8 @@ function runOneTimeMigrationIfNeeded(db: DatabaseSync): void {
       donations: rawStore?.donations ?? [],
       feedback: rawStore?.feedback ?? [],
       chatMessages: rawStore?.chatMessages ?? [],
+      chatMeta: rawStore?.chatMeta ?? seeded.chatMeta,
+      chatReports: rawStore?.chatReports ?? [],
       radioTracks: rawStore?.radioTracks ?? seeded.radioTracks,
       monthlySelections: rawStore?.monthlySelections ?? [],
       weeklyMusicSelections: rawStore?.weeklyMusicSelections ?? [],
@@ -295,6 +298,8 @@ function runOneTimeMigrationIfNeeded(db: DatabaseSync): void {
             donations: dbObj.donations,
             feedback: dbObj.feedback,
             chatMessages: dbObj.chatMessages,
+            chatMeta: dbObj.chatMeta,
+            chatReports: dbObj.chatReports,
             contactMessages: dbObj.contactMessages,
             visitorIpHashes: dbObj.visitorIpHashes,
           };
@@ -525,6 +530,8 @@ function getSlicePayload(key: DbSliceKey, dbObj: SiteDatabase): unknown {
         donations: dbObj.donations,
         feedback: dbObj.feedback,
         chatMessages: dbObj.chatMessages,
+        chatMeta: dbObj.chatMeta,
+        chatReports: dbObj.chatReports,
         contactMessages: dbObj.contactMessages,
         visitorIpHashes: dbObj.visitorIpHashes,
       };
@@ -630,7 +637,16 @@ export function saveSiteDatabaseToSqlite(
     db.exec('COMMIT');
   } catch (err) {
     db.exec('ROLLBACK');
-    console.error('Failed to save to SQLite:', err);
+    emitProductionAlert({
+      alertType: 'SQLITE_SAVE_FAILED',
+      severity: 'CRITICAL',
+      message: 'Failed to save to SQLite',
+      error: err,
+      context: {
+        slicesAttempted: slicesToWrite.map((s) => s.key),
+        ordersAttempted: ordersToWrite.length,
+      },
+    });
   }
 }
 

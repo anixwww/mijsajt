@@ -1,7 +1,18 @@
 const MIN_HAPTIC_INTERVAL_MS = 40;
 let lastHapticTimestamp = 0;
 
-function triggerHapticFeedback(durationMs = 12): void {
+function vibrateSafe(pattern: number | number[]): void {
+  if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') {
+    return;
+  }
+  try {
+    navigator.vibrate(pattern);
+  } catch {
+    // Ignore browsers or embedded contexts where Vibration API is restricted
+  }
+}
+
+export function triggerHapticFeedback(durationMs: number | number[] = 12): void {
   if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') {
     return;
   }
@@ -11,12 +22,12 @@ function triggerHapticFeedback(durationMs = 12): void {
     return;
   }
   lastHapticTimestamp = now;
+  vibrateSafe(durationMs);
+}
 
-  try {
-    navigator.vibrate(durationMs);
-  } catch {
-    // Ignore browsers or embedded contexts where Vibration API is restricted
-  }
+export function triggerLikeHapticFeedback(liked: boolean): void {
+  lastHapticTimestamp = Date.now();
+  vibrateSafe(liked ? [14, 26, 20] : 10);
 }
 
 export function initGlobalButtonHaptics(): () => void {
@@ -35,6 +46,10 @@ export function initGlobalButtonHaptics(): () => void {
       (interactive instanceof HTMLButtonElement && interactive.disabled) ||
       interactive.getAttribute('aria-disabled') === 'true'
     ) {
+      return;
+    }
+
+    if (interactive.hasAttribute('data-haptic-like')) {
       return;
     }
 

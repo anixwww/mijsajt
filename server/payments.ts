@@ -33,6 +33,7 @@ import {
   saveDatabase,
   verifySameOrigin,
 } from './db.ts';
+import { emitProductionAlert } from './monitoring.ts';
 import {
   authenticateAdminRequest,
   authenticateGuestRequest,
@@ -391,7 +392,7 @@ export function createPendingProseOrder(
   };
 
   db.orders.unshift(pendingOrder);
-  saveDatabase(db, { flushDelayMs: 0, ordersDirty: [pendingOrder.orderCode] });
+  saveDatabase(db, { flushDelayMs: 0, slices: [], ordersDirty: [pendingOrder.orderCode] });
   return pendingOrder;
 }
 
@@ -1368,7 +1369,7 @@ export function registerPaymentRoutes(app: express.Express): void {
       };
 
       db.orders.unshift(pendingOrderRecord);
-      saveDatabase(db, { flushDelayMs: 0, ordersDirty: [pendingOrderRecord.orderCode] });
+      saveDatabase(db, { flushDelayMs: 0, slices: [], ordersDirty: [pendingOrderRecord.orderCode] });
 
       const now = Date.now();
       pendingMonobankStoreInvoices.set(monoData.invoiceId, {
@@ -1514,7 +1515,7 @@ export function registerPaymentRoutes(app: express.Express): void {
       const existingOrder = db.orders.find((o) => o.orderCode === pending.orderCode);
       if (existingOrder && existingOrder.payment && existingOrder.payment.status === 'pending') {
         existingOrder.payment.status = pending.status === 'expired' ? 'expired' : 'failed';
-        saveDatabase(db, { ordersDirty: [existingOrder.orderCode] });
+        saveDatabase(db, { slices: [], ordersDirty: [existingOrder.orderCode] });
       }
     }
 
@@ -1941,7 +1942,7 @@ export function registerPaymentRoutes(app: express.Express): void {
       const existingOrder = db.orders.find((o) => o.orderCode === pending.orderCode);
       if (existingOrder && existingOrder.payment && existingOrder.payment.status === 'pending') {
         existingOrder.payment.status = pending.status === 'expired' ? 'expired' : 'failed';
-        saveDatabase(db, { ordersDirty: [existingOrder.orderCode] });
+        saveDatabase(db, { slices: [], ordersDirty: [existingOrder.orderCode] });
       }
     }
 
@@ -1955,7 +1956,11 @@ export function registerPaymentRoutes(app: express.Express): void {
   app.post('/api/monobank/webhook', async (req: Request, res: Response) => {
     const monobankToken = getMonobankToken();
     if (!monobankToken) {
-      console.warn('⚠️ [Monobank Webhook] Received webhook call, but Monobank token (MONOBANK_TOKEN / MONOBANK_ACQUIRING_TOKEN) is not configured.');
+      emitProductionAlert({
+        alertType: 'MONOBANK_WEBHOOK_REJECTED',
+        severity: 'WARNING',
+        message: 'Monobank webhook received while MONOBANK_TOKEN is not configured',
+      });
       res.status(200).json({ ok: true });
       return;
     }
@@ -1964,6 +1969,15 @@ export function registerPaymentRoutes(app: express.Express): void {
     const xSign = req.get('x-sign');
     const signatureValid = await verifyMonobankWebhookSignature(rawBody, xSign, monobankToken);
     if (!signatureValid) {
+      emitProductionAlert({
+        alertType: 'MONOBANK_WEBHOOK_REJECTED',
+        severity: 'ERROR',
+        message: 'Monobank webhook rejected: invalid X-Sign signature',
+        context: {
+          hasXSign: Boolean(xSign),
+          bodyBytes: rawBody?.length || 0,
+        },
+      });
       res.status(401).json({ error: 'Invalid monobank signature' });
       return;
     }
@@ -1983,6 +1997,16 @@ export function registerPaymentRoutes(app: express.Express): void {
         if (payload.status === 'success' && !validateMonobankPaymentAmount(payload.amount, pendingProse.amountUah)) {
           pendingProse.status = 'failure';
           pendingProse.failureReason = 'Сума платежу не відповідає вартості твору.';
+          emitProductionAlert({
+            alertType: 'MONOBANK_PAYMENT_MISMATCH',
+            severity: 'ERROR',
+            message: 'Monobank prose webhook amount mismatch',
+            context: {
+              invoiceId: payload.invoiceId,
+              expectedUah: pendingProse.amountUah,
+              receivedAmount: payload.amount,
+            },
+          });
         } else if (payload.status) {
           pendingProse.status = payload.status;
         }
@@ -2010,7 +2034,7 @@ export function registerPaymentRoutes(app: express.Express): void {
           const existingOrder = db.orders.find((o) => o.orderCode === pendingProse.orderCode);
           if (existingOrder && existingOrder.payment && existingOrder.payment.status === 'pending') {
             existingOrder.payment.status = pendingProse.status === 'expired' ? 'expired' : 'failed';
-            saveDatabase(db, { ordersDirty: [existingOrder.orderCode] });
+            saveDatabase(db, { slices: [], ordersDirty: [existingOrder.orderCode] });
           }
         }
         persistPendingInvoices();
@@ -2021,6 +2045,16 @@ export function registerPaymentRoutes(app: express.Express): void {
         if (payload.status === 'success' && !validateMonobankPaymentAmount(payload.amount, pendingStore.amountUah)) {
           pendingStore.status = 'failure';
           pendingStore.failureReason = 'Сума платежу не відповідає сумі замовлення.';
+          emitProductionAlert({
+            alertType: 'MONOBANK_PAYMENT_MISMATCH',
+            severity: 'ERROR',
+            message: 'Monobank store webhook amount mismatch',
+            context: {
+              invoiceId: payload.invoiceId,
+              expectedUah: pendingStore.amountUah,
+              receivedAmount: payload.amount,
+            },
+          });
         } else if (payload.status) {
           pendingStore.status = payload.status;
         }
@@ -2036,7 +2070,7 @@ export function registerPaymentRoutes(app: express.Express): void {
           const existingOrder = db.orders.find((o) => o.orderCode === pendingStore.orderCode);
           if (existingOrder && existingOrder.payment && existingOrder.payment.status === 'pending') {
             existingOrder.payment.status = pendingStore.status === 'expired' ? 'expired' : 'failed';
-            saveDatabase(db, { ordersDirty: [existingOrder.orderCode] });
+            saveDatabase(db, { slices: [], ordersDirty: [existingOrder.orderCode] });
           }
         }
         persistPendingInvoices();

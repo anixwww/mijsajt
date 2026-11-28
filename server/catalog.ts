@@ -25,6 +25,7 @@ import {
   type AnalyticsClickCategory,
   type AnalyticsDwellCategory,
   type BlogPost,
+  type GlobalChatMessage,
   type HomeFeedbackItem,
   type LeaderboardActivityEntry,
   type LeaderboardDonorEntry,
@@ -476,22 +477,11 @@ export function enrichReviewWithBadges(
 }
 
 export function enrichChatMessageWithBadges(
-  msg: {
-    id: string;
-    authorUid: string;
-    authorName: string;
-    authorPhotoUrl?: string;
-    authorDonorText?: string;
-    isAdmin?: boolean;
-    text: string;
-    replyTo?: { id: string; authorUid: string; authorName: string; text: string };
-    createdAt: string;
-    authorBadges?: UserTopBadges;
-  },
+  msg: GlobalChatMessage,
   badgeLookup: UserBadgesLookup,
   photoLookup?: AccountPhotoLookup,
   donorTextLookup?: AccountDonorTextLookup
-) {
+): GlobalChatMessage {
   const authorBadges = badgeLookup.get(msg.authorUid, msg.authorName);
   const resolvedPhoto =
     (typeof msg.authorPhotoUrl === 'string' && msg.authorPhotoUrl.trim()) ||

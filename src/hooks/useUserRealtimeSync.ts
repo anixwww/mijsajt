@@ -245,21 +245,41 @@ export function useUserRealtimeSync({
   }, [guestUser?.uid, getGuestToken, guestSessionTokenRef]);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    let active = true;
     let idleHandle: number | null = null;
-    let timer: number | null = null;
+    let loadHandlerAttached = false;
 
     const runPrewarm = () => {
+      if (!active) return;
+      prewarmChatFirestore();
       void testFirestoreConnection();
-      timer = window.setTimeout(() => prewarmChatFirestore(), 1500);
     };
 
-    if (typeof window !== 'undefined' && typeof (window as any).requestIdleCallback === 'function') {
-      idleHandle = (window as any).requestIdleCallback(runPrewarm, { timeout: 5000 });
+    const scheduleIdlePrewarm = () => {
+      if (!active) return;
+      if (typeof (window as Window & { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback === 'function') {
+        idleHandle = (window as Window & { requestIdleCallback: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback(
+          runPrewarm,
+          { timeout: 2500 }
+        );
+      } else {
+        idleHandle = window.setTimeout(runPrewarm, 1200);
+      }
+    };
+
+    if (document.readyState === 'complete') {
+      scheduleIdlePrewarm();
     } else {
-      idleHandle = window.setTimeout(runPrewarm, 2500) as any;
+      loadHandlerAttached = true;
+      window.addEventListener('load', scheduleIdlePrewarm, { once: true });
     }
 
     return () => {
+      active = false;
+      if (loadHandlerAttached) {
+        window.removeEventListener('load', scheduleIdlePrewarm);
+      }
       if (
         typeof window !== 'undefined' &&
         'cancelIdleCallback' in window &&
@@ -267,10 +287,7 @@ export function useUserRealtimeSync({
       ) {
         window.cancelIdleCallback(idleHandle);
       } else if (idleHandle !== null) {
-        window.clearTimeout(idleHandle as number);
-      }
-      if (timer !== null) {
-        window.clearTimeout(timer);
+        window.clearTimeout(idleHandle);
       }
     };
   }, []);

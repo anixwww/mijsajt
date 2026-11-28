@@ -1,5 +1,7 @@
 import {
   DEFAULT_HOME_REPEATERS,
+  type ChatMetaState,
+  type ChatReportRecord,
   type ContactMessageRecord,
   type GlobalChatMessage,
   type HomeRepeatersConfig,
@@ -318,6 +320,8 @@ export interface SiteDatabase {
   donations: DonorRecord[];
   feedback: FeedbackRecord[];
   chatMessages: GlobalChatMessage[];
+  chatMeta?: ChatMetaState;
+  chatReports?: ChatReportRecord[];
   radioTracks: RadioTrack[];
   weeklyMusicSelections: WeeklyMusicSelection[];
   monthlySelections?: MonthlySelection[];
@@ -410,6 +414,12 @@ export const INITIAL_DATABASE: SiteDatabase = {
   donations: [],
   feedback: [],
   chatMessages: [],
+  chatMeta: {
+    pinnedMessage: null,
+    slowModeSeconds: 0,
+    mutedUsers: {},
+  },
+  chatReports: [],
   radioTracks: [],
   weeklyMusicSelections: [],
   analytics: {

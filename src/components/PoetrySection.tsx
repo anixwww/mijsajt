@@ -5,7 +5,6 @@ import {
   ChevronRight,
   Copy,
   Filter,
-  Heart,
   MessageSquare,
   Send,
   Star,
@@ -22,8 +21,10 @@ import type {
   WeeklyPoemWinner,
 } from '../types.ts';
 import { setActiveMoment, trackClick } from '../utils/analytics.ts';
+import { triggerLikeHapticFeedback } from '../utils/haptics.ts';
 import { isHexColorDark, usePoemImagePalette } from '../utils/imagePalette.ts';
 import { EmptySectionState } from './EmptySectionState.tsx';
+import { HeartBloomIcon } from './HeartBloomIcon.tsx';
 import { PoemSoundCloudPlayer } from './PoemSoundCloudPlayer.tsx';
 import { ReviewsBlock } from './ReviewsBlock.tsx';
 import { ShareButton } from './ShareButton.tsx';
@@ -142,6 +143,11 @@ export const PoetrySection = memo(function PoetrySection({
   const [swipeDirection, setSwipeDirection] = useState<number>(1);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [likeSubmittingId, setLikeSubmittingId] = useState<string | null>(null);
+  const [likeAnimState, setLikeAnimState] = useState<{
+    poemId: string;
+    key: number;
+    phase: 'like' | 'unlike';
+  } | null>(null);
   const [pendingRating, setPendingRating] = useState<number | null>(null);
   const [ratingSubmittingId, setRatingSubmittingId] = useState<string | null>(null);
   const [ratingFeedback, setRatingFeedback] = useState<{
@@ -552,6 +558,47 @@ export const PoetrySection = memo(function PoetrySection({
     }
     if (likeSubmittingId === poem.id) return;
     trackClick(`like_poem:${poem.id}`, `Вподобайка вірша: «${poem.title}»`, 'action');
+
+    const prevLiked = likedPoemSet.has(poem.id);
+    const nextLiked = !prevLiked;
+    const prevLikedIds = Array.isArray(guestUser.likedPoemIds)
+      ? guestUser.likedPoemIds
+      : Array.from(likedPoemSet);
+    const optimisticLikedIds = nextLiked
+      ? Array.from(new Set([poem.id, ...prevLikedIds]))
+      : prevLikedIds.filter((id) => id !== poem.id);
+    const prevLikesCount = poem.likesCount ?? 0;
+    const optimisticPoem: Poem = {
+      ...poem,
+      isLiked: nextLiked,
+      likesCount: Math.max(0, prevLikesCount + (nextLiked ? 1 : -1)),
+    };
+
+    // Instant haptic, visual bloom & optimistic UI state
+    triggerLikeHapticFeedback(nextLiked);
+    setLikeAnimState((prev) => ({
+      poemId: poem.id,
+      key: (prev?.key ?? 0) + 1,
+      phase: nextLiked ? 'like' : 'unlike',
+    }));
+    onPoemUpdated(optimisticPoem);
+    if (onGuestUserUpdated) {
+      onGuestUserUpdated({
+        ...guestUser,
+        likedPoemIds: optimisticLikedIds,
+      });
+    }
+
+    const rollbackLike = () => {
+      onPoemUpdated(poem);
+      if (onGuestUserUpdated) {
+        onGuestUserUpdated({
+          ...guestUser,
+          likedPoemIds: prevLikedIds,
+        });
+      }
+    };
+
     setLikeSubmittingId(poem.id);
     try {
       let token = await getGuestToken?.();
@@ -560,6 +607,7 @@ export const PoetrySection = memo(function PoetrySection({
         if (refreshed) token = refreshed;
       }
       if (!token) {
+        rollbackLike();
         onOpenAuthModal();
         return;
       }
@@ -584,11 +632,13 @@ export const PoetrySection = memo(function PoetrySection({
         }
       }
       if (res.status === 401) {
+        rollbackLike();
         onOpenAuthModal();
         return;
       }
       const data = await res.json();
       if (!res.ok) {
+        rollbackLike();
         setRatingFeedback({
           poemId: poem.id,
           text: data.error || 'Не вдалося оновити вподобайку.',
@@ -606,6 +656,7 @@ export const PoetrySection = memo(function PoetrySection({
         });
       }
     } catch {
+      rollbackLike();
       setRatingFeedback({
         poemId: poem.id,
         text: 'Помилка з’єднання із сервером.',
@@ -1684,10 +1735,13 @@ export const PoetrySection = memo(function PoetrySection({
                           ? 'Прибрати зі Вподобайок'
                           : 'Додати до Вподобайок'
                         : 'Увійдіть, щоб додати до Вподобайок';
+                      const animForPoem =
+                        likeAnimState?.poemId === currentPoem.id ? likeAnimState : null;
                       return (
                         <button
                           type="button"
-                          disabled={likeSubmittingId === currentPoem.id}
+                          data-haptic-like="true"
+                          aria-busy={likeSubmittingId === currentPoem.id}
                           onClick={() => handleToggleLike(currentPoem)}
                           aria-pressed={isCurrentLiked}
                           aria-label={label}
@@ -1697,16 +1751,17 @@ export const PoetrySection = memo(function PoetrySection({
                               : undefined
                           }
                           title={label}
-                          className={`btn-editorial-icon disabled:opacity-60 ${
+                          className={`btn-editorial-icon relative overflow-visible ${
                             isCurrentLiked
                               ? 'bg-rose-500/15 dark:bg-rose-400/20 text-rose-600 dark:text-rose-400 hover:bg-rose-500/25 dark:hover:bg-rose-400/30 hover:text-rose-700 dark:hover:text-rose-300'
                               : ''
                           }`}
                         >
-                          <Heart
-                            className={`w-4 h-4 transition-transform ${
-                              isCurrentLiked ? 'fill-rose-600 text-rose-600 dark:fill-rose-400 dark:text-rose-400 scale-110' : ''
-                            }`}
+                          <HeartBloomIcon
+                            liked={isCurrentLiked}
+                            bloomKey={animForPoem?.key ?? 0}
+                            phase={animForPoem?.phase ?? 'idle'}
+                            className="w-4 h-4"
                             strokeWidth={1.8}
                           />
                         </button>

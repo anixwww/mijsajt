@@ -1037,6 +1037,54 @@ export interface FeedbackRecord {
   readByUser?: boolean;
 }
 
+export type ChatAttachmentType = 'poem' | 'prose' | 'radio';
+
+export interface ChatMessageAttachment {
+  type: ChatAttachmentType;
+  id: string;
+  title: string;
+  subtitle?: string;
+}
+
+export const CHAT_REACTION_EMOJIS = ['❤️', '🔥', '✨', '👏', '🤔'] as const;
+export type ChatReactionEmoji = (typeof CHAT_REACTION_EMOJIS)[number];
+
+export interface PinnedChatMessage {
+  id: string;
+  authorName: string;
+  text: string;
+  pinnedAt: string;
+  pinnedBy: string;
+}
+
+export interface ChatMutedUserEntry {
+  uid: string;
+  displayName?: string;
+  mutedUntil: string | null;
+  mutedAt: string;
+  mutedBy?: string;
+  reason?: string;
+}
+
+export interface ChatMetaState {
+  pinnedMessage?: PinnedChatMessage | null;
+  slowModeSeconds?: number;
+  mutedUsers?: Record<string, ChatMutedUserEntry>;
+}
+
+export interface ChatReportRecord {
+  id: string;
+  messageId: string;
+  messageText: string;
+  messageAuthorUid: string;
+  messageAuthorName: string;
+  reporterUid: string;
+  reporterName: string;
+  reason?: string;
+  createdAt: string;
+  resolved?: boolean;
+}
+
 export interface GlobalChatMessage {
   id: string;
   authorUid: string;
@@ -1046,6 +1094,9 @@ export interface GlobalChatMessage {
   authorDonorText?: string;
   isAdmin?: boolean;
   text: string;
+  editedAt?: string;
+  reactions?: Record<string, string[]>;
+  attachment?: ChatMessageAttachment;
   replyTo?: {
     id: string;
     authorUid: string;
@@ -1054,4 +1105,5 @@ export interface GlobalChatMessage {
   };
   createdAt: string;
 }
+
 

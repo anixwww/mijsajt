@@ -1,7 +1,45 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
-import { Check, CornerUpLeft, LogIn, MessagesSquare, Send, Trash2, User, X } from 'lucide-react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode } from 'react';
+import {
+  ArrowDown,
+  BookOpen,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Clock,
+  CornerUpLeft,
+  FileText,
+  Flag,
+  LogIn,
+  MessagesSquare,
+  Paperclip,
+  Pencil,
+  Pin,
+  PinOff,
+  Radio,
+  Search,
+  Send,
+  Shield,
+  SmilePlus,
+  Trash2,
+  User,
+  VolumeX,
+  X,
+} from 'lucide-react';
 import { List, useDynamicRowHeight, type ListImperativeAPI, type RowComponentProps } from 'react-window';
-import type { GlobalChatMessage, GuestUser, UserTopBadges } from '../types.ts';
+import {
+  CHAT_REACTION_EMOJIS,
+  type ChatAttachmentType,
+  type ChatMessageAttachment,
+  type ChatMetaState,
+  type ChatMutedUserEntry,
+  type ChatReportRecord,
+  type GlobalChatMessage,
+  type GuestUser,
+  type UserTopBadges,
+} from '../types.ts';
+import { useCatalogStore } from '../store/useCatalogStore.ts';
+import { useAllRadioTracks } from '../utils/radioSelectors.ts';
+import { triggerHapticFeedback, triggerLikeHapticFeedback } from '../utils/haptics.ts';
 import { UserRankBadges } from './UserRankBadges.tsx';
 import {
   deleteChatMessageDirectInFirestore,
@@ -13,6 +51,10 @@ import {
   subscribeGlobalChatMessages,
   type ChatAuthorMeta,
 } from '../utils/chatFirestore.ts';
+
+const EDIT_WINDOW_MS = 5 * 60 * 1000;
+const GROUP_WINDOW_MS = 5 * 60 * 1000;
+const SLOW_MODE_OPTIONS = [0, 10, 30, 60] as const;
 
 function ChatAvatar({ photoUrl }: { photoUrl?: string }) {
   const [failed, setFailed] = useState(false);
@@ -44,77 +86,282 @@ interface GlobalChatModalProps {
   guestUser: GuestUser | null;
   isAdmin: boolean;
   getGuestToken: (forceRefresh?: boolean) => Promise<string | null>;
+  getAdminToken?: (forceRefresh?: boolean) => Promise<string | null>;
   onOpenAuthModal: () => void;
   onGuestUserUpdated?: (user: GuestUser) => void;
+  onOpenAttachment?: (attachment: ChatMessageAttachment) => void;
 }
 
 type WsStatus = 'connecting' | 'connected' | 'reconnecting';
+
+function getDateKey(isoStr: string): string {
+  const d = new Date(isoStr);
+  if (Number.isNaN(d.getTime())) return '';
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function formatDateDivider(isoStr: string): string {
+  const d = new Date(isoStr);
+  if (Number.isNaN(d.getTime())) return '';
+  const now = new Date();
+  const todayKey = getDateKey(now.toISOString());
+  const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+  const yesterdayKey = getDateKey(yesterday.toISOString());
+  const key = getDateKey(isoStr);
+  if (key === todayKey) return 'Сьогодні';
+  if (key === yesterdayKey) return 'Вчора';
+  return d.toLocaleDateString('uk-UA', {
+    day: 'numeric',
+    month: 'long',
+    ...(d.getFullYear() !== now.getFullYear() ? { year: 'numeric' } : {}),
+  });
+}
 
 function formatMessageTime(isoStr: string): string {
   try {
     const d = new Date(isoStr);
     if (Number.isNaN(d.getTime())) return '';
-    const now = new Date();
-    const isToday =
-      d.getFullYear() === now.getFullYear() &&
-      d.getMonth() === now.getMonth() &&
-      d.getDate() === now.getDate();
-
-    const time = d.toLocaleTimeString('uk-UA', {
+    return d.toLocaleTimeString('uk-UA', {
       hour: '2-digit',
       minute: '2-digit',
     });
-    if (isToday) return time;
-
-    const date = d.toLocaleDateString('uk-UA', {
-      day: 'numeric',
-      month: 'short',
-    });
-    return `${date}, ${time}`;
   } catch {
     return '';
   }
+}
+
+function isFramedAuthorMessage(msg: GlobalChatMessage): boolean {
+  if (msg.isAdmin) return false;
+  const donorRank = msg.authorBadges?.donorRank;
+  const isTop3Donor = donorRank === 1 || donorRank === 2 || donorRank === 3;
+  const isTop1Activity = msg.authorBadges?.activityRank === 1;
+  return isTop3Donor || isTop1Activity;
+}
+
+function canGroupMessages(prev: GlobalChatMessage | undefined, curr: GlobalChatMessage): boolean {
+  if (!prev) return false;
+  if (prev.authorUid !== curr.authorUid) return false;
+  if (getDateKey(prev.createdAt) !== getDateKey(curr.createdAt)) return false;
+  if (curr.replyTo) return false;
+  if (isFramedAuthorMessage(prev) || isFramedAuthorMessage(curr)) return false;
+  const prevMs = Date.parse(prev.createdAt);
+  const currMs = Date.parse(curr.createdAt);
+  if (!Number.isFinite(prevMs) || !Number.isFinite(currMs)) return false;
+  return currMs - prevMs >= 0 && currMs - prevMs <= GROUP_WINDOW_MS;
+}
+
+function doesMessageMentionUser(text: string, displayName?: string): boolean {
+  if (!displayName || !displayName.trim()) return false;
+  const cleanName = displayName.trim().toLowerCase();
+  const lower = text.toLowerCase();
+  if (!lower.includes('@')) return false;
+  const firstToken = cleanName.split(/\s+/)[0];
+  return (
+    lower.includes(`@${cleanName}`) ||
+    (Boolean(firstToken && firstToken.length >= 2) && lower.includes(`@${firstToken}`))
+  );
+}
+
+function renderHighlightedText(
+  text: string,
+  searchQuery: string,
+  currentUserDisplayName?: string
+): ReactNode {
+  const trimmedSearch = searchQuery.trim();
+  const lowerCurrent = currentUserDisplayName?.trim().toLowerCase() || '';
+  const mentionPattern = /(@[A-Za-zА-Яа-яІіЇїЄєҐґ0-9_.-]+(?:\s+[A-Za-zА-Яа-яІіЇїЄєҐґ0-9_.-]+)?)/g;
+
+  const renderSearchMarks = (segment: string, keyPrefix: string): ReactNode => {
+    if (!trimmedSearch) return segment;
+    const lowerSeg = segment.toLowerCase();
+    const lowerQ = trimmedSearch.toLowerCase();
+    if (!lowerSeg.includes(lowerQ)) return segment;
+    const nodes: ReactNode[] = [];
+    let cursor = 0;
+    let idx = lowerSeg.indexOf(lowerQ, cursor);
+    let partIdx = 0;
+    while (idx !== -1) {
+      if (idx > cursor) {
+        nodes.push(segment.slice(cursor, idx));
+      }
+      nodes.push(
+        <mark
+          key={`${keyPrefix}-m-${partIdx++}`}
+          className="bg-amber-400/30 text-paper rounded px-0.5"
+        >
+          {segment.slice(idx, idx + trimmedSearch.length)}
+        </mark>
+      );
+      cursor = idx + trimmedSearch.length;
+      idx = lowerSeg.indexOf(lowerQ, cursor);
+    }
+    if (cursor < segment.length) {
+      nodes.push(segment.slice(cursor));
+    }
+    return nodes;
+  };
+
+  const parts = text.split(mentionPattern);
+  return parts.map((part, idx) => {
+    if (part.startsWith('@') && part.length > 1) {
+      const mentionBody = part.slice(1).toLowerCase();
+      const mentionsSelf =
+        Boolean(lowerCurrent) &&
+        (mentionBody === lowerCurrent ||
+          mentionBody.startsWith(`${lowerCurrent} `) ||
+          lowerCurrent.startsWith(mentionBody));
+      return (
+        <span
+          key={`p-${idx}`}
+          className={
+            mentionsSelf
+              ? 'bg-silver/20 text-paper font-semibold px-1 rounded'
+              : 'text-silver font-medium'
+          }
+        >
+          {renderSearchMarks(part, `p-${idx}`)}
+        </span>
+      );
+    }
+    return <span key={`p-${idx}`}>{renderSearchMarks(part, `p-${idx}`)}</span>;
+  });
+}
+
+function AttachmentBadgeIcon({ type }: { type: ChatAttachmentType }) {
+  if (type === 'poem') return <BookOpen className="w-3.5 h-3.5 shrink-0 text-amber-300" />;
+  if (type === 'prose') return <FileText className="w-3.5 h-3.5 shrink-0 text-sky-300" />;
+  return <Radio className="w-3.5 h-3.5 shrink-0 text-emerald-300" />;
+}
+
+function getAttachmentTypeLabel(type: ChatAttachmentType): string {
+  if (type === 'poem') return 'Вірш';
+  if (type === 'prose') return 'Проза';
+  return 'Радіо';
 }
 
 interface ChatMessageRowData {
   messages: GlobalChatMessage[];
   guestUserUid?: string;
   guestUserFirebaseUid?: string;
+  guestUserDisplayName?: string;
   isAdmin: boolean;
+  isSignedIn: boolean;
   confirmDeleteId: string | null;
+  activeReactionPickerId: string | null;
+  activeMuteMenuId: string | null;
+  editingMessageId: string | null;
+  editingDraft: string;
+  reportedMessageIds: ReadonlySet<string>;
+  pinnedMessageId?: string | null;
+  searchQuery: string;
+  activeSearchMatchId: string | null;
+  highlightedMessageId: string | null;
   onReply: (msg: GlobalChatMessage) => void;
   onDelete: (id: string) => void;
   onJumpToMessage: (id: string) => void;
+  onToggleReaction: (id: string, emoji: string) => void;
+  onToggleReactionPicker: (id: string) => void;
+  onStartEdit: (msg: GlobalChatMessage) => void;
+  onChangeEditDraft: (value: string) => void;
+  onSaveEdit: (id: string) => void;
+  onCancelEdit: () => void;
+  onTogglePin: (msg: GlobalChatMessage) => void;
+  onToggleMuteMenu: (id: string) => void;
+  onMuteUser: (targetUid: string, displayName: string, minutes: number) => void;
+  onReportMessage: (msg: GlobalChatMessage) => void;
+  onOpenAttachment?: (attachment: ChatMessageAttachment) => void;
 }
 
 const ChatMessageItem = memo(function ChatMessageItem({
   msg,
+  prevMsg,
+  nextMsg,
+  isFirst,
   isLast,
   guestUserUid,
   guestUserFirebaseUid,
+  guestUserDisplayName,
   isAdmin,
+  isSignedIn,
   confirmDeleteId,
+  activeReactionPickerId,
+  activeMuteMenuId,
+  editingMessageId,
+  editingDraft,
+  isReported,
+  isPinned,
+  searchQuery,
+  isSearchMatchActive,
+  isJumpHighlighted,
   onReply,
   onDelete,
   onJumpToMessage,
+  onToggleReaction,
+  onToggleReactionPicker,
+  onStartEdit,
+  onChangeEditDraft,
+  onSaveEdit,
+  onCancelEdit,
+  onTogglePin,
+  onToggleMuteMenu,
+  onMuteUser,
+  onReportMessage,
+  onOpenAttachment,
 }: {
   msg: GlobalChatMessage;
+  prevMsg?: GlobalChatMessage;
+  nextMsg?: GlobalChatMessage;
+  isFirst: boolean;
   isLast: boolean;
   guestUserUid?: string;
   guestUserFirebaseUid?: string;
+  guestUserDisplayName?: string;
   isAdmin: boolean;
+  isSignedIn: boolean;
   confirmDeleteId: string | null;
+  activeReactionPickerId: string | null;
+  activeMuteMenuId: string | null;
+  editingMessageId: string | null;
+  editingDraft: string;
+  isReported: boolean;
+  isPinned: boolean;
+  searchQuery: string;
+  isSearchMatchActive: boolean;
+  isJumpHighlighted: boolean;
   onReply: (msg: GlobalChatMessage) => void;
   onDelete: (id: string) => void;
   onJumpToMessage: (id: string) => void;
+  onToggleReaction: (id: string, emoji: string) => void;
+  onToggleReactionPicker: (id: string) => void;
+  onStartEdit: (msg: GlobalChatMessage) => void;
+  onChangeEditDraft: (value: string) => void;
+  onSaveEdit: (id: string) => void;
+  onCancelEdit: () => void;
+  onTogglePin: (msg: GlobalChatMessage) => void;
+  onToggleMuteMenu: (id: string) => void;
+  onMuteUser: (targetUid: string, displayName: string, minutes: number) => void;
+  onReportMessage: (msg: GlobalChatMessage) => void;
+  onOpenAttachment?: (attachment: ChatMessageAttachment) => void;
 }) {
+  const showDateDivider = isFirst || (prevMsg ? getDateKey(prevMsg.createdAt) !== getDateKey(msg.createdAt) : false);
+  const isGrouped = !isFirst && canGroupMessages(prevMsg, msg);
+  const nextIsGrouped = nextMsg ? canGroupMessages(msg, nextMsg) : false;
+
   const isOwn = Boolean(
     guestUserUid &&
       (msg.authorUid === guestUserUid ||
         (guestUserFirebaseUid && msg.authorUid === guestUserFirebaseUid))
   );
   const canDelete = isOwn || isAdmin;
+  const createdMs = Date.parse(msg.createdAt);
+  const canEdit =
+    isOwn &&
+    (isAdmin || (Number.isFinite(createdMs) && Date.now() - createdMs <= EDIT_WINDOW_MS));
   const isConfirming = confirmDeleteId === msg.id;
+  const isEditing = editingMessageId === msg.id;
+  const showReactionPicker = activeReactionPickerId === msg.id;
+  const showMuteMenu = activeMuteMenuId === msg.id;
+
   const isAdminMsg = Boolean(msg.isAdmin);
   const donorRank = !isAdminMsg ? msg.authorBadges?.donorRank : undefined;
   const isTop3Donor = donorRank === 1 || donorRank === 2 || donorRank === 3;
@@ -122,10 +369,16 @@ const ChatMessageItem = memo(function ChatMessageItem({
   const hasFramedCard = isTop3Donor || isTop1Activity;
   const hasDonorCustomText = Boolean(
     !isAdminMsg &&
+      !isGrouped &&
       isTop3Donor &&
       msg.authorDonorText &&
       msg.authorDonorText.trim()
   );
+  const mentionsMe = !isOwn && doesMessageMentionUser(msg.text, guestUserDisplayName);
+  const currentActorUid = guestUserFirebaseUid || guestUserUid || '';
+  const reactionEntries = msg.reactions
+    ? Object.entries(msg.reactions).filter(([, list]) => Array.isArray(list) && list.length > 0)
+    : [];
 
   const outerFrameClass =
     donorRank === 1
@@ -172,14 +425,129 @@ const ChatMessageItem = memo(function ChatMessageItem({
         ? 'text-[#E2E8F0]'
         : 'text-[#F6CFA9]';
 
+  const highlightRingClass = isSearchMatchActive
+    ? 'ring-1 ring-amber-400/75'
+    : isJumpHighlighted
+      ? 'ring-1 ring-silver/70'
+      : mentionsMe && !hasFramedCard
+        ? 'border-l-2 border-l-silver/80'
+        : '';
+
+  const actionControls = (
+    <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
+      <span className="text-[10px] text-parchment/85 tabular-nums whitespace-nowrap mr-0.5">
+        {formatMessageTime(msg.createdAt)}
+        {msg.editedAt ? ' · ред.' : ''}
+      </span>
+      {isSignedIn && (
+        <button
+          type="button"
+          onClick={() => onToggleReactionPicker(msg.id)}
+          title="Реакція"
+          aria-label="Додати реакцію"
+          className={`p-1 rounded transition-colors cursor-pointer ${
+            showReactionPicker
+              ? 'text-paper bg-white/15'
+              : 'text-parchment hover:text-paper hover:bg-white/10'
+          }`}
+        >
+          <SmilePlus className="w-3.5 h-3.5" />
+        </button>
+      )}
+      <button
+        type="button"
+        onClick={() => onReply(msg)}
+        title="Відповісти"
+        aria-label={`Відповісти ${msg.authorName}`}
+        className="p-1 rounded text-parchment hover:text-paper hover:bg-white/10 transition-colors cursor-pointer"
+      >
+        <CornerUpLeft className="w-3.5 h-3.5" />
+      </button>
+      {canEdit && !isEditing && (
+        <button
+          type="button"
+          onClick={() => onStartEdit(msg)}
+          title="Редагувати"
+          aria-label="Редагувати повідомлення"
+          className="p-1 rounded text-parchment hover:text-paper hover:bg-white/10 transition-colors cursor-pointer"
+        >
+          <Pencil className="w-3.5 h-3.5" />
+        </button>
+      )}
+      {isAdmin && (
+        <button
+          type="button"
+          onClick={() => onTogglePin(msg)}
+          title={isPinned ? 'Відкріпити' : 'Закріпити вгорі чату'}
+          aria-label={isPinned ? 'Відкріпити' : 'Закріпити повідомлення'}
+          className={`p-1 rounded transition-colors cursor-pointer ${
+            isPinned
+              ? 'text-amber-300 bg-amber-400/15'
+              : 'text-parchment hover:text-amber-300 hover:bg-white/10'
+          }`}
+        >
+          {isPinned ? <PinOff className="w-3.5 h-3.5" /> : <Pin className="w-3.5 h-3.5" />}
+        </button>
+      )}
+      {isAdmin && !isOwn && !isAdminMsg && (
+        <button
+          type="button"
+          onClick={() => onToggleMuteMenu(msg.id)}
+          title="Обмежити користувача"
+          aria-label={`Обмежити ${msg.authorName}`}
+          className={`p-1 rounded transition-colors cursor-pointer ${
+            showMuteMenu
+              ? 'text-amber-300 bg-amber-500/15'
+              : 'text-parchment hover:text-amber-300 hover:bg-white/10'
+          }`}
+        >
+          <VolumeX className="w-3.5 h-3.5" />
+        </button>
+      )}
+      {isSignedIn && !isOwn && (
+        <button
+          type="button"
+          onClick={() => onReportMessage(msg)}
+          disabled={isReported}
+          title={isReported ? 'Скаргу надіслано' : 'Поскаржитись'}
+          aria-label={isReported ? 'Скаргу надіслано' : 'Поскаржитись на повідомлення'}
+          className={`p-1 rounded transition-colors ${
+            isReported
+              ? 'text-amber-400/70 cursor-default'
+              : 'text-parchment hover:text-amber-300 hover:bg-white/10 cursor-pointer'
+          }`}
+        >
+          <Flag className="w-3 h-3" />
+        </button>
+      )}
+      {canDelete && (
+        <button
+          type="button"
+          onClick={() => onDelete(msg.id)}
+          className={`px-1 py-0.5 rounded transition-colors cursor-pointer ${
+            isConfirming
+              ? 'bg-red-500 text-white text-[10px] font-semibold px-1.5'
+              : 'text-parchment hover:text-red-400'
+          }`}
+          title={isConfirming ? 'Натисніть ще раз для видалення' : 'Видалити повідомлення'}
+          aria-label="Видалити повідомлення"
+        >
+          {isConfirming ? 'Видалити?' : <Trash2 className="w-3.5 h-3.5" />}
+        </button>
+      )}
+    </div>
+  );
+
   const messageCardBody = (
     <div
       id={hasFramedCard ? undefined : `chat-msg-${msg.id}`}
-      className={`flex items-start gap-2.5 p-2.5 sm:p-3 transition-colors ${
+      className={`group flex items-start gap-2.5 transition-colors ${
         hasFramedCard
-          ? innerSurfaceClass
-          : `rounded-xl ${isOwn && !isAdminMsg ? 'bg-[#303531]' : 'bg-night-card'}`
-      }`}
+          ? `p-2.5 sm:p-3 ${innerSurfaceClass}`
+          : `${isGrouped ? 'px-2.5 sm:px-3 py-1.5' : 'p-2.5 sm:p-3'} rounded-xl ${
+              isOwn && !isAdminMsg ? 'bg-[#303531]' : 'bg-night-card'
+            }`
+      } ${highlightRingClass}`}
     >
       {hasFramedCard && (
         <>
@@ -202,59 +570,43 @@ const ChatMessageItem = memo(function ChatMessageItem({
         </>
       )}
 
-      <div
-        className={`relative z-10 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-night-elevated flex items-center justify-center overflow-hidden text-silver shrink-0 mt-0.5 ${avatarRingClass}`}
-      >
-        <ChatAvatar photoUrl={msg.authorPhotoUrl} />
-      </div>
+      {isGrouped ? (
+        <div className="w-7 sm:w-8 shrink-0" aria-hidden="true" />
+      ) : (
+        <div
+          className={`relative z-10 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-night-elevated flex items-center justify-center overflow-hidden text-silver shrink-0 mt-0.5 ${avatarRingClass}`}
+        >
+          <ChatAvatar photoUrl={msg.authorPhotoUrl} />
+        </div>
+      )}
 
       <div className="relative z-10 min-w-0 flex-1 space-y-1">
-        <div className="flex items-center justify-between gap-2 min-w-0">
-          <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-            <span className="text-xs font-semibold text-paper truncate max-w-full">
-              {msg.authorName}
-            </span>
-            {!isAdminMsg && <UserRankBadges badges={msg.authorBadges} size="xs" />}
-            {isAdminMsg && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-silver text-night font-semibold shrink-0">
-                Адмін
+        {!isGrouped ? (
+          <div className="flex items-center justify-between gap-2 min-w-0">
+            <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+              <span className="text-xs font-semibold text-paper truncate max-w-full">
+                {msg.authorName}
               </span>
-            )}
+              {!isAdminMsg && <UserRankBadges badges={msg.authorBadges} size="xs" />}
+              {isAdminMsg && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-silver text-night font-semibold shrink-0">
+                  Адмін
+                </span>
+              )}
+              {isPinned && (
+                <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-300 font-medium">
+                  <Pin className="w-2.5 h-2.5" />
+                  закріплено
+                </span>
+              )}
+            </div>
+            {actionControls}
           </div>
-          <div className="flex items-center gap-1.5 shrink-0">
-            <span className="text-[10px] text-parchment tabular-nums whitespace-nowrap">
-              {formatMessageTime(msg.createdAt)}
-            </span>
-            <button
-              type="button"
-              onClick={() => onReply(msg)}
-              title="Відповісти"
-              aria-label={`Відповісти ${msg.authorName}`}
-              className="p-1 rounded text-parchment hover:text-paper hover:bg-white/10 transition-colors cursor-pointer"
-            >
-              <CornerUpLeft className="w-3.5 h-3.5" />
-            </button>
-            {canDelete && (
-              <button
-                type="button"
-                onClick={() => onDelete(msg.id)}
-                className={`px-1 py-0.5 rounded transition-colors cursor-pointer ${
-                  isConfirming
-                    ? 'bg-red-500 text-white text-[10px] font-semibold px-1.5'
-                    : 'text-parchment hover:text-red-400'
-                }`}
-                title={
-                  isConfirming
-                    ? 'Натисніть ще раз для видалення'
-                    : 'Видалити повідомлення'
-                }
-                aria-label="Видалити повідомлення"
-              >
-                {isConfirming ? 'Видалити?' : <Trash2 className="w-3.5 h-3.5" />}
-              </button>
-            )}
+        ) : (
+          <div className="flex items-center justify-end gap-1 -mt-0.5 mb-0.5 opacity-75 sm:opacity-55 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+            {actionControls}
           </div>
-        </div>
+        )}
 
         {hasDonorCustomText && (
           <p className={`text-[11px] italic leading-snug break-words ${donorCustomTextColorClass}`}>
@@ -276,15 +628,161 @@ const ChatMessageItem = memo(function ChatMessageItem({
             </span>
           </button>
         )}
-        <p className="text-xs sm:text-[13px] text-cream leading-relaxed break-words whitespace-pre-wrap">
-          {msg.text}
-        </p>
+
+        {isEditing ? (
+          <div className="space-y-1.5 pt-0.5">
+            <textarea
+              value={editingDraft}
+              onChange={(e) => onChangeEditDraft(e.target.value.slice(0, 600))}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  onSaveEdit(msg.id);
+                } else if (e.key === 'Escape') {
+                  e.preventDefault();
+                  onCancelEdit();
+                }
+              }}
+              rows={2}
+              autoFocus
+              className="w-full px-2.5 py-1.5 text-xs sm:text-[13px] rounded-lg bg-night-deep text-paper border border-white/15 focus:outline-none focus:border-silver/60 resize-none"
+            />
+            <div className="flex items-center justify-end gap-1.5">
+              <button
+                type="button"
+                onClick={onCancelEdit}
+                className="px-2 py-1 rounded-lg text-[11px] text-parchment hover:bg-white/10 cursor-pointer"
+              >
+                Скасувати
+              </button>
+              <button
+                type="button"
+                onClick={() => onSaveEdit(msg.id)}
+                disabled={!editingDraft.trim()}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-silver text-night text-[11px] font-semibold hover:opacity-95 disabled:opacity-45 cursor-pointer"
+              >
+                <Check className="w-3 h-3" />
+                Зберегти
+              </button>
+            </div>
+          </div>
+        ) : (
+          <p className="text-xs sm:text-[13px] text-cream leading-relaxed break-words whitespace-pre-wrap">
+            {renderHighlightedText(msg.text, searchQuery, guestUserDisplayName)}
+          </p>
+        )}
+
+        {msg.attachment && (
+          <button
+            type="button"
+            onClick={() => onOpenAttachment?.(msg.attachment!)}
+            className="w-full flex items-center justify-between gap-2.5 px-2.5 py-2 rounded-xl bg-black/30 border border-white/10 hover:border-silver/35 hover:bg-black/45 transition-colors text-left cursor-pointer"
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
+                <AttachmentBadgeIcon type={msg.attachment.type} />
+              </span>
+              <div className="min-w-0">
+                <p className="text-[10px] uppercase tracking-wider text-parchment/80">
+                  {getAttachmentTypeLabel(msg.attachment.type)}
+                  {msg.attachment.subtitle ? ` · ${msg.attachment.subtitle}` : ''}
+                </p>
+                <p className="text-xs font-medium text-paper truncate">
+                  {msg.attachment.title}
+                </p>
+              </div>
+            </div>
+            <span className="text-[10px] font-medium text-silver shrink-0">
+              {msg.attachment.type === 'radio' ? 'Слухати →' : 'Відкрити →'}
+            </span>
+          </button>
+        )}
+
+        {/* Quick Reaction Picker */}
+        {showReactionPicker && (
+          <div className="flex items-center gap-1 pt-1 flex-wrap">
+            {CHAT_REACTION_EMOJIS.map((emoji) => (
+              <button
+                key={emoji}
+                type="button"
+                data-haptic-like="1"
+                onClick={() => onToggleReaction(msg.id, emoji)}
+                className="px-2 py-0.5 rounded-full bg-night-deep hover:bg-white/15 border border-white/10 text-xs transition-transform active:scale-90 cursor-pointer"
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Quick Mute Options for Admin */}
+        {showMuteMenu && isAdmin && (
+          <div className="flex items-center gap-1.5 pt-1 flex-wrap text-[11px]">
+            <span className="text-parchment/80">Мут:</span>
+            <button
+              type="button"
+              onClick={() => onMuteUser(msg.authorUid, msg.authorName, 15)}
+              className="px-2 py-0.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-200 cursor-pointer"
+            >
+              15 хв
+            </button>
+            <button
+              type="button"
+              onClick={() => onMuteUser(msg.authorUid, msg.authorName, 60)}
+              className="px-2 py-0.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-200 cursor-pointer"
+            >
+              1 год
+            </button>
+            <button
+              type="button"
+              onClick={() => onMuteUser(msg.authorUid, msg.authorName, 0)}
+              className="px-2 py-0.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-200 cursor-pointer"
+            >
+              Назавжди
+            </button>
+          </div>
+        )}
+
+        {/* Reactions Row */}
+        {reactionEntries.length > 0 && (
+          <div className="flex items-center gap-1 pt-0.5 flex-wrap">
+            {reactionEntries.map(([emoji, users]) => {
+              const reactedByMe = Boolean(currentActorUid && users.includes(currentActorUid));
+              return (
+                <button
+                  key={emoji}
+                  type="button"
+                  data-haptic-like="1"
+                  onClick={() => onToggleReaction(msg.id, emoji)}
+                  disabled={!isSignedIn}
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] border transition-colors ${
+                    reactedByMe
+                      ? 'bg-silver/20 border-silver/50 text-paper'
+                      : 'bg-black/25 border-white/10 text-parchment hover:bg-white/10'
+                  } ${isSignedIn ? 'cursor-pointer active:scale-95' : 'cursor-default'}`}
+                >
+                  <span>{emoji}</span>
+                  <span className="tabular-nums font-medium">{users.length}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
 
   return (
-    <div className={isLast ? 'pb-3 sm:pb-4' : 'pb-2.5'}>
+    <div className={isLast ? 'pb-3 sm:pb-4' : nextIsGrouped ? 'pb-1' : 'pb-2.5'}>
+      {showDateDivider && (
+        <div className="flex items-center gap-2.5 py-2 px-1" aria-label={formatDateDivider(msg.createdAt)}>
+          <div className="flex-1 h-px bg-white/10" />
+          <span className="text-[10px] font-medium text-parchment/85 tracking-wide uppercase">
+            {formatDateDivider(msg.createdAt)}
+          </span>
+          <div className="flex-1 h-px bg-white/10" />
+        </div>
+      )}
       {hasFramedCard ? (
         <div id={`chat-msg-${msg.id}`} className={outerFrameClass}>
           {messageCardBody}
@@ -303,11 +801,33 @@ function ChatMessageRow({
   messages,
   guestUserUid,
   guestUserFirebaseUid,
+  guestUserDisplayName,
   isAdmin,
+  isSignedIn,
   confirmDeleteId,
+  activeReactionPickerId,
+  activeMuteMenuId,
+  editingMessageId,
+  editingDraft,
+  reportedMessageIds,
+  pinnedMessageId,
+  searchQuery,
+  activeSearchMatchId,
+  highlightedMessageId,
   onReply,
   onDelete,
   onJumpToMessage,
+  onToggleReaction,
+  onToggleReactionPicker,
+  onStartEdit,
+  onChangeEditDraft,
+  onSaveEdit,
+  onCancelEdit,
+  onTogglePin,
+  onToggleMuteMenu,
+  onMuteUser,
+  onReportMessage,
+  onOpenAttachment,
 }: RowComponentProps<ChatMessageRowData>): ReactElement | null {
   const msg = messages[index];
   if (!msg) return null;
@@ -315,14 +835,39 @@ function ChatMessageRow({
     <div {...ariaAttributes} style={style}>
       <ChatMessageItem
         msg={msg}
+        prevMsg={index > 0 ? messages[index - 1] : undefined}
+        nextMsg={index < messages.length - 1 ? messages[index + 1] : undefined}
+        isFirst={index === 0}
         isLast={index === messages.length - 1}
         guestUserUid={guestUserUid}
         guestUserFirebaseUid={guestUserFirebaseUid}
+        guestUserDisplayName={guestUserDisplayName}
         isAdmin={isAdmin}
+        isSignedIn={isSignedIn}
         confirmDeleteId={confirmDeleteId}
+        activeReactionPickerId={activeReactionPickerId}
+        activeMuteMenuId={activeMuteMenuId}
+        editingMessageId={editingMessageId}
+        editingDraft={editingDraft}
+        isReported={reportedMessageIds.has(msg.id)}
+        isPinned={pinnedMessageId === msg.id}
+        searchQuery={searchQuery}
+        isSearchMatchActive={activeSearchMatchId === msg.id}
+        isJumpHighlighted={highlightedMessageId === msg.id}
         onReply={onReply}
         onDelete={onDelete}
         onJumpToMessage={onJumpToMessage}
+        onToggleReaction={onToggleReaction}
+        onToggleReactionPicker={onToggleReactionPicker}
+        onStartEdit={onStartEdit}
+        onChangeEditDraft={onChangeEditDraft}
+        onSaveEdit={onSaveEdit}
+        onCancelEdit={onCancelEdit}
+        onTogglePin={onTogglePin}
+        onToggleMuteMenu={onToggleMuteMenu}
+        onMuteUser={onMuteUser}
+        onReportMessage={onReportMessage}
+        onOpenAttachment={onOpenAttachment}
       />
     </div>
   );
@@ -334,17 +879,31 @@ export const GlobalChatModal = memo(function GlobalChatModal({
   guestUser,
   isAdmin,
   getGuestToken,
+  getAdminToken,
   onOpenAuthModal,
   onGuestUserUpdated,
+  onOpenAttachment,
 }: GlobalChatModalProps) {
   const initialCacheRef = useRef<ReturnType<typeof getCachedGlobalChatState> | null>(null);
   if (!initialCacheRef.current) {
     initialCacheRef.current = getCachedGlobalChatState();
   }
 
+  const catalog = useCatalogStore((s) => s.catalog);
+  const allRadioTracks = useAllRadioTracks();
+
   const [messages, setMessages] = useState<GlobalChatMessage[]>(
     () => initialCacheRef.current?.messages || []
   );
+  const [chatMeta, setChatMeta] = useState<ChatMetaState>({
+    pinnedMessage: null,
+    slowModeSeconds: 0,
+  });
+  const [myMute, setMyMute] = useState<ChatMutedUserEntry | null>(null);
+  const [mutedUsers, setMutedUsers] = useState<Record<string, ChatMutedUserEntry>>({});
+  const [reports, setReports] = useState<ChatReportRecord[]>([]);
+  const [unresolvedReportsCount, setUnresolvedReportsCount] = useState(0);
+
   const [onlineCount, setOnlineCount] = useState<number>(1);
   const [wsStatus, setWsStatus] = useState<WsStatus>('connecting');
   const [firestoreConnected, setFirestoreConnected] = useState<boolean>(false);
@@ -353,8 +912,34 @@ export const GlobalChatModal = memo(function GlobalChatModal({
   );
   const [draft, setDraft] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [infoNotice, setInfoNotice] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [replyingTo, setReplyingTo] = useState<GlobalChatMessage | null>(null);
+  const [selectedAttachment, setSelectedAttachment] = useState<ChatMessageAttachment | null>(null);
+  const [attachmentPickerOpen, setAttachmentPickerOpen] = useState(false);
+  const [attachmentTab, setAttachmentTab] = useState<ChatAttachmentType>('poem');
+  const [attachmentSearch, setAttachmentSearch] = useState('');
+
+  const [activeReactionPickerId, setActiveReactionPickerId] = useState<string | null>(null);
+  const [activeMuteMenuId, setActiveMuteMenuId] = useState<string | null>(null);
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editingDraft, setEditingDraft] = useState('');
+  const [reportedMessageIds, setReportedMessageIds] = useState<Set<string>>(() => new Set());
+
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchMatchCursor, setSearchMatchCursor] = useState(0);
+  const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
+
+  const [moderationPanelOpen, setModerationPanelOpen] = useState(false);
+  const [pinnedExpanded, setPinnedExpanded] = useState(false);
+
+  const [typingUsers, setTypingUsers] = useState<Record<string, { displayName: string; expiresAt: number }>>({});
+  const [isScrolledUp, setIsScrolledUp] = useState(false);
+  const [unreadWhileScrolled, setUnreadWhileScrolled] = useState(0);
+  const [slowModeCooldownSec, setSlowModeCooldownSec] = useState(0);
+  const [mentionIndex, setMentionIndex] = useState(0);
+
   const [liveBadges, setLiveBadges] = useState<UserTopBadges | undefined>(guestUser?.badges);
   const [donorTextDraft, setDonorTextDraft] = useState(guestUser?.donorChatText || '');
   const [savedDonorText, setSavedDonorText] = useState(guestUser?.donorChatText || '');
@@ -365,6 +950,10 @@ export const GlobalChatModal = memo(function GlobalChatModal({
   const reconnectTimerRef = useRef<number | null>(null);
   const pingTimerRef = useRef<number | null>(null);
   const fallbackPollRef = useRef<number | null>(null);
+  const typingStopTimerRef = useRef<number | null>(null);
+  const lastTypingEmitMsRef = useRef<number>(0);
+  const isTypingActiveRef = useRef<boolean>(false);
+  const highlightTimerRef = useRef<number | null>(null);
   const pendingSendTimersRef = useRef<Map<string, number>>(new Map());
   const pendingIdsRef = useRef<Set<string>>(new Set());
   const deletedIdsRef = useRef<Set<string>>(new Set());
@@ -380,8 +969,12 @@ export const GlobalChatModal = memo(function GlobalChatModal({
   });
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const shouldAutoScrollRef = useRef(true);
+  const guestUserRef = useRef(guestUser);
+  guestUserRef.current = guestUser;
   const getGuestTokenRef = useRef(getGuestToken);
   getGuestTokenRef.current = getGuestToken;
+  const getAdminTokenRef = useRef(getAdminToken);
+  getAdminTokenRef.current = getAdminToken;
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
@@ -390,6 +983,9 @@ export const GlobalChatModal = memo(function GlobalChatModal({
       const api = listRef.current;
       const count = messagesCountRef.current;
       if (!api || count <= 0) return;
+      shouldAutoScrollRef.current = true;
+      setIsScrolledUp(false);
+      setUnreadWhileScrolled(0);
       api.scrollToRow({
         index: count - 1,
         align: 'end',
@@ -401,6 +997,14 @@ export const GlobalChatModal = memo(function GlobalChatModal({
 
   const scrollToBottomRef = useRef(scrollToBottom);
   scrollToBottomRef.current = scrollToBottom;
+
+  const resolveToken = useCallback(async (preferAdmin = false): Promise<string | null> => {
+    if (preferAdmin && getAdminTokenRef.current) {
+      const adminToken = await getAdminTokenRef.current().catch(() => null);
+      if (adminToken) return adminToken;
+    }
+    return getGuestTokenRef.current().catch(() => null);
+  }, []);
 
   const syncAuthOnSocket = useCallback(async (socket: WebSocket) => {
     if (socket.readyState !== WebSocket.OPEN) return;
@@ -495,7 +1099,6 @@ export const GlobalChatModal = memo(function GlobalChatModal({
             }
           }
         } else {
-          // Keep optimistic/pending local items that haven't landed in the authoritative batch yet
           for (const existing of prev) {
             if (
               !deletedIdsRef.current.has(existing.id) &&
@@ -509,8 +1112,26 @@ export const GlobalChatModal = memo(function GlobalChatModal({
         for (const rawMsg of incomingList) {
           if (!rawMsg?.id || deletedIdsRef.current.has(rawMsg.id)) continue;
           const prevEntry = prev.find((p) => p.id === rawMsg.id) || byId.get(rawMsg.id);
+          const preserveFirestoreExtras = mode === 'firestore' && prevEntry;
+          const mergedText =
+            preserveFirestoreExtras && prevEntry.editedAt && !rawMsg.editedAt
+              ? prevEntry.text
+              : rawMsg.text;
+          const mergedEditedAt =
+            rawMsg.editedAt ?? (preserveFirestoreExtras ? prevEntry.editedAt : undefined);
+          const mergedReactions =
+            rawMsg.reactions ?? (preserveFirestoreExtras ? prevEntry.reactions : undefined);
+          const mergedAttachment =
+            rawMsg.attachment ?? prevEntry?.attachment;
+
           const merged: GlobalChatMessage = enrichWithMeta({
             ...rawMsg,
+            text: mergedText,
+            ...(mergedEditedAt ? { editedAt: mergedEditedAt } : {}),
+            ...(mergedReactions && Object.keys(mergedReactions).length > 0
+              ? { reactions: mergedReactions }
+              : {}),
+            ...(mergedAttachment ? { attachment: mergedAttachment } : {}),
             ...(rawMsg.authorPhotoUrl || prevEntry?.authorPhotoUrl
               ? { authorPhotoUrl: rawMsg.authorPhotoUrl || prevEntry?.authorPhotoUrl }
               : {}),
@@ -548,15 +1169,57 @@ export const GlobalChatModal = memo(function GlobalChatModal({
     prewarmChatFirestore();
   }, []);
 
+  // Expire typing indicators automatically
+  useEffect(() => {
+    if (!isOpen) return;
+    const timer = window.setInterval(() => {
+      const now = Date.now();
+      setTypingUsers((prev) => {
+        let changed = false;
+        const next: Record<string, { displayName: string; expiresAt: number }> = {};
+        for (const [uid, entry] of Object.entries(prev)) {
+          if (entry.expiresAt > now) {
+            next[uid] = entry;
+          } else {
+            changed = true;
+          }
+        }
+        return changed ? next : prev;
+      });
+    }, 800);
+    return () => window.clearInterval(timer);
+  }, [isOpen]);
+
+  // Countdown slow mode timer
+  useEffect(() => {
+    if (!isOpen || slowModeCooldownSec <= 0) return;
+    const timer = window.setInterval(() => {
+      setSlowModeCooldownSec((prev) => (prev > 1 ? prev - 1 : 0));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [isOpen, slowModeCooldownSec]);
+
   useEffect(() => {
     if (!isOpen) {
       setConfirmDeleteId(null);
       setReplyingTo(null);
+      setActiveReactionPickerId(null);
+      setActiveMuteMenuId(null);
+      setEditingMessageId(null);
+      setAttachmentPickerOpen(false);
+      setSearchOpen(false);
+      setSearchQuery('');
+      setModerationPanelOpen(false);
+      setTypingUsers({});
       setFirestoreConnected(false);
       for (const timer of pendingSendTimersRef.current.values()) {
         window.clearTimeout(timer);
       }
       pendingSendTimersRef.current.clear();
+      if (typingStopTimerRef.current) {
+        window.clearTimeout(typingStopTimerRef.current);
+        typingStopTimerRef.current = null;
+      }
       return;
     }
 
@@ -564,6 +1227,8 @@ export const GlobalChatModal = memo(function GlobalChatModal({
     let attempt = 0;
     let unsubscribeFirestore: () => void = () => {};
     shouldAutoScrollRef.current = true;
+    setIsScrolledUp(false);
+    setUnreadWhileScrolled(0);
     setError(null);
     prewarmChatFirestore();
 
@@ -606,12 +1271,19 @@ export const GlobalChatModal = memo(function GlobalChatModal({
         const json = (await res.json()) as {
           messages?: GlobalChatMessage[];
           onlineCount?: number;
+          chatMeta?: ChatMetaState;
           currentUserBadges?: UserTopBadges;
           currentUserDonorText?: string;
+          myMute?: ChatMutedUserEntry | null;
+          mutedUsers?: Record<string, ChatMutedUserEntry>;
+          unresolvedReportsCount?: number;
         };
         if (unmounted) return;
         if (Array.isArray(json.messages)) {
           mergeIncomingMessagesRef.current(json.messages, 'merge');
+        }
+        if (json.chatMeta) {
+          setChatMeta(json.chatMeta);
         }
         if (typeof json.onlineCount === 'number') {
           setOnlineCount(Math.max(1, json.onlineCount));
@@ -622,6 +1294,15 @@ export const GlobalChatModal = memo(function GlobalChatModal({
         if (typeof json.currentUserDonorText === 'string') {
           setSavedDonorText(json.currentUserDonorText);
           setDonorTextDraft(json.currentUserDonorText);
+        }
+        if (json.myMute !== undefined) {
+          setMyMute(json.myMute);
+        }
+        if (json.mutedUsers) {
+          setMutedUsers(json.mutedUsers);
+        }
+        if (typeof json.unresolvedReportsCount === 'number') {
+          setUnresolvedReportsCount(json.unresolvedReportsCount);
         }
       } catch {
         // Firestore onSnapshot and WebSocket hydrate state
@@ -671,12 +1352,22 @@ export const GlobalChatModal = memo(function GlobalChatModal({
             type?: string;
             messages?: GlobalChatMessage[];
             message?: GlobalChatMessage;
+            chatMeta?: ChatMetaState;
             clientMessageId?: string;
             id?: string;
+            reactions?: Record<string, string[]>;
+            uid?: string;
+            displayName?: string;
+            isTyping?: boolean;
             onlineCount?: number;
             badges?: UserTopBadges;
             donorChatText?: string;
             authenticated?: boolean;
+            myMute?: ChatMutedUserEntry | null;
+            mutedUsers?: Record<string, ChatMutedUserEntry>;
+            unresolvedReportsCount?: number;
+            unresolvedCount?: number;
+            retryAfterSec?: number;
             error?: string;
           };
 
@@ -686,6 +1377,9 @@ export const GlobalChatModal = memo(function GlobalChatModal({
               setLoadingInitial(false);
               window.requestAnimationFrame(() => scrollToBottomRef.current(false));
             }
+            if (payload.chatMeta) {
+              setChatMeta(payload.chatMeta);
+            }
             if (typeof payload.onlineCount === 'number') {
               setOnlineCount(Math.max(1, payload.onlineCount));
             }
@@ -694,6 +1388,22 @@ export const GlobalChatModal = memo(function GlobalChatModal({
 
           if (payload.type === 'chat:refresh' && Array.isArray(payload.messages)) {
             mergeIncomingMessagesRef.current(payload.messages, 'merge');
+            if (payload.chatMeta) setChatMeta(payload.chatMeta);
+            return;
+          }
+
+          if (payload.type === 'chat:meta' && payload.chatMeta) {
+            setChatMeta(payload.chatMeta);
+            return;
+          }
+
+          if (payload.type === 'chat:self-mute') {
+            setMyMute(payload.myMute ?? null);
+            return;
+          }
+
+          if (payload.type === 'chat:reports-updated' && typeof payload.unresolvedCount === 'number') {
+            setUnresolvedReportsCount(payload.unresolvedCount);
             return;
           }
 
@@ -704,14 +1414,44 @@ export const GlobalChatModal = memo(function GlobalChatModal({
                 setSavedDonorText(payload.donorChatText);
                 setDonorTextDraft(payload.donorChatText);
               }
+              if (payload.myMute !== undefined) {
+                setMyMute(payload.myMute);
+              }
+              if (payload.mutedUsers) {
+                setMutedUsers(payload.mutedUsers);
+              }
+              if (typeof payload.unresolvedReportsCount === 'number') {
+                setUnresolvedReportsCount(payload.unresolvedReportsCount);
+              }
             } else {
               setLiveBadges(undefined);
+              setMyMute(null);
             }
             return;
           }
 
           if (payload.type === 'chat:presence' && typeof payload.onlineCount === 'number') {
             setOnlineCount(Math.max(1, payload.onlineCount));
+            return;
+          }
+
+          if (payload.type === 'chat:typing' && payload.uid) {
+            const currentUid = guestUserRef.current?.firebaseUid || guestUserRef.current?.uid;
+            if (payload.uid === currentUid || payload.uid === guestUserRef.current?.uid) return;
+            const tUid = payload.uid;
+            if (payload.isTyping && payload.displayName) {
+              setTypingUsers((prev) => ({
+                ...prev,
+                [tUid]: { displayName: payload.displayName!, expiresAt: Date.now() + 3500 },
+              }));
+            } else {
+              setTypingUsers((prev) => {
+                if (!(tUid in prev)) return prev;
+                const next = { ...prev };
+                delete next[tUid];
+                return next;
+              });
+            }
             return;
           }
 
@@ -722,11 +1462,52 @@ export const GlobalChatModal = memo(function GlobalChatModal({
             clearPendingTimer(incoming.id);
             pendingIdsRef.current.delete(incoming.id);
             if (clientId) pendingIdsRef.current.delete(clientId);
+
+            // Clear typing indicator for sender
+            setTypingUsers((prev) => {
+              if (!(incoming.authorUid in prev)) return prev;
+              const next = { ...prev };
+              delete next[incoming.authorUid];
+              return next;
+            });
+
             mergeIncomingMessagesRef.current([incoming], 'merge');
             setError(null);
             if (shouldAutoScrollRef.current) {
               window.requestAnimationFrame(() => scrollToBottomRef.current(true));
+            } else {
+              const myUid = guestUserRef.current?.uid;
+              const myFbUid = guestUserRef.current?.firebaseUid;
+              const fromMe = incoming.authorUid === myUid || (myFbUid && incoming.authorUid === myFbUid);
+              if (!fromMe) {
+                setUnreadWhileScrolled((c) => c + 1);
+              }
             }
+            return;
+          }
+
+          if (payload.type === 'chat:edited' && payload.message) {
+            mergeIncomingMessagesRef.current([payload.message], 'merge');
+            return;
+          }
+
+          if (payload.type === 'chat:reacted' && payload.id) {
+            const targetId = payload.id;
+            const nextReactions = payload.reactions || {};
+            setMessages((prev) => {
+              const next = prev.map((m) =>
+                m.id === targetId
+                  ? {
+                      ...m,
+                      ...(Object.keys(nextReactions).length > 0
+                        ? { reactions: nextReactions }
+                        : { reactions: undefined }),
+                    }
+                  : m
+              );
+              saveCachedGlobalChatState(next, authorMetaByUidRef.current);
+              return next;
+            });
             return;
           }
 
@@ -747,6 +1528,9 @@ export const GlobalChatModal = memo(function GlobalChatModal({
               clearPendingTimer(payload.clientMessageId);
               pendingIdsRef.current.delete(payload.clientMessageId);
               setMessages((prev) => prev.filter((m) => m.id !== payload.clientMessageId));
+            }
+            if (typeof payload.retryAfterSec === 'number' && payload.retryAfterSec > 0) {
+              setSlowModeCooldownSec(payload.retryAfterSec);
             }
             setError(payload.error);
           }
@@ -778,7 +1562,13 @@ export const GlobalChatModal = memo(function GlobalChatModal({
     connect();
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onCloseRef.current();
+      if (e.key === 'Escape') {
+        if (editingMessageId) {
+          setEditingMessageId(null);
+          return;
+        }
+        onCloseRef.current();
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
 
@@ -818,10 +1608,14 @@ export const GlobalChatModal = memo(function GlobalChatModal({
         const json = (await res.json()) as {
           messages?: GlobalChatMessage[];
           onlineCount?: number;
+          chatMeta?: ChatMetaState;
+          myMute?: ChatMutedUserEntry | null;
         };
         if (Array.isArray(json.messages)) {
           mergeIncomingMessagesRef.current(json.messages, 'merge');
         }
+        if (json.chatMeta) setChatMeta(json.chatMeta);
+        if (json.myMute !== undefined) setMyMute(json.myMute);
         if (typeof json.onlineCount === 'number') {
           setOnlineCount(Math.max(1, json.onlineCount));
         }
@@ -856,12 +1650,850 @@ export const GlobalChatModal = memo(function GlobalChatModal({
     void syncAuthOnSocketRef.current(wsRef.current);
   }, [guestUser?.uid, isOpen]);
 
-  if (!isOpen) return null;
+  // Load admin moderation details when panel opens
+  const loadAdminModeration = useCallback(async () => {
+    if (!isAdmin) return;
+    try {
+      const token = await resolveToken(true);
+      if (!token) return;
+      const res = await fetch('/api/chat/moderation', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return;
+      const data = (await res.json()) as {
+        chatMeta?: ChatMetaState;
+        mutedUsers?: Record<string, ChatMutedUserEntry>;
+        reports?: ChatReportRecord[];
+        unresolvedReportsCount?: number;
+      };
+      if (data.chatMeta) setChatMeta(data.chatMeta);
+      if (data.mutedUsers) setMutedUsers(data.mutedUsers);
+      if (Array.isArray(data.reports)) setReports(data.reports);
+      if (typeof data.unresolvedReportsCount === 'number') {
+        setUnresolvedReportsCount(data.unresolvedReportsCount);
+      }
+    } catch {
+      // Ignore moderation fetch errors
+    }
+  }, [isAdmin, resolveToken]);
 
-  const effectiveDonorRank = liveBadges?.donorRank ?? guestUser?.badges?.donorRank;
-  const canSetDonorText = Boolean(
-    guestUser && effectiveDonorRank && effectiveDonorRank >= 1 && effectiveDonorRank <= 3
+  useEffect(() => {
+    if (isOpen && moderationPanelOpen && isAdmin) {
+      void loadAdminModeration();
+    }
+  }, [isOpen, moderationPanelOpen, isAdmin, loadAdminModeration]);
+
+  const handleScroll = useCallback(() => {
+    const el = listRef.current?.element;
+    if (!el) return;
+    const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    const nearBottom = distFromBottom < 80;
+    shouldAutoScrollRef.current = nearBottom;
+    setIsScrolledUp(!nearBottom);
+    if (nearBottom) {
+      setUnreadWhileScrolled(0);
+    }
+  }, [listRef]);
+
+  const handleJumpToMessage = useCallback(
+    (targetId: string) => {
+      const targetIndex = messages.findIndex((m) => m.id === targetId);
+      if (targetIndex >= 0 && listRef.current) {
+        shouldAutoScrollRef.current = false;
+        listRef.current.scrollToRow({
+          index: targetIndex,
+          align: 'center',
+          behavior: 'smooth',
+        });
+        setHighlightedMessageId(targetId);
+        if (highlightTimerRef.current) window.clearTimeout(highlightTimerRef.current);
+        highlightTimerRef.current = window.setTimeout(() => {
+          setHighlightedMessageId(null);
+        }, 1800);
+      }
+    },
+    [listRef, messages]
   );
+
+  useEffect(() => {
+    if (!isOpen || !shouldAutoScrollRef.current || messages.length === 0) return;
+    const frameId = window.requestAnimationFrame(() => {
+      scrollToBottomRef.current(false);
+    });
+    return () => window.cancelAnimationFrame(frameId);
+  }, [isOpen, messages.length]);
+
+  // Search matches
+  const searchMatchIds = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return [];
+    return messages
+      .filter(
+        (m) =>
+          m.text.toLowerCase().includes(q) ||
+          m.authorName.toLowerCase().includes(q) ||
+          Boolean(m.attachment?.title.toLowerCase().includes(q))
+      )
+      .map((m) => m.id);
+  }, [messages, searchQuery]);
+
+  const activeSearchMatchId =
+    searchMatchIds.length > 0
+      ? searchMatchIds[Math.min(searchMatchCursor, searchMatchIds.length - 1)]
+      : null;
+
+  useEffect(() => {
+    setSearchMatchCursor(searchMatchIds.length > 0 ? searchMatchIds.length - 1 : 0);
+  }, [searchQuery, searchMatchIds.length]);
+
+  const jumpToSearchMatch = useCallback(
+    (direction: -1 | 1) => {
+      if (searchMatchIds.length === 0) return;
+      const nextCursor =
+        (searchMatchCursor + direction + searchMatchIds.length) % searchMatchIds.length;
+      setSearchMatchCursor(nextCursor);
+      handleJumpToMessage(searchMatchIds[nextCursor]);
+    },
+    [handleJumpToMessage, searchMatchCursor, searchMatchIds]
+  );
+
+  // Recent participants for @mention autocomplete
+  const mentionQueryInfo = useMemo(() => {
+    const match = draft.match(/(?:^|\s)@([^\s@]{0,24})$/);
+    if (!match) return null;
+    return match[1].toLowerCase();
+  }, [draft]);
+
+  const mentionSuggestions = useMemo(() => {
+    if (mentionQueryInfo === null) return [];
+    const seen = new Set<string>();
+    const list: Array<{ uid: string; name: string; photoUrl?: string }> = [];
+    const myUid = guestUser?.uid;
+    const myFbUid = guestUser?.firebaseUid;
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      const m = messages[i];
+      if (!m.authorUid || !m.authorName) continue;
+      if (m.authorUid === myUid || (myFbUid && m.authorUid === myFbUid)) continue;
+      const key = m.authorName.trim().toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      if (!mentionQueryInfo || key.includes(mentionQueryInfo)) {
+        list.push({ uid: m.authorUid, name: m.authorName.trim(), photoUrl: m.authorPhotoUrl });
+      }
+      if (list.length >= 6) break;
+    }
+    return list;
+  }, [guestUser?.firebaseUid, guestUser?.uid, mentionQueryInfo, messages]);
+
+  useEffect(() => {
+    setMentionIndex(0);
+  }, [mentionSuggestions.length, mentionQueryInfo]);
+
+  const applyMentionSuggestion = useCallback((name: string) => {
+    setDraft((prev) => prev.replace(/(^|\s)@([^\s@]{0,24})$/, `$1@${name} `).slice(0, 600));
+    inputRef.current?.focus();
+  }, []);
+
+  // Attachment picker filtered options
+  const attachmentOptions = useMemo(() => {
+    const q = attachmentSearch.trim().toLowerCase();
+    if (attachmentTab === 'poem') {
+      return (catalog?.poems ?? [])
+        .filter((p) => !q || p.title.toLowerCase().includes(q) || (p.cycle || '').toLowerCase().includes(q))
+        .slice(0, 20)
+        .map((p) => ({
+          type: 'poem' as const,
+          id: p.id,
+          title: p.title,
+          subtitle: p.cycle || (p.year ? String(p.year) : 'Поезія'),
+        }));
+    }
+    if (attachmentTab === 'prose') {
+      return (catalog?.prose ?? [])
+        .filter((w) => !q || w.title.toLowerCase().includes(q) || (w.genre || '').toLowerCase().includes(q))
+        .slice(0, 20)
+        .map((w) => ({
+          type: 'prose' as const,
+          id: w.id,
+          title: w.title,
+          subtitle: w.genre || 'Проза',
+        }));
+    }
+    return allRadioTracks
+      .filter((t) => !q || t.title.toLowerCase().includes(q) || t.artist.toLowerCase().includes(q))
+      .slice(0, 20)
+      .map((t) => ({
+        type: 'radio' as const,
+        id: t.id,
+        title: t.title,
+        subtitle: t.artist || 'Радіо',
+      }));
+  }, [allRadioTracks, attachmentSearch, attachmentTab, catalog?.poems, catalog?.prose]);
+
+  const emitTypingState = useCallback((isTyping: boolean) => {
+    const socket = wsRef.current;
+    if (!socket || socket.readyState !== WebSocket.OPEN) return;
+    if (!guestUserRef.current) return;
+    const now = Date.now();
+    if (isTyping && isTypingActiveRef.current && now - lastTypingEmitMsRef.current < 1500) {
+      return;
+    }
+    isTypingActiveRef.current = isTyping;
+    lastTypingEmitMsRef.current = now;
+    socket.send(JSON.stringify({ type: 'chat:typing', isTyping }));
+  }, []);
+
+  const handleDraftChange = useCallback(
+    (nextVal: string) => {
+      const clamped = nextVal.slice(0, 600);
+      setDraft(clamped);
+      if (clamped.trim().length > 0) {
+        emitTypingState(true);
+        if (typingStopTimerRef.current) window.clearTimeout(typingStopTimerRef.current);
+        typingStopTimerRef.current = window.setTimeout(() => {
+          emitTypingState(false);
+        }, 2500);
+      } else {
+        if (typingStopTimerRef.current) window.clearTimeout(typingStopTimerRef.current);
+        emitTypingState(false);
+      }
+    },
+    [emitTypingState]
+  );
+
+  const handleReplyMessage = useCallback(
+    (msg: GlobalChatMessage) => {
+      if (!guestUser) {
+        onClose();
+        onOpenAuthModal();
+        return;
+      }
+      setReplyingTo(msg);
+      window.requestAnimationFrame(() => inputRef.current?.focus());
+    },
+    [guestUser, onClose, onOpenAuthModal]
+  );
+
+  const handleToggleReactionPicker = useCallback((id: string) => {
+    setActiveReactionPickerId((prev) => (prev === id ? null : id));
+    setActiveMuteMenuId(null);
+  }, []);
+
+  const handleToggleMuteMenu = useCallback((id: string) => {
+    setActiveMuteMenuId((prev) => (prev === id ? null : id));
+    setActiveReactionPickerId(null);
+  }, []);
+
+  const handleToggleReaction = useCallback(
+    async (id: string, emoji: string) => {
+      if (!guestUser) {
+        onClose();
+        onOpenAuthModal();
+        return;
+      }
+      setActiveReactionPickerId(null);
+      const actorUid = guestUser.firebaseUid || guestUser.uid;
+      const targetMsg = messages.find((m) => m.id === id);
+      const alreadyReacted = Boolean(targetMsg?.reactions?.[emoji]?.includes(actorUid));
+      if (emoji === '❤️') {
+        triggerLikeHapticFeedback(!alreadyReacted);
+      } else {
+        triggerHapticFeedback(10);
+      }
+
+      // Optimistic reaction update
+      const prevMessagesSnapshot = messages;
+      setMessages((prev) =>
+        prev.map((m) => {
+          if (m.id !== id) return m;
+          const nextMap: Record<string, string[]> = { ...(m.reactions || {}) };
+          const list = nextMap[emoji] || [];
+          if (list.includes(actorUid)) {
+            const filtered = list.filter((u) => u !== actorUid);
+            if (filtered.length > 0) nextMap[emoji] = filtered;
+            else delete nextMap[emoji];
+          } else {
+            nextMap[emoji] = [...list, actorUid];
+          }
+          return {
+            ...m,
+            ...(Object.keys(nextMap).length > 0 ? { reactions: nextMap } : { reactions: undefined }),
+          };
+        })
+      );
+
+      const socket = wsRef.current;
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ type: 'chat:react', id, emoji }));
+        return;
+      }
+
+      try {
+        const token = await getGuestToken();
+        if (!token) {
+          setMessages(prevMessagesSnapshot);
+          return;
+        }
+        const res = await fetch(`/api/chat/messages/${encodeURIComponent(id)}/react`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ emoji }),
+        });
+        if (!res.ok) {
+          setMessages(prevMessagesSnapshot);
+        }
+      } catch {
+        setMessages(prevMessagesSnapshot);
+      }
+    },
+    [getGuestToken, guestUser, messages, onClose, onOpenAuthModal]
+  );
+
+  const handleStartEdit = useCallback((msg: GlobalChatMessage) => {
+    setEditingMessageId(msg.id);
+    setEditingDraft(msg.text);
+    setActiveReactionPickerId(null);
+    setActiveMuteMenuId(null);
+  }, []);
+
+  const handleCancelEdit = useCallback(() => {
+    setEditingMessageId(null);
+    setEditingDraft('');
+  }, []);
+
+  const handleSaveEdit = useCallback(
+    async (id: string) => {
+      const clean = editingDraft.trim();
+      if (!clean) return;
+      setError(null);
+      try {
+        const token = await getGuestToken();
+        if (!token) {
+          setError('Сесія входу застаріла.');
+          return;
+        }
+        const res = await fetch(`/api/chat/messages/${encodeURIComponent(id)}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ text: clean }),
+        });
+        const data = (await res.json().catch(() => ({}))) as {
+          message?: GlobalChatMessage;
+          error?: string;
+        };
+        if (!res.ok) {
+          setError(data.error || 'Не вдалося зберегти редагування.');
+          return;
+        }
+        if (data.message) {
+          mergeIncomingMessagesRef.current([data.message], 'merge');
+        }
+        setEditingMessageId(null);
+        setEditingDraft('');
+      } catch {
+        setError('Помилка мережі при редагуванні.');
+      }
+    },
+    [editingDraft, getGuestToken]
+  );
+
+  const handleTogglePin = useCallback(
+    async (msg: GlobalChatMessage) => {
+      if (!isAdmin) return;
+      const isCurrentlyPinned = chatMeta.pinnedMessage?.id === msg.id;
+      try {
+        const token = await resolveToken(true);
+        if (!token) return;
+        const res = await fetch('/api/chat/pin', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(isCurrentlyPinned ? { clear: true } : { messageId: msg.id }),
+        });
+        const data = (await res.json().catch(() => ({}))) as {
+          chatMeta?: ChatMetaState;
+          error?: string;
+        };
+        if (!res.ok) {
+          setError(data.error || 'Не вдалося змінити закріплення.');
+          return;
+        }
+        if (data.chatMeta) setChatMeta(data.chatMeta);
+      } catch {
+        setError('Помилка мережі при закріпленні.');
+      }
+    },
+    [chatMeta.pinnedMessage?.id, isAdmin, resolveToken]
+  );
+
+  const handleClearPin = useCallback(async () => {
+    if (!isAdmin) return;
+    try {
+      const token = await resolveToken(true);
+      if (!token) return;
+      const res = await fetch('/api/chat/pin', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ clear: true }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { chatMeta?: ChatMetaState };
+      if (res.ok && data.chatMeta) setChatMeta(data.chatMeta);
+    } catch {
+      // Ignore
+    }
+  }, [isAdmin, resolveToken]);
+
+  const handleSetSlowMode = useCallback(
+    async (seconds: number) => {
+      if (!isAdmin) return;
+      try {
+        const token = await resolveToken(true);
+        if (!token) return;
+        const res = await fetch('/api/chat/moderation/slow-mode', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ seconds }),
+        });
+        const data = (await res.json().catch(() => ({}))) as {
+          chatMeta?: ChatMetaState;
+          error?: string;
+        };
+        if (res.ok && data.chatMeta) {
+          setChatMeta(data.chatMeta);
+        } else if (data.error) {
+          setError(data.error);
+        }
+      } catch {
+        setError('Не вдалося оновити повільний режим.');
+      }
+    },
+    [isAdmin, resolveToken]
+  );
+
+  const handleMuteUser = useCallback(
+    async (targetUid: string, displayName: string, durationMinutes: number, unmute = false) => {
+      if (!isAdmin) return;
+      setActiveMuteMenuId(null);
+      try {
+        const token = await resolveToken(true);
+        if (!token) return;
+        const res = await fetch('/api/chat/moderation/mute', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            targetUid,
+            displayName,
+            durationMinutes,
+            unmute,
+          }),
+        });
+        const data = (await res.json().catch(() => ({}))) as {
+          mutedUsers?: Record<string, ChatMutedUserEntry>;
+          error?: string;
+        };
+        if (!res.ok) {
+          setError(data.error || 'Не вдалося оновити обмеження.');
+          return;
+        }
+        if (data.mutedUsers) {
+          setMutedUsers(data.mutedUsers);
+        }
+        setInfoNotice(
+          unmute
+            ? `Користувача ${displayName} розблоковано.`
+            : `Користувача ${displayName} обмежено в чаті.`
+        );
+        window.setTimeout(() => setInfoNotice(null), 2400);
+      } catch {
+        setError('Помилка мережі при модерації.');
+      }
+    },
+    [isAdmin, resolveToken]
+  );
+
+  const handleReportMessage = useCallback(
+    async (msg: GlobalChatMessage) => {
+      if (!guestUser) return;
+      try {
+        const token = await getGuestToken();
+        if (!token) return;
+        const res = await fetch('/api/chat/reports', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ messageId: msg.id }),
+        });
+        if (res.ok) {
+          setReportedMessageIds((prev) => {
+            const next = new Set(prev);
+            next.add(msg.id);
+            return next;
+          });
+          setInfoNotice('Скаргу надіслано модератору.');
+          window.setTimeout(() => setInfoNotice(null), 2200);
+        }
+      } catch {
+        setError('Не вдалося надіслати скаргу.');
+      }
+    },
+    [getGuestToken, guestUser]
+  );
+
+  const handleResolveReport = useCallback(
+    async (reportId: string) => {
+      if (!isAdmin) return;
+      try {
+        const token = await resolveToken(true);
+        if (!token) return;
+        const res = await fetch(`/api/chat/reports/${encodeURIComponent(reportId)}/resolve`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = (await res.json().catch(() => ({}))) as { unresolvedReportsCount?: number };
+        if (res.ok) {
+          setReports((prev) => prev.map((r) => (r.id === reportId ? { ...r, resolved: true } : r)));
+          if (typeof data.unresolvedReportsCount === 'number') {
+            setUnresolvedReportsCount(data.unresolvedReportsCount);
+          }
+        }
+      } catch {
+        // Ignore
+      }
+    },
+    [isAdmin, resolveToken]
+  );
+
+  const handleDelete = useCallback(
+    async (id: string) => {
+      if (confirmDeleteId !== id) {
+        setConfirmDeleteId(id);
+        return;
+      }
+      setConfirmDeleteId(null);
+      setError(null);
+      deletedIdsRef.current.add(id);
+      pendingIdsRef.current.delete(id);
+
+      const previousSnapshot = messages;
+      setMessages((prev) => {
+        const next = prev.filter((m) => m.id !== id);
+        saveCachedGlobalChatState(next, authorMetaByUidRef.current);
+        return next;
+      });
+
+      try {
+        const [directDeleted, token] = await Promise.all([
+          deleteChatMessageDirectInFirestore(id),
+          getGuestToken().catch(() => null),
+        ]);
+
+        if (!directDeleted && !token) {
+          deletedIdsRef.current.delete(id);
+          setMessages(previousSnapshot);
+          saveCachedGlobalChatState(previousSnapshot, authorMetaByUidRef.current);
+          setError('Потрібна авторизація для видалення.');
+          return;
+        }
+
+        if (token) {
+          const res = await fetch(
+            `/api/chat/messages/${encodeURIComponent(id)}${directDeleted ? '?skipFirestoreSync=1' : ''}`,
+            {
+              method: 'DELETE',
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+          if (!res.ok && !directDeleted) {
+            const errData = (await res.json().catch(() => ({}))) as { error?: string };
+            deletedIdsRef.current.delete(id);
+            setMessages(previousSnapshot);
+            saveCachedGlobalChatState(previousSnapshot, authorMetaByUidRef.current);
+            setError(errData.error || 'Не вдалося видалити повідомлення.');
+            return;
+          }
+        }
+      } catch {
+        deletedIdsRef.current.delete(id);
+        setMessages(previousSnapshot);
+        saveCachedGlobalChatState(previousSnapshot, authorMetaByUidRef.current);
+        setError('Не вдалося видалити повідомлення.');
+      }
+    },
+    [confirmDeleteId, getGuestToken, messages]
+  );
+
+  const handleDeleteRef = useRef(handleDelete);
+  handleDeleteRef.current = handleDelete;
+  const stableDeleteHandler = useCallback((id: string) => {
+    void handleDeleteRef.current(id);
+  }, []);
+
+  const sendViaHttp = async (params: {
+    id: string;
+    cleanText: string;
+    replyToId: string | undefined;
+    attachment?: ChatMessageAttachment;
+    clientMessageId: string;
+    token: string;
+    skipFirestoreSync?: boolean;
+  }) => {
+    const res = await fetch('/api/chat/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${params.token}`,
+      },
+      body: JSON.stringify({
+        id: params.id,
+        text: params.cleanText,
+        clientMessageId: params.clientMessageId,
+        ...(params.replyToId ? { replyToId: params.replyToId } : {}),
+        ...(params.attachment ? { attachment: params.attachment } : {}),
+        ...(params.skipFirestoreSync ? { skipFirestoreSync: true } : {}),
+      }),
+    });
+    const data = (await res.json().catch(() => ({}))) as {
+      message?: GlobalChatMessage;
+      retryAfterSec?: number;
+      error?: string;
+    };
+    if (!res.ok) {
+      pendingIdsRef.current.delete(params.id);
+      if (typeof data.retryAfterSec === 'number' && data.retryAfterSec > 0) {
+        setSlowModeCooldownSec(data.retryAfterSec);
+      }
+      if (!params.skipFirestoreSync) {
+        setMessages((prev) => prev.filter((m) => m.id !== params.id));
+        setError(data.error || 'Не вдалося надіслати повідомлення.');
+      }
+      return false;
+    }
+    if (data.message) {
+      pendingIdsRef.current.delete(params.id);
+      mergeIncomingMessagesRef.current([data.message], 'merge');
+      window.requestAnimationFrame(() => scrollToBottom(true));
+    }
+    return true;
+  };
+
+  const isUserMutedActive = Boolean(
+    !isAdmin &&
+      myMute &&
+      (!myMute.mutedUntil ||
+        (Number.isFinite(Date.parse(myMute.mutedUntil)) && Date.parse(myMute.mutedUntil) > Date.now()))
+  );
+
+  const handleSend = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!guestUser) {
+      onOpenAuthModal();
+      return;
+    }
+    if (isUserMutedActive) {
+      setError('Вам обмежено можливість писати в чат.');
+      return;
+    }
+    if (slowModeCooldownSec > 0 && !isAdmin) {
+      setError(`Повільний режим: зачекайте ${slowModeCooldownSec} с.`);
+      return;
+    }
+
+    let cleanText = draft.trim();
+    if (!cleanText && selectedAttachment) {
+      cleanText =
+        selectedAttachment.type === 'radio'
+          ? 'Ділюся треком 🎧'
+          : 'Ділюся твором ✨';
+    }
+    if (!cleanText) return;
+
+    emitTypingState(false);
+    if (typingStopTimerRef.current) {
+      window.clearTimeout(typingStopTimerRef.current);
+      typingStopTimerRef.current = null;
+    }
+
+    setError(null);
+    shouldAutoScrollRef.current = true;
+    setIsScrolledUp(false);
+    setUnreadWhileScrolled(0);
+
+    const replyTarget = replyingTo;
+    const replyToId = replyTarget?.id;
+    const attachmentToSend = selectedAttachment ?? undefined;
+    const messageId = generateChatMessageId();
+    pendingIdsRef.current.add(messageId);
+
+    const optimisticMessage: GlobalChatMessage = {
+      id: messageId,
+      authorUid: guestUser.firebaseUid || guestUser.uid,
+      authorName: guestUser.displayName || 'Читач',
+      ...(guestUser.photoUrl ? { authorPhotoUrl: guestUser.photoUrl } : {}),
+      ...(isAdmin ? { isAdmin: true } : {}),
+      ...(liveBadges || guestUser.badges ? { authorBadges: liveBadges || guestUser.badges } : {}),
+      ...(savedDonorText ? { authorDonorText: savedDonorText } : {}),
+      text: cleanText,
+      ...(attachmentToSend ? { attachment: attachmentToSend } : {}),
+      ...(replyTarget
+        ? {
+            replyTo: {
+              id: replyTarget.id,
+              authorUid: replyTarget.authorUid,
+              authorName: replyTarget.authorName,
+              text: replyTarget.text.slice(0, 180),
+            },
+          }
+        : {}),
+      createdAt: new Date().toISOString(),
+    };
+
+    setMessages((prev) => {
+      const next = [...prev, optimisticMessage].slice(-200);
+      saveCachedGlobalChatState(next, authorMetaByUidRef.current);
+      return next;
+    });
+    setDraft('');
+    setReplyingTo(null);
+    setSelectedAttachment(null);
+    setAttachmentPickerOpen(false);
+    if ((chatMeta.slowModeSeconds || 0) > 0 && !isAdmin) {
+      setSlowModeCooldownSec(chatMeta.slowModeSeconds || 0);
+    }
+    window.requestAnimationFrame(() => scrollToBottom(true));
+
+    try {
+      const directPromise = sendChatMessageDirectToFirestore({
+        id: messageId,
+        text: cleanText,
+        authorName: guestUser.displayName || 'Читач',
+        authorPhotoUrl: guestUser.photoUrl,
+        isAdmin,
+        replyTo: optimisticMessage.replyTo,
+      });
+
+      const tokenPromise = (async () => {
+        let token = await getGuestToken();
+        if (token?.startsWith('guest_v1.')) {
+          const refreshed = await getGuestToken(true);
+          if (refreshed) token = refreshed;
+        }
+        return token;
+      })();
+
+      const [directResult, token] = await Promise.all([directPromise, tokenPromise]);
+
+      if (directResult.ok) {
+        pendingIdsRef.current.delete(messageId);
+        if (token) {
+          const socket = wsRef.current;
+          if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.send(
+              JSON.stringify({
+                type: 'chat:send',
+                id: messageId,
+                text: cleanText,
+                clientMessageId: messageId,
+                ...(replyToId ? { replyToId } : {}),
+                ...(attachmentToSend ? { attachment: attachmentToSend } : {}),
+                skipFirestoreSync: true,
+                token,
+              })
+            );
+          } else {
+            void sendViaHttp({
+              id: messageId,
+              cleanText,
+              replyToId,
+              attachment: attachmentToSend,
+              clientMessageId: messageId,
+              token,
+              skipFirestoreSync: true,
+            });
+          }
+        }
+        return;
+      }
+
+      if (directResult.permissionDenied) {
+        pendingIdsRef.current.delete(messageId);
+        setMessages((prev) => prev.filter((m) => m.id !== messageId));
+        setDraft(cleanText);
+        setError('Немає прав на надсилання повідомлення. Перезавантажте або увійдіть знову.');
+        return;
+      }
+
+      if (!token) {
+        pendingIdsRef.current.delete(messageId);
+        setMessages((prev) => prev.filter((m) => m.id !== messageId));
+        setDraft(cleanText);
+        setError('Сесія входу застаріла. Увійдіть повторно.');
+        return;
+      }
+
+      const socket = wsRef.current;
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        const fallbackTimer = window.setTimeout(() => {
+          pendingSendTimersRef.current.delete(messageId);
+          void sendViaHttp({
+            id: messageId,
+            cleanText,
+            replyToId,
+            attachment: attachmentToSend,
+            clientMessageId: messageId,
+            token,
+          });
+        }, 450);
+        pendingSendTimersRef.current.set(messageId, fallbackTimer);
+
+        socket.send(
+          JSON.stringify({
+            type: 'chat:send',
+            id: messageId,
+            text: cleanText,
+            clientMessageId: messageId,
+            ...(replyToId ? { replyToId } : {}),
+            ...(attachmentToSend ? { attachment: attachmentToSend } : {}),
+            token,
+          })
+        );
+      } else {
+        await sendViaHttp({
+          id: messageId,
+          cleanText,
+          replyToId,
+          attachment: attachmentToSend,
+          clientMessageId: messageId,
+          token,
+        });
+      }
+    } catch {
+      clearPendingTimer(messageId);
+      pendingIdsRef.current.delete(messageId);
+      setMessages((prev) => prev.filter((m) => m.id !== messageId));
+      setError('Помилка мережі при надсиланні повідомлення.');
+    }
+  };
 
   const handleSaveDonorText = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -906,334 +2538,89 @@ export const GlobalChatModal = memo(function GlobalChatModal({
     }
   };
 
-  const handleScroll = useCallback(() => {
-    const el = listRef.current?.element;
-    if (!el) return;
-    const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-    shouldAutoScrollRef.current = distFromBottom < 80;
-  }, [listRef]);
-
-  const handleReplyMessage = useCallback(
-    (msg: GlobalChatMessage) => {
-      if (!guestUser) {
-        onClose();
-        onOpenAuthModal();
-        return;
-      }
-      setReplyingTo(msg);
-      window.requestAnimationFrame(() => inputRef.current?.focus());
-    },
-    [guestUser, onClose, onOpenAuthModal]
-  );
-
-  const handleJumpToMessage = useCallback(
-    (targetId: string) => {
-      const targetIndex = messages.findIndex((m) => m.id === targetId);
-      if (targetIndex >= 0 && listRef.current) {
-        listRef.current.scrollToRow({
-          index: targetIndex,
-          align: 'center',
-          behavior: 'smooth',
-        });
-      }
-    },
-    [listRef, messages]
-  );
-
-  useEffect(() => {
-    if (!isOpen || !shouldAutoScrollRef.current || messages.length === 0) return;
-    const frameId = window.requestAnimationFrame(() => {
-      scrollToBottomRef.current(false);
-    });
-    return () => window.cancelAnimationFrame(frameId);
-  }, [isOpen, messages.length]);
-
-  const sendViaHttp = async (params: {
-    id: string;
-    cleanText: string;
-    replyToId: string | undefined;
-    clientMessageId: string;
-    token: string;
-    skipFirestoreSync?: boolean;
-  }) => {
-    const res = await fetch('/api/chat/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${params.token}`,
-      },
-      body: JSON.stringify({
-        id: params.id,
-        text: params.cleanText,
-        clientMessageId: params.clientMessageId,
-        ...(params.replyToId ? { replyToId: params.replyToId } : {}),
-        ...(params.skipFirestoreSync ? { skipFirestoreSync: true } : {}),
-      }),
-    });
-    const data = (await res.json().catch(() => ({}))) as {
-      message?: GlobalChatMessage;
-      error?: string;
-    };
-    if (!res.ok) {
-      pendingIdsRef.current.delete(params.id);
-      if (!params.skipFirestoreSync) {
-        setMessages((prev) => prev.filter((m) => m.id !== params.id));
-        setError(data.error || 'Не вдалося надіслати повідомлення.');
-      }
-      return false;
-    }
-    if (data.message) {
-      pendingIdsRef.current.delete(params.id);
-      mergeIncomingMessagesRef.current([data.message], 'merge');
-      window.requestAnimationFrame(() => scrollToBottom(true));
-    }
-    return true;
-  };
-
-  const handleSend = async (e?: React.FormEvent) => {
-    e?.preventDefault();
-    if (!guestUser) {
-      onOpenAuthModal();
-      return;
-    }
-    const cleanText = draft.trim();
-    if (!cleanText) return;
-
-    setError(null);
-    shouldAutoScrollRef.current = true;
-
-    const replyTarget = replyingTo;
-    const replyToId = replyTarget?.id;
-    const messageId = generateChatMessageId();
-    pendingIdsRef.current.add(messageId);
-
-    const optimisticMessage: GlobalChatMessage = {
-      id: messageId,
-      authorUid: guestUser.firebaseUid || guestUser.uid,
-      authorName: guestUser.displayName || 'Читач',
-      ...(guestUser.photoUrl ? { authorPhotoUrl: guestUser.photoUrl } : {}),
-      ...(isAdmin ? { isAdmin: true } : {}),
-      ...(liveBadges || guestUser.badges ? { authorBadges: liveBadges || guestUser.badges } : {}),
-      ...(savedDonorText ? { authorDonorText: savedDonorText } : {}),
-      text: cleanText,
-      ...(replyTarget
-        ? {
-            replyTo: {
-              id: replyTarget.id,
-              authorUid: replyTarget.authorUid,
-              authorName: replyTarget.authorName,
-              text: replyTarget.text.slice(0, 180),
-            },
-          }
-        : {}),
-      createdAt: new Date().toISOString(),
-    };
-
-    // Instant UI update & clear input synchronously so rapid messaging has zero lag
-    setMessages((prev) => {
-      const next = [...prev, optimisticMessage].slice(-200);
-      saveCachedGlobalChatState(next, authorMetaByUidRef.current);
-      return next;
-    });
-    setDraft('');
-    setReplyingTo(null);
-    window.requestAnimationFrame(() => scrollToBottom(true));
-
-    try {
-      const directPromise = sendChatMessageDirectToFirestore({
-        id: messageId,
-        text: cleanText,
-        authorName: guestUser.displayName || 'Читач',
-        authorPhotoUrl: guestUser.photoUrl,
-        isAdmin,
-        replyTo: optimisticMessage.replyTo,
-      });
-
-      const tokenPromise = (async () => {
-        let token = await getGuestToken();
-        if (token?.startsWith('guest_v1.')) {
-          const refreshed = await getGuestToken(true);
-          if (refreshed) token = refreshed;
-        }
-        return token;
-      })();
-
-      const [directResult, token] = await Promise.all([directPromise, tokenPromise]);
-
-      if (directResult.ok) {
-        pendingIdsRef.current.delete(messageId);
-        // Mirror to server memory / WS in background without duplicate Firestore write
-        if (token) {
-          const socket = wsRef.current;
-          if (socket && socket.readyState === WebSocket.OPEN) {
-            socket.send(
-              JSON.stringify({
-                type: 'chat:send',
-                id: messageId,
-                text: cleanText,
-                clientMessageId: messageId,
-                ...(replyToId ? { replyToId } : {}),
-                skipFirestoreSync: true,
-                token,
-              })
-            );
-          } else {
-            void sendViaHttp({
-              id: messageId,
-              cleanText,
-              replyToId,
-              clientMessageId: messageId,
-              token,
-              skipFirestoreSync: true,
-            });
-          }
-        }
-        return;
-      }
-
-      if (directResult.permissionDenied) {
-        pendingIdsRef.current.delete(messageId);
-        setMessages((prev) => prev.filter((m) => m.id !== messageId));
-        setDraft(cleanText);
-        setError('Немає прав на надсилання повідомлення. Перезавантажте або увійдіть знову.');
-        return;
-      }
-
-      if (!token) {
-        pendingIdsRef.current.delete(messageId);
-        setMessages((prev) => prev.filter((m) => m.id !== messageId));
-        setDraft(cleanText);
-        setError('Сесія входу застаріла. Увійдіть повторно.');
-        return;
-      }
-
-      const socket = wsRef.current;
-      if (socket && socket.readyState === WebSocket.OPEN) {
-        const fallbackTimer = window.setTimeout(() => {
-          pendingSendTimersRef.current.delete(messageId);
-          void sendViaHttp({
-            id: messageId,
-            cleanText,
-            replyToId,
-            clientMessageId: messageId,
-            token,
-          });
-        }, 450);
-        pendingSendTimersRef.current.set(messageId, fallbackTimer);
-
-        socket.send(
-          JSON.stringify({
-            type: 'chat:send',
-            id: messageId,
-            text: cleanText,
-            clientMessageId: messageId,
-            ...(replyToId ? { replyToId } : {}),
-            token,
-          })
-        );
-      } else {
-        await sendViaHttp({
-          id: messageId,
-          cleanText,
-          replyToId,
-          clientMessageId: messageId,
-          token,
-        });
-      }
-    } catch {
-      clearPendingTimer(messageId);
-      pendingIdsRef.current.delete(messageId);
-      setMessages((prev) => prev.filter((m) => m.id !== messageId));
-      setError('Помилка мережі при надсиланні повідомлення.');
-    }
-  };
-
-  const handleDelete = async (id: string) => {
-    if (confirmDeleteId !== id) {
-      setConfirmDeleteId(id);
-      return;
-    }
-    setConfirmDeleteId(null);
-    setError(null);
-    deletedIdsRef.current.add(id);
-    pendingIdsRef.current.delete(id);
-
-    const previousSnapshot = messages;
-    setMessages((prev) => {
-      const next = prev.filter((m) => m.id !== id);
-      saveCachedGlobalChatState(next, authorMetaByUidRef.current);
-      return next;
-    });
-
-    try {
-      const [directDeleted, token] = await Promise.all([
-        deleteChatMessageDirectInFirestore(id),
-        getGuestToken().catch(() => null),
-      ]);
-
-      if (!directDeleted && !token) {
-        deletedIdsRef.current.delete(id);
-        setMessages(previousSnapshot);
-        saveCachedGlobalChatState(previousSnapshot, authorMetaByUidRef.current);
-        setError('Потрібна авторизація для видалення.');
-        return;
-      }
-
-      if (token) {
-        const res = await fetch(
-          `/api/chat/messages/${encodeURIComponent(id)}${directDeleted ? '?skipFirestoreSync=1' : ''}`,
-          {
-            method: 'DELETE',
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-        if (!res.ok && !directDeleted) {
-          const errData = (await res.json().catch(() => ({}))) as { error?: string };
-          deletedIdsRef.current.delete(id);
-          setMessages(previousSnapshot);
-          saveCachedGlobalChatState(previousSnapshot, authorMetaByUidRef.current);
-          setError(errData.error || 'Не вдалося видалити повідомлення.');
-          return;
-        }
-      }
-    } catch {
-      deletedIdsRef.current.delete(id);
-      setMessages(previousSnapshot);
-      saveCachedGlobalChatState(previousSnapshot, authorMetaByUidRef.current);
-      setError('Не вдалося видалити повідомлення.');
-    }
-  };
-
-  const handleDeleteRef = useRef(handleDelete);
-  handleDeleteRef.current = handleDelete;
-  const stableDeleteHandler = useCallback((id: string) => {
-    void handleDeleteRef.current(id);
-  }, []);
-
   const chatRowProps = useMemo<ChatMessageRowData>(
     () => ({
       messages,
       guestUserUid: guestUser?.uid,
       guestUserFirebaseUid: guestUser?.firebaseUid,
+      guestUserDisplayName: guestUser?.displayName,
       isAdmin,
+      isSignedIn: Boolean(guestUser),
       confirmDeleteId,
+      activeReactionPickerId,
+      activeMuteMenuId,
+      editingMessageId,
+      editingDraft,
+      reportedMessageIds,
+      pinnedMessageId: chatMeta.pinnedMessage?.id ?? null,
+      searchQuery,
+      activeSearchMatchId,
+      highlightedMessageId,
       onReply: handleReplyMessage,
       onDelete: stableDeleteHandler,
       onJumpToMessage: handleJumpToMessage,
+      onToggleReaction: (id, emoji) => void handleToggleReaction(id, emoji),
+      onToggleReactionPicker: handleToggleReactionPicker,
+      onStartEdit: handleStartEdit,
+      onChangeEditDraft: setEditingDraft,
+      onSaveEdit: (id) => void handleSaveEdit(id),
+      onCancelEdit: handleCancelEdit,
+      onTogglePin: (msg) => void handleTogglePin(msg),
+      onToggleMuteMenu: handleToggleMuteMenu,
+      onMuteUser: (targetUid, displayName, minutes) =>
+        void handleMuteUser(targetUid, displayName, minutes),
+      onReportMessage: (msg) => void handleReportMessage(msg),
+      onOpenAttachment,
     }),
     [
       messages,
-      guestUser?.uid,
-      guestUser?.firebaseUid,
+      guestUser,
       isAdmin,
       confirmDeleteId,
+      activeReactionPickerId,
+      activeMuteMenuId,
+      editingMessageId,
+      editingDraft,
+      reportedMessageIds,
+      chatMeta.pinnedMessage?.id,
+      searchQuery,
+      activeSearchMatchId,
+      highlightedMessageId,
       handleReplyMessage,
       stableDeleteHandler,
       handleJumpToMessage,
+      handleToggleReaction,
+      handleToggleReactionPicker,
+      handleStartEdit,
+      handleSaveEdit,
+      handleCancelEdit,
+      handleTogglePin,
+      handleToggleMuteMenu,
+      handleMuteUser,
+      handleReportMessage,
+      onOpenAttachment,
     ]
   );
+
+  const effectiveDonorRank = liveBadges?.donorRank ?? guestUser?.badges?.donorRank;
+  const canSetDonorText = Boolean(
+    guestUser && effectiveDonorRank && effectiveDonorRank >= 1 && effectiveDonorRank <= 3
+  );
+
+  const typingLabel = useMemo(() => {
+    const names = Object.values(typingUsers)
+      .map((t) => t.displayName)
+      .filter(Boolean);
+    if (names.length === 0) return null;
+    if (names.length === 1) return `${names[0]} друкує...`;
+    if (names.length === 2) return `${names[0]}, ${names[1]} друкують...`;
+    return `${names.slice(0, 2).join(', ')} та ще ${names.length - 2} друкують...`;
+  }, [typingUsers]);
+
+  if (!isOpen) return null;
+
+  const slowModeSec = chatMeta.slowModeSeconds || 0;
+  const activeMutedList = Object.values(mutedUsers);
 
   return (
     <div
@@ -1245,10 +2632,10 @@ export const GlobalChatModal = memo(function GlobalChatModal({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-xl bg-night-panel rounded-2xl shadow-2xl overflow-hidden flex flex-col h-[min(86dvh,640px)]"
+        className="relative w-full max-w-xl bg-night-panel rounded-2xl shadow-2xl overflow-hidden flex flex-col h-[min(88dvh,680px)]"
       >
         {/* Header */}
-        <div className="px-4 py-3.5 sm:px-5 sm:py-4 flex items-center justify-between gap-2 bg-night-card shrink-0">
+        <div className="px-4 py-3 sm:px-5 sm:py-3.5 flex items-center justify-between gap-2 bg-night-card shrink-0 border-b border-white/5">
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
             <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-night-elevated flex items-center justify-center text-silver shrink-0">
               <MessagesSquare className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -1275,21 +2662,288 @@ export const GlobalChatModal = memo(function GlobalChatModal({
                       ? 'Перепідключення...'
                       : 'Підключення...'}
                 </span>
+                {slowModeSec > 0 && (
+                  <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-300/90 ml-1">
+                    <Clock className="w-3 h-3" />
+                    {slowModeSec}с
+                  </span>
+                )}
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl hover:bg-white/10 flex items-center justify-center text-paper/70 transition-colors cursor-pointer shrink-0"
-            aria-label="Закрити чат"
-          >
-            <X className="w-4 h-4 sm:w-5 sm:h-5" />
-          </button>
+
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                setSearchOpen((prev) => !prev);
+                if (searchOpen) setSearchQuery('');
+              }}
+              aria-label="Пошук у чаті"
+              title="Пошук у чаті"
+              className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center transition-colors cursor-pointer ${
+                searchOpen
+                  ? 'bg-white/15 text-paper'
+                  : 'text-paper/70 hover:bg-white/10'
+              }`}
+            >
+              <Search className="w-4 h-4" />
+            </button>
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => setModerationPanelOpen((prev) => !prev)}
+                aria-label="Модерація чату"
+                title="Модерація чату"
+                className={`relative w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center transition-colors cursor-pointer ${
+                  moderationPanelOpen
+                    ? 'bg-white/15 text-paper'
+                    : 'text-paper/70 hover:bg-white/10'
+                }`}
+              >
+                <Shield className="w-4 h-4" />
+                {unresolvedReportsCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-amber-400 text-night text-[9px] font-bold flex items-center justify-center">
+                    {unresolvedReportsCount}
+                  </span>
+                )}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl hover:bg-white/10 flex items-center justify-center text-paper/70 transition-colors cursor-pointer"
+              aria-label="Закрити чат"
+            >
+              <X className="w-4 h-4 sm:w-5 sm:h-5" />
+            </button>
+          </div>
         </div>
 
+        {/* Search Bar */}
+        {searchOpen && (
+          <div className="px-3.5 py-2 bg-night-deep/90 border-b border-white/10 flex items-center gap-2 shrink-0">
+            <Search className="w-3.5 h-3.5 text-parchment shrink-0" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  jumpToSearchMatch(e.shiftKey ? -1 : 1);
+                }
+              }}
+              placeholder="Пошук за текстом, автором або твором..."
+              autoFocus
+              className="flex-1 min-w-0 bg-transparent text-xs text-paper placeholder:text-ink-subtle focus:outline-none"
+            />
+            {searchQuery.trim() && (
+              <span className="text-[11px] text-parchment tabular-nums shrink-0">
+                {searchMatchIds.length > 0
+                  ? `${searchMatchCursor + 1}/${searchMatchIds.length}`
+                  : '0'}
+              </span>
+            )}
+            {searchMatchIds.length > 1 && (
+              <div className="flex items-center gap-0.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => jumpToSearchMatch(-1)}
+                  aria-label="Попередній збіг"
+                  className="p-1 rounded hover:bg-white/10 text-parchment cursor-pointer"
+                >
+                  <ChevronUp className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => jumpToSearchMatch(1)}
+                  aria-label="Наступний збіг"
+                  className="p-1 rounded hover:bg-white/10 text-parchment cursor-pointer"
+                >
+                  <ChevronDown className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                aria-label="Очистити пошук"
+                className="p-1 rounded hover:bg-white/10 text-parchment cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Admin Moderation Panel */}
+        {isAdmin && moderationPanelOpen && (
+          <div className="px-4 py-3 bg-night-deep border-b border-white/10 shrink-0 space-y-3 max-h-60 overflow-y-auto">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <span className="text-xs font-semibold text-paper flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-silver" />
+                Повільний режим
+              </span>
+              <div className="flex items-center gap-1">
+                {SLOW_MODE_OPTIONS.map((sec) => (
+                  <button
+                    key={sec}
+                    type="button"
+                    onClick={() => void handleSetSlowMode(sec)}
+                    className={`px-2 py-1 rounded-lg text-[11px] font-medium transition-colors cursor-pointer ${
+                      slowModeSec === sec
+                        ? 'bg-silver text-night'
+                        : 'bg-white/5 text-parchment hover:bg-white/10'
+                    }`}
+                  >
+                    {sec === 0 ? 'Вимк.' : `${sec}с`}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {activeMutedList.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-[11px] font-semibold text-parchment">
+                  Обмежені читачі ({activeMutedList.length})
+                </p>
+                <div className="space-y-1">
+                  {activeMutedList.map((entry) => (
+                    <div
+                      key={entry.uid}
+                      className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-white/5 text-xs"
+                    >
+                      <span className="text-paper truncate">
+                        {entry.displayName || entry.uid}
+                        <span className="text-[10px] text-parchment ml-1.5">
+                          {entry.mutedUntil
+                            ? `до ${new Date(entry.mutedUntil).toLocaleTimeString('uk-UA', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}`
+                            : 'назавжди'}
+                        </span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          void handleMuteUser(entry.uid, entry.displayName || 'Читач', 0, true)
+                        }
+                        className="text-[11px] text-emerald-300 hover:underline shrink-0 cursor-pointer"
+                      >
+                        Зняти мут
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <p className="text-[11px] font-semibold text-parchment">
+                Скарги ({unresolvedReportsCount} нових)
+              </p>
+              {reports.length === 0 ? (
+                <p className="text-[11px] text-parchment/70">Скарг поки немає.</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {reports.slice(0, 10).map((rep) => (
+                    <div
+                      key={rep.id}
+                      className={`p-2 rounded-lg border text-[11px] space-y-1 ${
+                        rep.resolved
+                          ? 'bg-white/3 border-white/5 opacity-60'
+                          : 'bg-amber-500/10 border-amber-400/25'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-semibold text-paper truncate">
+                          На {rep.messageAuthorName} · від {rep.reporterName}
+                        </span>
+                        {!rep.resolved && (
+                          <button
+                            type="button"
+                            onClick={() => void handleResolveReport(rep.id)}
+                            className="text-emerald-300 hover:underline shrink-0 cursor-pointer"
+                          >
+                            Позначити розглянутою
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-cream/90 line-clamp-2">«{rep.messageText}»</p>
+                      <div className="flex items-center gap-2 pt-0.5">
+                        <button
+                          type="button"
+                          onClick={() => handleJumpToMessage(rep.messageId)}
+                          className="text-silver hover:underline cursor-pointer"
+                        >
+                          Перейти
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            void handleMuteUser(rep.messageAuthorUid, rep.messageAuthorName, 60)
+                          }
+                          className="text-amber-300 hover:underline cursor-pointer"
+                        >
+                          Мут 1 год
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Pinned Message Banner */}
+        {chatMeta.pinnedMessage && (
+          <div className="px-3.5 py-2 bg-night-elevated/90 border-b border-white/10 flex items-center justify-between gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                const exists = messages.some((m) => m.id === chatMeta.pinnedMessage?.id);
+                if (exists) {
+                  handleJumpToMessage(chatMeta.pinnedMessage!.id);
+                } else {
+                  setPinnedExpanded((p) => !p);
+                }
+              }}
+              className="flex items-start gap-2 min-w-0 flex-1 text-left cursor-pointer"
+            >
+              <Pin className="w-3.5 h-3.5 text-amber-300 shrink-0 mt-0.5" />
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-semibold text-amber-300 truncate">
+                  Закріплено · {chatMeta.pinnedMessage.authorName}
+                </p>
+                <p
+                  className={`text-xs text-cream/95 ${
+                    pinnedExpanded ? 'whitespace-pre-wrap break-words' : 'truncate'
+                  }`}
+                >
+                  {chatMeta.pinnedMessage.text}
+                </p>
+              </div>
+            </button>
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => void handleClearPin()}
+                title="Відкріпити"
+                aria-label="Відкріпити повідомлення"
+                className="p-1 rounded-lg text-parchment hover:text-paper hover:bg-white/10 shrink-0 cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Message List */}
-        <div className="flex-1 min-h-0 overflow-hidden">
+        <div className="relative flex-1 min-h-0 overflow-hidden">
           {loadingInitial && messages.length === 0 ? (
             <div className="h-full p-3 sm:p-4 flex items-center justify-center text-sm text-parchment animate-pulse">
               Завантаження чату...
@@ -1314,9 +2968,43 @@ export const GlobalChatModal = memo(function GlobalChatModal({
               className="h-full w-full overflow-x-hidden px-3 sm:px-4 pt-3 sm:pt-4"
             />
           )}
+
+          {/* Jump to bottom button */}
+          {isScrolledUp && messages.length > 0 && (
+            <button
+              type="button"
+              onClick={() => scrollToBottom(true)}
+              className="absolute bottom-3 right-3.5 z-20 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-night-card/95 border border-white/15 shadow-lg text-xs font-medium text-paper hover:bg-night-elevated transition-all cursor-pointer"
+            >
+              <span>До останніх</span>
+              {unreadWhileScrolled > 0 && (
+                <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-silver text-night text-[10px] font-bold flex items-center justify-center tabular-nums">
+                  {unreadWhileScrolled}
+                </span>
+              )}
+              <ArrowDown className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
 
-        {/* Error banner */}
+        {/* Typing indicator bar */}
+        {typingLabel && (
+          <div className="px-4 py-1 text-[11px] text-parchment/90 flex items-center gap-1.5 shrink-0 bg-night-panel">
+            <span className="inline-flex gap-0.5" aria-hidden="true">
+              <span className="w-1 h-1 rounded-full bg-silver animate-bounce" />
+              <span className="w-1 h-1 rounded-full bg-silver animate-bounce [animation-delay:120ms]" />
+              <span className="w-1 h-1 rounded-full bg-silver animate-bounce [animation-delay:240ms]" />
+            </span>
+            <span className="truncate">{typingLabel}</span>
+          </div>
+        )}
+
+        {/* Notice & Error banners */}
+        {infoNotice && (
+          <div className="mx-3 sm:mx-4 mb-2 px-3 py-1.5 rounded-xl bg-emerald-500/15 text-emerald-200 text-xs text-center">
+            {infoNotice}
+          </div>
+        )}
         {error && (
           <div className="mx-3 sm:mx-4 mb-2 px-3 py-2 rounded-xl bg-red-500/15 text-red-300 text-xs text-center">
             {error}
@@ -1324,7 +3012,7 @@ export const GlobalChatModal = memo(function GlobalChatModal({
         )}
 
         {/* Composer */}
-        <div className="p-3 sm:p-4 bg-night-card border-t border-white/5 shrink-0 space-y-2.5">
+        <div className="relative p-3 sm:p-4 bg-night-card border-t border-white/5 shrink-0 space-y-2.5">
           {canSetDonorText && (
             <form
               onSubmit={(e) => void handleSaveDonorText(e)}
@@ -1363,61 +3051,248 @@ export const GlobalChatModal = memo(function GlobalChatModal({
               </div>
             </form>
           )}
+
           {guestUser ? (
-            <form onSubmit={(e) => void handleSend(e)} className="space-y-2">
-              {replyingTo && (
-                <div className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl bg-night-deep border border-white/10">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[10px] font-semibold text-silver flex items-center gap-1 truncate">
-                      <CornerUpLeft className="w-3 h-3 shrink-0" />
-                      <span>Відповідь для {replyingTo.authorName}</span>
-                    </p>
-                    <p className="text-[11px] text-parchment truncate">{replyingTo.text}</p>
+            isUserMutedActive ? (
+              <div className="px-3 py-2.5 rounded-xl bg-amber-500/10 border border-amber-400/25 text-xs text-amber-200 flex items-center gap-2">
+                <VolumeX className="w-4 h-4 shrink-0" />
+                <span>
+                  Вам обмежено можливість писати в чат
+                  {myMute?.mutedUntil
+                    ? ` до ${new Date(myMute.mutedUntil).toLocaleString('uk-UA', {
+                        day: 'numeric',
+                        month: 'short',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}`
+                    : ''}
+                  .
+                </span>
+              </div>
+            ) : (
+              <form onSubmit={(e) => void handleSend(e)} className="relative space-y-2">
+                {/* @mention Autocomplete Popup */}
+                {mentionSuggestions.length > 0 && (
+                  <div className="absolute bottom-full left-0 right-0 mb-2 z-30 rounded-xl bg-night-deep border border-white/15 shadow-2xl overflow-hidden">
+                    {mentionSuggestions.map((person, idx) => (
+                      <button
+                        key={person.uid}
+                        type="button"
+                        onClick={() => applyMentionSuggestion(person.name)}
+                        className={`w-full px-3 py-2 flex items-center gap-2 text-left text-xs transition-colors cursor-pointer ${
+                          idx === mentionIndex
+                            ? 'bg-white/10 text-paper'
+                            : 'text-cream hover:bg-white/5'
+                        }`}
+                      >
+                        <div className="w-5 h-5 rounded-full bg-night-elevated overflow-hidden flex items-center justify-center shrink-0">
+                          <ChatAvatar photoUrl={person.photoUrl} />
+                        </div>
+                        <span className="font-medium truncate">@{person.name}</span>
+                      </button>
+                    ))}
                   </div>
+                )}
+
+                {/* Attachment Picker Popup */}
+                {attachmentPickerOpen && (
+                  <div className="rounded-xl bg-night-deep border border-white/15 p-2.5 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1">
+                        {(
+                          [
+                            { id: 'poem', label: 'Вірші' },
+                            { id: 'prose', label: 'Проза' },
+                            { id: 'radio', label: 'Радіо' },
+                          ] as const
+                        ).map((tab) => (
+                          <button
+                            key={tab.id}
+                            type="button"
+                            onClick={() => setAttachmentTab(tab.id)}
+                            className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors cursor-pointer ${
+                              attachmentTab === tab.id
+                                ? 'bg-silver text-night'
+                                : 'text-parchment hover:bg-white/10'
+                            }`}
+                          >
+                            {tab.label}
+                          </button>
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setAttachmentPickerOpen(false)}
+                        aria-label="Закрити вибір вкладення"
+                        className="p-1 rounded-lg text-parchment hover:bg-white/10 cursor-pointer"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    <input
+                      type="text"
+                      value={attachmentSearch}
+                      onChange={(e) => setAttachmentSearch(e.target.value)}
+                      placeholder="Знайти за назвою..."
+                      className="w-full px-2.5 py-1.5 rounded-lg bg-night-card text-xs text-paper placeholder:text-ink-subtle focus:outline-none"
+                    />
+
+                    <div className="max-h-36 overflow-y-auto space-y-1">
+                      {attachmentOptions.length === 0 ? (
+                        <p className="text-[11px] text-parchment/70 py-2 text-center">
+                          Нічого не знайдено
+                        </p>
+                      ) : (
+                        attachmentOptions.map((item) => (
+                          <button
+                            key={`${item.type}:${item.id}`}
+                            type="button"
+                            onClick={() => {
+                              setSelectedAttachment(item);
+                              setAttachmentPickerOpen(false);
+                              setAttachmentSearch('');
+                              inputRef.current?.focus();
+                            }}
+                            className="w-full px-2.5 py-1.5 rounded-lg hover:bg-white/10 flex items-center gap-2 text-left transition-colors cursor-pointer"
+                          >
+                            <AttachmentBadgeIcon type={item.type} />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs text-paper truncate">{item.title}</p>
+                              {item.subtitle && (
+                                <p className="text-[10px] text-parchment/75 truncate">
+                                  {item.subtitle}
+                                </p>
+                              )}
+                            </div>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {replyingTo && (
+                  <div className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl bg-night-deep border border-white/10">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[10px] font-semibold text-silver flex items-center gap-1 truncate">
+                        <CornerUpLeft className="w-3 h-3 shrink-0" />
+                        <span>Відповідь для {replyingTo.authorName}</span>
+                      </p>
+                      <p className="text-[11px] text-parchment truncate">{replyingTo.text}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setReplyingTo(null)}
+                      aria-label="Скасувати відповідь"
+                      className="p-1 rounded-lg text-parchment hover:text-white hover:bg-white/10 transition-colors cursor-pointer shrink-0"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+
+                {selectedAttachment && (
+                  <div className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl bg-night-deep border border-white/10">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <AttachmentBadgeIcon type={selectedAttachment.type} />
+                      <div className="min-w-0">
+                        <p className="text-[10px] text-parchment/80 truncate">
+                          {getAttachmentTypeLabel(selectedAttachment.type)}
+                        </p>
+                        <p className="text-xs font-medium text-paper truncate">
+                          {selectedAttachment.title}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedAttachment(null)}
+                      aria-label="Прибрати вкладення"
+                      className="p-1 rounded-lg text-parchment hover:text-white hover:bg-white/10 cursor-pointer shrink-0"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+
+                <div className="flex items-end gap-2">
                   <button
                     type="button"
-                    onClick={() => setReplyingTo(null)}
-                    aria-label="Скасувати відповідь"
-                    className="p-1 rounded-lg text-parchment hover:text-white hover:bg-white/10 transition-colors cursor-pointer shrink-0"
+                    onClick={() => setAttachmentPickerOpen((p) => !p)}
+                    title="Прикріпити твір або трек"
+                    aria-label="Прикріпити твір або трек"
+                    className={`inline-flex items-center justify-center w-10 h-10 rounded-xl transition-colors shrink-0 cursor-pointer ${
+                      attachmentPickerOpen || selectedAttachment
+                        ? 'bg-white/15 text-paper'
+                        : 'bg-night-deep text-parchment hover:text-paper hover:bg-night-hover'
+                    }`}
                   >
-                    <X className="w-3.5 h-3.5" />
+                    <Paperclip className="w-4 h-4" />
+                  </button>
+                  <textarea
+                    ref={inputRef}
+                    value={draft}
+                    onChange={(e) => handleDraftChange(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (mentionSuggestions.length > 0) {
+                        if (e.key === 'ArrowDown') {
+                          e.preventDefault();
+                          setMentionIndex((i) => (i + 1) % mentionSuggestions.length);
+                          return;
+                        }
+                        if (e.key === 'ArrowUp') {
+                          e.preventDefault();
+                          setMentionIndex(
+                            (i) => (i - 1 + mentionSuggestions.length) % mentionSuggestions.length
+                          );
+                          return;
+                        }
+                        if (e.key === 'Tab' || (e.key === 'Enter' && !e.shiftKey)) {
+                          e.preventDefault();
+                          const chosen = mentionSuggestions[mentionIndex];
+                          if (chosen) applyMentionSuggestion(chosen.name);
+                          return;
+                        }
+                      }
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        void handleSend();
+                      }
+                    }}
+                    placeholder={
+                      replyingTo
+                        ? `Відповісти ${replyingTo.authorName}...`
+                        : selectedAttachment
+                          ? 'Додайте коментар до вкладення...'
+                          : 'Напишіть повідомлення (можна @імʼя)...'
+                    }
+                    rows={1}
+                    className="flex-1 min-w-0 max-h-28 px-3.5 py-2.5 text-xs sm:text-sm rounded-xl bg-night-deep focus:bg-night-hover text-paper placeholder:text-ink-subtle focus:outline-none transition-colors resize-none"
+                  />
+                  <button
+                    type="submit"
+                    disabled={
+                      (!draft.trim() && !selectedAttachment) ||
+                      (slowModeCooldownSec > 0 && !isAdmin)
+                    }
+                    aria-label="Надіслати повідомлення"
+                    className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-silver text-night hover:opacity-95 transition-opacity shrink-0 cursor-pointer disabled:opacity-45 disabled:pointer-events-none text-xs font-semibold tabular-nums"
+                  >
+                    {slowModeCooldownSec > 0 && !isAdmin ? (
+                      <span>{slowModeCooldownSec}</span>
+                    ) : (
+                      <Send className="w-4 h-4" />
+                    )}
                   </button>
                 </div>
-              )}
-              <div className="flex items-end gap-2">
-                <textarea
-                  ref={inputRef}
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value.slice(0, 600))}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      void handleSend();
-                    }
-                  }}
-                  placeholder={
-                    replyingTo
-                      ? `Відповісти ${replyingTo.authorName}...`
-                      : 'Напишіть повідомлення...'
-                  }
-                  rows={1}
-                  className="flex-1 min-w-0 max-h-28 px-3.5 py-2.5 text-xs sm:text-sm rounded-xl bg-night-deep focus:bg-night-hover text-paper placeholder:text-ink-subtle focus:outline-none transition-colors resize-none"
-                />
-                <button
-                  type="submit"
-                  disabled={!draft.trim()}
-                  aria-label="Надіслати повідомлення"
-                  className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-silver text-night hover:opacity-95 transition-opacity shrink-0 cursor-pointer disabled:opacity-45 disabled:pointer-events-none"
-                >
-                  <Send className="w-4 h-4" />
-                </button>
-              </div>
-              {draft.length > 480 && (
-                <p className="text-[10px] text-parchment text-right tabular-nums">
-                  {draft.length} / 600
-                </p>
-              )}
-            </form>
+                {draft.length > 480 && (
+                  <p className="text-[10px] text-parchment text-right tabular-nums">
+                    {draft.length} / 600
+                  </p>
+                )}
+              </form>
+            )
           ) : (
             <div className="flex items-center justify-between gap-3">
               <p className="text-xs text-parchment">

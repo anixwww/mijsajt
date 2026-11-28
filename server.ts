@@ -40,6 +40,7 @@ import {
   registerChatRoutes,
 } from './server/chat.ts';
 import { createSecurityMiddleware } from './server/security.ts';
+import { emitProductionAlert, reportProductionError } from './server/monitoring.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -55,7 +56,9 @@ async function startServer() {
   void hydratePublicCatalogFromFirestore(initialDb)
     .then((hydrated) => {
       if (hydrated) {
-        saveDatabase(initialDb);
+        saveDatabase(initialDb, {
+          slices: ['meta', 'poems', 'prose', 'blog', 'products', 'radio'],
+        });
       }
     })
     .catch((err) => {
@@ -266,23 +269,60 @@ async function startServer() {
     });
   }
 
+  app.use((err: unknown, req: Request, res: Response, _next: express.NextFunction) => {
+    reportProductionError('Unhandled Express request error', err, {
+      method: req.method,
+      path: req.path,
+    });
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Внутрішня помилка сервера.' });
+    }
+  });
+
   httpServer.listen(PORT, '0.0.0.0', () => {
     console.log(`Server listening on http://0.0.0.0:${PORT}`);
-    void ensureAllPublicStateHydrated(ensureDatabase()).catch(() => {});
+    void ensureAllPublicStateHydrated(ensureDatabase()).catch((err) => {
+      reportProductionError('Initial public state hydration failed', err);
+    });
     const weeklyTimer = setInterval(() => {
       try {
         const db = ensureDatabase();
         const weeklyRes = ensureWeeklyWinnersUpToDate(db);
-        if (weeklyRes.changed) saveDatabase(db);
-      } catch {
-        // Ignore periodic weekly check error
+        if (weeklyRes.changed) {
+          saveDatabase(db, { slices: ['poems', 'prose'] });
+        }
+      } catch (err) {
+        reportProductionError('Periodic weekly rollover check failed', err);
       }
     }, 60 * 60 * 1000);
     weeklyTimer.unref();
   });
 }
 
+process.on('uncaughtException', (err) => {
+  emitProductionAlert({
+    alertType: 'UNHANDLED_SERVER_ERROR',
+    severity: 'CRITICAL',
+    message: 'Uncaught server exception',
+    error: err,
+  });
+});
+
+process.on('unhandledRejection', (reason) => {
+  emitProductionAlert({
+    alertType: 'UNHANDLED_SERVER_ERROR',
+    severity: 'ERROR',
+    message: 'Unhandled promise rejection',
+    error: reason,
+  });
+});
+
 startServer().catch((err) => {
-  console.error('Failed to start server:', err);
+  emitProductionAlert({
+    alertType: 'UNHANDLED_SERVER_ERROR',
+    severity: 'CRITICAL',
+    message: 'Failed to start server',
+    error: err,
+  });
   process.exit(1);
 });

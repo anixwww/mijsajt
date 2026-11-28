@@ -5,6 +5,7 @@ const GOOGLE_SCRIPT_ORIGINS = [
   'https://apis.google.com',
   'https://www.gstatic.com',
   'https://www.google.com',
+  'https://recaptcha.net',
 ];
 
 const SOUNDCLOUD_SCRIPT_ORIGINS = ['https://w.soundcloud.com'];
@@ -16,6 +17,8 @@ const GOOGLE_CONNECT_ORIGINS = [
   'https://*.firebaseapp.com',
   'https://*.web.app',
   'https://accounts.google.com',
+  'https://www.google.com',
+  'https://recaptcha.net',
   'https://fonts.gstatic.com',
 ];
 
@@ -33,6 +36,8 @@ const MONOBANK_CONNECT_ORIGINS = ['https://api.monobank.ua', 'https://send.monob
 
 const GOOGLE_FRAME_ORIGINS = [
   'https://accounts.google.com',
+  'https://www.google.com',
+  'https://recaptcha.net',
   'https://*.firebaseapp.com',
   'https://*.web.app',
 ];

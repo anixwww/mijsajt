@@ -7,6 +7,7 @@ import { useCatalogStore } from '../store/useCatalogStore.ts';
 import { useRadioStore } from '../store/useRadioStore.ts';
 import { useUiStore } from '../store/useUiStore.ts';
 import type {
+  ChatMessageAttachment,
   GuestUser,
   HomePayload,
   HomeRepeatersConfig,
@@ -18,6 +19,7 @@ import type {
   TelegramSubscriptionState,
 } from '../types.ts';
 import { trackClick } from '../utils/analytics.ts';
+import { useAllRadioTracks } from '../utils/radioSelectors.ts';
 import {
   AuthorStudioModalConnected,
   CartLibraryDrawer,
@@ -155,6 +157,9 @@ export const AppOverlays = memo(function AppOverlays({
   const removeFromCartStore = useCartStore((s) => s.removeFromCart);
   const clearDeviceLibraryStore = useCartStore((s) => s.clearDeviceLibrary);
   const radioEnabled = useRadioStore((s) => s.radioEnabled);
+  const selectRadioTrack = useRadioStore((s) => s.handlers.selectTrack);
+  const changeRadioStation = useRadioStore((s) => s.handlers.changeStation);
+  const allRadioTracks = useAllRadioTracks();
 
   const handleCloseDrawer = useCallback(() => setDrawerOpen(false), [setDrawerOpen]);
   const handleCloseAuthorStudio = useCallback(() => setAuthorStudioOpen(false), [setAuthorStudioOpen]);
@@ -204,6 +209,32 @@ export const AppOverlays = memo(function AppOverlays({
   const handleCatalogRefresh = useCallback(() => {
     void fetchCatalog();
   }, [fetchCatalog]);
+
+  const handleOpenChatAttachment = useCallback(
+    (attachment: ChatMessageAttachment) => {
+      setChatOpen(false);
+      if (attachment.type === 'poem') {
+        handleOpenSectionItem('poetry', attachment.id);
+      } else if (attachment.type === 'prose') {
+        handleOpenSectionItem('prose', attachment.id);
+      } else if (attachment.type === 'radio') {
+        const track = allRadioTracks.find((t) => t.id === attachment.id);
+        if (track?.station) {
+          changeRadioStation(track.station);
+        }
+        selectRadioTrack(attachment.id, true, 'repertoire');
+        handleOpenRadioStable();
+      }
+    },
+    [
+      allRadioTracks,
+      changeRadioStation,
+      handleOpenRadioStable,
+      handleOpenSectionItem,
+      selectRadioTrack,
+      setChatOpen,
+    ]
+  );
 
   return (
     <>
@@ -362,8 +393,10 @@ export const AppOverlays = memo(function AppOverlays({
             guestUser={guestUser}
             isAdmin={isAdmin}
             getGuestToken={getGuestToken}
+            getAdminToken={getAdminToken}
             onOpenAuthModal={handleOpenAuthModalStable}
             onGuestUserUpdated={handleGuestUserUpdated}
+            onOpenAttachment={handleOpenChatAttachment}
           />
         </Suspense>
       )}

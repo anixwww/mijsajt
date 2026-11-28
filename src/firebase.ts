@@ -61,26 +61,62 @@ let messagingPromise: Promise<Messaging | null> | null = null;
 let cachedAuthInstance: Auth | null = null;
 
 let appCheckInitialized = false;
+let appCheckPromise: Promise<void> | null = null;
 
-export async function initFirebaseAppCheck(): Promise<void> {
-  if (appCheckInitialized || typeof window === 'undefined') return;
-  const siteKey =
+function getAppCheckSiteKey(): string | undefined {
+  return (
     (import.meta.env.VITE_FIREBASE_APP_CHECK_SITE_KEY as string | undefined)?.trim() ||
-    firebaseConfig.recaptchaSiteKey?.trim();
-  if (!siteKey) return;
-  appCheckInitialized = true;
-  try {
-    const [app, { initializeAppCheck, ReCaptchaV3Provider }] = await Promise.all([
-      getFirebaseApp(),
-      import('firebase/app-check'),
-    ]);
-    initializeAppCheck(app, {
-      provider: new ReCaptchaV3Provider(siteKey),
-      isTokenAutoRefreshEnabled: true,
-    });
-  } catch {
-    // App Check optional fallback
-  }
+    firebaseConfig.recaptchaSiteKey?.trim() ||
+    undefined
+  );
+}
+
+export function initFirebaseAppCheck(): Promise<void> {
+  if (typeof window === 'undefined') return Promise.resolve();
+  const siteKey = getAppCheckSiteKey();
+  if (!siteKey) return Promise.resolve();
+  if (appCheckPromise) return appCheckPromise;
+
+  appCheckPromise = (async () => {
+    if (appCheckInitialized) return;
+    appCheckInitialized = true;
+    try {
+      if (import.meta.env.DEV) {
+        const debugToken = (
+          import.meta.env.VITE_FIREBASE_APP_CHECK_DEBUG_TOKEN as string | undefined
+        )?.trim();
+        if (debugToken) {
+          (
+            self as typeof self & {
+              FIREBASE_APPCHECK_DEBUG_TOKEN?: boolean | string;
+            }
+          ).FIREBASE_APPCHECK_DEBUG_TOKEN = debugToken === 'true' ? true : debugToken;
+        }
+      }
+
+      const providerMode = (
+        (import.meta.env.VITE_FIREBASE_APP_CHECK_PROVIDER as string | undefined)?.trim() || 'v3'
+      ).toLowerCase();
+
+      const [app, appCheckModule] = await Promise.all([
+        getFirebaseApp(),
+        import('firebase/app-check'),
+      ]);
+      const provider =
+        providerMode === 'enterprise'
+          ? new appCheckModule.ReCaptchaEnterpriseProvider(siteKey)
+          : new appCheckModule.ReCaptchaV3Provider(siteKey);
+
+      appCheckModule.initializeAppCheck(app, {
+        provider,
+        isTokenAutoRefreshEnabled: true,
+      });
+    } catch {
+      // App Check optional fallback
+    }
+  })();
+
+  return appCheckPromise;
 }
 
 export function getFirebaseApp(): Promise<FirebaseApp> {
@@ -88,7 +124,6 @@ export function getFirebaseApp(): Promise<FirebaseApp> {
     appPromise = import('firebase/app')
       .then(({ getApps, initializeApp }) => {
         const app = getApps().length > 0 ? getApps()[0] : initializeApp(firebaseConfig);
-        void initFirebaseAppCheck();
         return app;
       })
       .catch((err) => {
@@ -101,10 +136,15 @@ export function getFirebaseApp(): Promise<FirebaseApp> {
 
 export function getFirebaseAuth(): Promise<Auth> {
   if (!authPromise) {
-    authPromise = Promise.all([getFirebaseApp(), import('firebase/auth')])
+    authPromise = Promise.all([
+      getFirebaseApp(),
+      initFirebaseAppCheck(),
+      import('firebase/auth'),
+    ])
       .then(
         ([
           app,
+          _appCheck,
           {
             browserLocalPersistence,
             browserPopupRedirectResolver,
@@ -209,8 +249,10 @@ export async function signInWithGoogleTokens(
 
 export function getFirebaseDb(): Promise<Firestore> {
   if (!dbPromise) {
-    dbPromise = Promise.all([getFirebaseApp(), import('firebase/firestore')])
-      .then(([app, { getFirestore }]) => getFirestore(app, firebaseConfig.firestoreDatabaseId))
+    dbPromise = Promise.all([getFirebaseApp(), initFirebaseAppCheck(), import('firebase/firestore')])
+      .then(([app, _appCheck, { getFirestore }]) =>
+        getFirestore(app, firebaseConfig.firestoreDatabaseId)
+      )
       .catch((err) => {
         dbPromise = null;
         throw err;
@@ -240,8 +282,12 @@ export async function testFirestoreConnection(): Promise<void> {
 export function getMessagingInstance(): Promise<Messaging | null> {
   if (typeof window === 'undefined') return Promise.resolve(null);
   if (!messagingPromise) {
-    messagingPromise = Promise.all([getFirebaseApp(), import('firebase/messaging')])
-      .then(async ([app, { getMessaging, isSupported }]) => {
+    messagingPromise = Promise.all([
+      getFirebaseApp(),
+      initFirebaseAppCheck(),
+      import('firebase/messaging'),
+    ])
+      .then(async ([app, _appCheck, { getMessaging, isSupported }]) => {
         const supported = await isSupported();
         return supported ? getMessaging(app) : null;
       })

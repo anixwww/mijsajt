@@ -6,7 +6,6 @@ import {
   ChevronRight,
   Copy,
   ExternalLink,
-  Headphones,
   Heart,
   LogIn,
   Mail,
@@ -28,6 +27,7 @@ import type {
 } from '../types.ts';
 import { trackClick } from '../utils/analytics.ts';
 import { sanitizeSafeHref } from '../utils/urlRouting.ts';
+import { CosmicHeadphonesIcon } from './CosmicHeadphonesIcon.tsx';
 import { EditorialImage } from './EditorialImage.tsx';
 import { SignatureLogo } from './SignatureLogo.tsx';
 import { SocialPlatformIcon } from './SocialIcons.tsx';
@@ -139,96 +139,159 @@ interface HeroSectionProps {
   hasUnreadReply?: boolean;
 }
 
+const COSMIC_ACTION_CONFIG = {
+  about: {
+    tileClass:
+      'bg-[linear-gradient(135deg,#081126_0%,#122042_52%,#1D1840_100%)] text-[#BAE6FD] shadow-[0_6px_16px_-6px_rgba(8,17,38,0.75),0_0_14px_-4px_rgba(56,189,248,0.34),inset_0_1px_0_rgba(255,255,255,0.2)] group-hover:shadow-[0_8px_20px_-6px_rgba(8,17,38,0.88),0_0_20px_-2px_rgba(125,211,252,0.52),inset_0_1px_0_rgba(255,255,255,0.3)]',
+    glowTop: 'radial-gradient(circle, rgba(56, 189, 248, 0.36) 0%, transparent 72%)',
+    glowBottom: 'radial-gradient(circle, rgba(129, 140, 248, 0.32) 0%, transparent 72%)',
+    stars: ['#E0F2FE', '#FDE68A', '#A5B4FC', '#7DD3FC'] as const,
+  },
+  contact: {
+    tileClass:
+      'bg-[linear-gradient(135deg,#06181A_0%,#0B292B_52%,#11223B_100%)] text-[#99F6E4] shadow-[0_6px_16px_-6px_rgba(6,24,26,0.78),0_0_14px_-4px_rgba(45,212,191,0.36),inset_0_1px_0_rgba(255,255,255,0.2)] group-hover:shadow-[0_8px_20px_-6px_rgba(6,24,26,0.9),0_0_20px_-2px_rgba(94,234,212,0.54),inset_0_1px_0_rgba(255,255,255,0.3)]',
+    glowTop: 'radial-gradient(circle, rgba(20, 184, 166, 0.38) 0%, transparent 72%)',
+    glowBottom: 'radial-gradient(circle, rgba(56, 189, 248, 0.3) 0%, transparent 72%)',
+    stars: ['#CCFBF1', '#67E8F9', '#5EEAD4', '#FDE68A'] as const,
+  },
+  monobank: {
+    tileClass:
+      'bg-[linear-gradient(135deg,#210917_0%,#341025_52%,#2A1233_100%)] text-[#FECDD3] shadow-[0_6px_16px_-6px_rgba(33,9,23,0.78),0_0_14px_-4px_rgba(244,63,94,0.36),inset_0_1px_0_rgba(255,255,255,0.2)] group-hover:shadow-[0_8px_20px_-6px_rgba(33,9,23,0.9),0_0_20px_-2px_rgba(251,113,133,0.54),inset_0_1px_0_rgba(255,255,255,0.3)]',
+    glowTop: 'radial-gradient(circle, rgba(244, 63, 94, 0.38) 0%, transparent 72%)',
+    glowBottom: 'radial-gradient(circle, rgba(192, 132, 252, 0.32) 0%, transparent 72%)',
+    stars: ['#FFE4E6', '#FDE68A', '#F9A8D4', '#E9D5FF'] as const,
+  },
+  interviews: {
+    tileClass:
+      'bg-[linear-gradient(135deg,#1C1005_0%,#2E1908_52%,#261428_100%)] text-[#FDE68A] shadow-[0_6px_16px_-6px_rgba(28,16,5,0.78),0_0_14px_-4px_rgba(245,158,11,0.34),inset_0_1px_0_rgba(255,255,255,0.2)] group-hover:shadow-[0_8px_20px_-6px_rgba(28,16,5,0.9),0_0_20px_-2px_rgba(251,191,36,0.52),inset_0_1px_0_rgba(255,255,255,0.3)]',
+    glowTop: 'radial-gradient(circle, rgba(245, 158, 11, 0.36) 0%, transparent 72%)',
+    glowBottom: 'radial-gradient(circle, rgba(168, 85, 247, 0.28) 0%, transparent 72%)',
+    stars: ['#FEF3C7', '#FDE68A', '#DDD6FE', '#FBBF24'] as const,
+  },
+} as const;
+
 function HomeActionIcon({ kind }: { kind: 'about' | 'contact' | 'monobank' | 'interviews' }) {
-  if (kind === 'about') {
-    return (
-      <svg
-        viewBox="0 0 24 24"
-        className="w-[19px] h-[19px]"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={1.75}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden="true"
-      >
-        <path
-          d="M2.25 12s3.75-6.25 9.75-6.25S21.75 12 21.75 12s-3.75 6.25-9.75 6.25S2.25 12 2.25 12Z"
-          fill="currentColor"
-          fillOpacity="0.22"
-        />
-        <circle cx="12" cy="12" r="3.1" fill="currentColor" fillOpacity="0.35" />
-        <circle cx="12" cy="12" r="0.95" fill="currentColor" stroke="none" />
-      </svg>
-    );
-  }
-
-  if (kind === 'contact') {
-    return (
-      <svg
-        viewBox="0 0 24 24"
-        className="w-[19px] h-[19px]"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={1.75}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden="true"
-      >
-        <path
-          d="M4.1 12.2c0-4.4 3.55-7.7 7.9-7.7s7.9 3.3 7.9 7.7c0 2.4-1.35 4.35-3.65 5.4l-.85 1.9H8.6l-.85-1.9c-2.3-1.05-3.65-3-3.65-5.4Z"
-          fill="currentColor"
-          fillOpacity="0.22"
-        />
-        <path d="M12 19V5.4" strokeOpacity="0.75" />
-        <path d="M10.75 19 7.5 7.3" strokeOpacity="0.7" />
-        <path d="M13.25 19 16.5 7.3" strokeOpacity="0.7" />
-      </svg>
-    );
-  }
-
-  if (kind === 'monobank') {
-    return (
-      <svg
-        viewBox="0 0 24 24"
-        className="w-[19px] h-[19px]"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={1.75}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden="true"
-      >
-        <path
-          d="M12 20.1s-7.25-4.55-7.25-10.1a4.35 4.35 0 0 1 7.25-3.22A4.35 4.35 0 0 1 19.25 10c0 5.55-7.25 10.1-7.25 10.1Z"
-          fill="currentColor"
-          fillOpacity="0.25"
-        />
-        <path d="M8.5 9.65a1.85 1.85 0 0 1 1.65-1.35" strokeOpacity="0.8" />
-      </svg>
-    );
-  }
-
+  const cfg = COSMIC_ACTION_CONFIG[kind];
   return (
-    <svg
-      viewBox="0 0 24 24"
-      className="w-[19px] h-[19px]"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.75}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
+    <span
+      className={`relative overflow-hidden w-10 h-10 rounded-[11px] inline-flex items-center justify-center shrink-0 transition-all duration-200 group-hover:scale-105 ${cfg.tileClass}`}
     >
-      <path
-        d="M3.2 17.2 9.8 11.4C11 8.5 13 5.2 16 5.2c1.7 0 3 1.1 3.3 2.4l2.1.7-2 1.2c-.2 3.9-3 6.9-7.2 7.1l-6 1.2-3-.6Z"
-        fill="currentColor"
-        fillOpacity="0.22"
+      <span
+        aria-hidden="true"
+        style={{ background: cfg.glowTop }}
+        className="pointer-events-none absolute -left-2 -top-2 w-8 h-8 rounded-full opacity-85 group-hover:opacity-100 transition-opacity duration-300"
       />
-      <path d="M9.6 13.7c1.9 0 4.1-1.2 5.2-3.1" strokeOpacity="0.8" />
-      <path d="M11.6 16.6v3M14.4 16.2v3.4" strokeOpacity="0.85" />
-      <circle cx="16.8" cy="7.6" r="0.8" fill="currentColor" stroke="none" />
-    </svg>
+      <span
+        aria-hidden="true"
+        style={{ background: cfg.glowBottom }}
+        className="pointer-events-none absolute -right-2 -bottom-2 w-8 h-8 rounded-full opacity-85 group-hover:opacity-100 transition-opacity duration-300"
+      />
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 40 40"
+        fill="none"
+        className="pointer-events-none absolute inset-0 w-full h-full opacity-80 group-hover:opacity-100 transition-opacity duration-300"
+      >
+        <circle cx="8" cy="9" r="0.65" fill={cfg.stars[0]} opacity="0.8" />
+        <circle cx="32" cy="8.5" r="0.8" fill={cfg.stars[1]} opacity="0.9" className="motion-safe:animate-pulse" />
+        <circle cx="9.5" cy="31" r="0.6" fill={cfg.stars[2]} opacity="0.7" />
+        <circle cx="31.5" cy="31" r="0.65" fill={cfg.stars[3]} opacity="0.75" />
+      </svg>
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-out bg-gradient-to-r from-transparent via-white/15 to-transparent"
+      />
+
+      {kind === 'about' && (
+        <svg
+          viewBox="0 0 24 24"
+          className="relative z-10 w-[18px] h-[18px] transition-transform duration-300 group-hover:scale-110"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.65}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path
+            d="M2.25 12s3.75-6.25 9.75-6.25S21.75 12 21.75 12s-3.75 6.25-9.75 6.25S2.25 12 2.25 12Z"
+            fill="#38BDF8"
+            fillOpacity="0.18"
+          />
+          <circle cx="12" cy="12" r="3.2" stroke="#7DD3FC" fill="#818CF8" fillOpacity="0.3" />
+          <circle cx="12" cy="12" r="1.05" fill="#FEF3C7" stroke="none" />
+          <circle cx="13.2" cy="10.7" r="0.45" fill="#E0F2FE" stroke="none" />
+        </svg>
+      )}
+
+      {kind === 'contact' && (
+        <svg
+          viewBox="0 0 24 24"
+          className="relative z-10 w-[18px] h-[18px] transition-transform duration-300 group-hover:rotate-6 group-hover:scale-110"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.65}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path
+            d="m20.5 4.2-16.8 6.9 6.3 2.7 2.8 6.3 7.7-15.9Z"
+            fill="#2DD4BF"
+            fillOpacity="0.22"
+          />
+          <path d="M10 13.8 20.5 4.2" stroke="#67E8F9" />
+          <path d="M4.2 15.8a4.2 4.2 0 0 0 3.7 3.7" stroke="#5EEAD4" strokeOpacity="0.75" />
+          <circle cx="18.2" cy="16.5" r="0.9" fill="#FDE68A" stroke="none" />
+        </svg>
+      )}
+
+      {kind === 'monobank' && (
+        <svg
+          viewBox="0 0 24 24"
+          className="relative z-10 w-[18px] h-[18px] transition-transform duration-300 group-hover:scale-110"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.65}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path
+            d="M12 20.1s-7.25-4.55-7.25-10.1a4.35 4.35 0 0 1 7.25-3.22A4.35 4.35 0 0 1 19.25 10c0 5.55-7.25 10.1-7.25 10.1Z"
+            fill="#F43F5E"
+            fillOpacity="0.26"
+            stroke="#FDA4AF"
+          />
+          <path d="M8.4 9.75a1.9 1.9 0 0 1 1.7-1.4" stroke="#FFE4E6" strokeOpacity="0.85" />
+          <circle cx="15.3" cy="9.4" r="0.9" fill="#FDE68A" stroke="none" />
+        </svg>
+      )}
+
+      {kind === 'interviews' && (
+        <svg
+          viewBox="0 0 24 24"
+          className="relative z-10 w-[18px] h-[18px] transition-transform duration-300 group-hover:scale-110"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.65}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path
+            d="M3.2 17.2 9.8 11.4C11 8.5 13 5.2 16 5.2c1.7 0 3 1.1 3.3 2.4l2.1.7-2 1.2c-.2 3.9-3 6.9-7.2 7.1l-6 1.2-3-.6Z"
+            fill="#F59E0B"
+            fillOpacity="0.24"
+            stroke="#FDE68A"
+          />
+          <path d="M9.6 13.7c1.9 0 4.1-1.2 5.2-3.1" stroke="#FCD34D" strokeOpacity="0.9" />
+          <path d="M11.6 16.6v3M14.4 16.2v3.4" stroke="#FDE68A" strokeOpacity="0.85" />
+          <circle cx="16.8" cy="7.6" r="0.85" fill="#FFFBEB" stroke="none" />
+          <circle cx="6.2" cy="7.2" r="0.75" fill="#DDD6FE" stroke="none" />
+        </svg>
+      )}
+    </span>
   );
 }
 
@@ -954,13 +1017,44 @@ export const HeroSection = memo(function HeroSection({
                 }}
                 aria-label="Щомісячні підбірки музики"
                 title="Щомісячні підбірки музики"
-                className="group relative overflow-hidden touch-surface inline-flex items-center justify-center w-[38px] sm:w-[40px] h-[38px] sm:h-[40px] rounded-lg bg-[#F7F0EE] dark:bg-[#2D1B1D] text-[#8B1E1E] dark:text-[#D13B3B] hover:bg-[#EFE3E0] dark:hover:bg-[#3A2225] shadow-[0_4px_12px_-6px_rgba(139,30,30,0.35),inset_0_1px_0_rgba(255,255,255,0.55)] dark:shadow-[0_6px_16px_-6px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.08)] hover:scale-105 active:scale-[0.94] transition-all duration-200 shrink-0 cursor-pointer"
+                className="group relative overflow-hidden touch-surface inline-flex items-center justify-center w-[38px] sm:w-[40px] h-[38px] sm:h-[40px] rounded-lg bg-[linear-gradient(135deg,#180812_0%,#2A0E22_50%,#351326_100%)] text-[#FBCFE8] shadow-[0_6px_16px_-6px_rgba(24,8,18,0.82),0_0_14px_-4px_rgba(244,63,94,0.38),inset_0_1px_0_rgba(255,255,255,0.18)] hover:shadow-[0_8px_20px_-6px_rgba(24,8,18,0.92),0_0_20px_-2px_rgba(236,72,153,0.55),inset_0_1px_0_rgba(255,255,255,0.28)] hover:scale-105 active:scale-[0.94] transition-all duration-200 shrink-0 cursor-pointer"
               >
-                <Headphones
-                  className="relative z-10 w-[18px] h-[18px] transition-transform duration-300 group-hover:scale-110"
-                  strokeWidth={2}
+                {/* Rose-magenta nebula glow layers */}
+                <span
                   aria-hidden="true"
+                  style={{
+                    background: 'radial-gradient(circle, rgba(244, 63, 94, 0.38) 0%, transparent 72%)',
+                  }}
+                  className="pointer-events-none absolute -left-2 -top-2 w-8 h-8 rounded-full opacity-85 group-hover:opacity-100 transition-opacity duration-300"
                 />
+                <span
+                  aria-hidden="true"
+                  style={{
+                    background: 'radial-gradient(circle, rgba(217, 70, 239, 0.3) 0%, transparent 72%)',
+                  }}
+                  className="pointer-events-none absolute -right-2 -bottom-2 w-8 h-8 rounded-full opacity-85 group-hover:opacity-100 transition-opacity duration-300"
+                />
+
+                {/* Subtle starfield inside the button */}
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 40 40"
+                  fill="none"
+                  className="pointer-events-none absolute inset-0 w-full h-full opacity-80 group-hover:opacity-100 transition-opacity duration-300"
+                >
+                  <circle cx="8" cy="9" r="0.65" fill="#FCE7F3" opacity="0.8" />
+                  <circle cx="32" cy="8" r="0.8" fill="#FDE68A" opacity="0.85" className="animate-pulse" />
+                  <circle cx="10" cy="31" r="0.6" fill="#F9A8D4" opacity="0.65" />
+                  <circle cx="31" cy="32" r="0.7" fill="#F472B6" opacity="0.7" />
+                </svg>
+
+                {/* Starlight sweep on hover */}
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-out bg-gradient-to-r from-transparent via-white/15 to-transparent"
+                />
+
+                <CosmicHeadphonesIcon className="relative z-10 w-[18px] h-[18px] transition-transform duration-300 group-hover:rotate-6 group-hover:scale-110" />
               </button>
             )}
 
@@ -1301,11 +1395,7 @@ export const HeroSection = memo(function HeroSection({
                 onClick={() => handleOpenModal(key)}
                 className="touch-surface group w-full text-left bg-paper dark:bg-night-card hover:bg-white dark:hover:bg-night-elevated rounded-2xl px-3.5 py-3 shadow-[0_12px_28px_-20px_rgba(17,30,22,0.26)] dark:shadow-[0_14px_30px_-18px_rgba(0,0,0,0.68)] flex items-center gap-3.5 transition-all duration-150 active:scale-[0.985] cursor-pointer"
               >
-                <span
-                  className="w-10 h-10 rounded-[11px] inline-flex items-center justify-center shrink-0 transition-all duration-150 group-hover:scale-[1.04] shadow-xs bg-paper-sand dark:bg-night-elevated text-ink-muted dark:text-parchment group-hover:text-ink dark:group-hover:text-cream"
-                >
-                  <HomeActionIcon kind={key} />
-                </span>
+                <HomeActionIcon kind={key} />
                 <span className="min-w-0 flex-1 text-[13.5px] sm:text-[14px] font-medium tracking-[-0.005em] dark:tracking-[0.005em] text-pine-night dark:text-cream leading-snug">
                   {label}
                 </span>

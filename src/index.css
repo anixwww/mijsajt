@@ -437,12 +437,92 @@ html.dark .group:hover .prose-book-marker {
   will-change: transform, opacity;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .festive-bulb-twinkle,
-  .poetry-nebula-primary,
-  .poetry-nebula-secondary {
-    animation: none;
+@keyframes heartBloomPop {
+  0% {
+    transform: scale(0.8);
+  }
+  36% {
+    transform: scale(1.38) rotate(-7deg);
+  }
+  68% {
+    transform: scale(0.94) rotate(3deg);
+  }
+  100% {
+    transform: scale(1.1) rotate(0deg);
   }
 }
 
+@keyframes heartUnlikePop {
+  0% {
+    transform: scale(1.1);
+  }
+  45% {
+    transform: scale(0.82);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes heartBloomRing {
+  0% {
+    transform: scale(0.42);
+    opacity: 0.78;
+  }
+  100% {
+    transform: scale(1.9);
+    opacity: 0;
+  }
+}
+
+@keyframes heartBloomPetal {
+  0% {
+    transform: rotate(var(--petal-angle, 0deg)) translate3d(0, -3px, 0) scale(0.35);
+    opacity: 0;
+  }
+  24% {
+    transform: rotate(var(--petal-angle, 0deg)) translate3d(0, -9px, 0) scale(1);
+    opacity: 0.95;
+  }
+  100% {
+    transform: rotate(var(--petal-angle, 0deg)) translate3d(0, -16px, 0) scale(0);
+    opacity: 0;
+  }
+}
+
+.heart-bloom-pop {
+  animation: heartBloomPop 440ms cubic-bezier(0.22, 1.4, 0.36, 1) forwards;
+  will-change: transform;
+}
+
+.heart-unlike-pop {
+  animation: heartUnlikePop 200ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform;
+}
+
+.heart-bloom-ring {
+  animation: heartBloomRing 460ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
+}
+
+.heart-bloom-petal {
+  animation: heartBloomPetal 480ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .festive-bulb-twinkle,
+  .poetry-nebula-primary,
+  .poetry-nebula-secondary,
+  .heart-bloom-pop,
+  .heart-unlike-pop,
+  .heart-bloom-ring,
+  .heart-bloom-petal {
+    animation: none;
+  }
+  .heart-bloom-ring,
+  .heart-bloom-petal {
+    opacity: 0;
+  }
+}
 
